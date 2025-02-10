@@ -1,3 +1,9 @@
+"""
+Modified from : https://github.com/napulen/romanyh
+with BSD 3-Clause "New" or "Revised" License
+Copyright (c) 2020 Néstor Nápoles López (from commit 1cfe02c)
+Copyright (c) 2020 Eric Zhang (until commit d4bd33b)
+"""
 import copy
 from functools import lru_cache
 
