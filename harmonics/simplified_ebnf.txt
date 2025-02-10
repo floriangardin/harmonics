@@ -1,0 +1,105 @@
+// ----------------------------
+// Lark grammar for RomanText
+// ----------------------------
+?start: document
+document: (NEWLINE)* line*
+line: metadata_line
+     | statement_line
+
+metadata_line: composer_line
+             | piece_line
+             | analyst_line
+             | proofreader_line
+             | movement_line
+             | time_signature_line
+             | key_signature_line
+             | minor_mode_line
+
+composer_line: "Composer:" WS REST_LINE NEWLINE
+piece_line: "Piece:" WS REST_LINE NEWLINE
+analyst_line: "Analyst:" WS REST_LINE NEWLINE
+proofreader_line: "Proofreader:" WS REST_LINE NEWLINE
+movement_line: "Movement:" WS MEASURE_NUMBER NEWLINE
+time_signature_line: "Time Signature:" WS time_signature NEWLINE
+key_signature_line: "Key Signature:" WS SIGNED_INT NEWLINE
+minor_mode_line: "Minor Sixth / Minor Seventh:" WS MINOR_MODE_OPTION NEWLINE
+
+statement_line: measure_line
+              | pedal_line
+              | form_line
+              | note_line
+              | repeat_line
+
+// Updated measure_line to include standalone chords
+measure_line: MEASURE_INDICATOR (chord_beat_1)? (beat_chord | key_change)* PHRASE_BOUNDARY? NEWLINE
+beat_chord: WS BEAT_INDICATOR (WS key)? WS CHORD
+key_change: WS key
+chord_beat_1: (WS key)? WS CHORD
+key: KEY
+
+repeat_line: measure_range WS "=" WS measure_range NEWLINE
+measure_range: MEASURE_INDICATOR ("-" MEASURE_INDICATOR)+
+
+note: NOTELETTER ACCIDENTAL?
+NOTELETTER: /[A-Ga-g]/
+
+pedal_line: "Pedal:" WS note WS pedal_entries NEWLINE
+pedal_entries: pedal_entry (WS pedal_entry)* WS?
+pedal_entry: MEASURE_INDICATOR WS BEAT_INDICATOR
+
+form_line: "Form:" WS REST_LINE NEWLINE
+note_line: "Note:" WS REST_LINE NEWLINE
+
+// --------------------
+// Chord grammar transformed into CHORD terminal
+// --------------------
+CHORD: /(Ger|It|Fr|N|Cad|NC|(#{1,}|b{1,})?(I|II|III|IV|V|VI|VII|i|ii|iii|iv|v|vi|vii)(?:[o+\%ø°])?(?:6(?:\/3)?|64|6\/4|7|6\/5|65|4\/3|43|2|42|4\/2|9|11|13)?)(?:\[(?:no|add)?(?:#{1,}|b{1,})?\d+\])*(?:\/(?:#{1,}|b{1,})?(?:I{1,3}|IV|V|VI{1,2}|VII|i{1,3}|iv|v|vi|vii))*$/
+
+// --------------------
+// Tokens (with regexes)
+// --------------------
+
+MEASURE_INDICATOR: "m" MEASURE_NUMBER
+MEASURE_NUMBER: DIGIT+ (LETTER+ | "var" DIGIT+)? 
+
+BEAT_INDICATOR: "b" BEAT_NUMBER
+BEAT_NUMBER: DIGIT+ ("." DIGIT+)?
+
+time_signature: numerator "/" denominator
+numerator: DIGIT+
+denominator: DIGIT+
+SIGNED_INT: ("+"|"-")? DIGIT+
+
+// KEY: accepts optional ?( ... ) and : (e.g., C, c, C:, ?(Bb, ?(Bb) )
+KEY: /(\?\()?[A-Ga-g](?:#{1,}|b{1,})?(?:\))?:/
+
+ROMAN_NUMERAL: "I" | "II" | "III" | "IV" | "V" | "VI" | "VII"
+             | "i" | "ii" | "iii" | "iv" | "v" | "vi" | "vii"
+
+ACCIDENTAL: /#{1,}|b{1,}/
+
+MINOR_MODE_OPTION: "quality" | "cautionary" | "sharp" | "flat"
+
+DIGIT: /[0-9]/
+DIGITS: DIGIT+
+
+LETTER: /[a-z]+/
+
+// Capture the rest of the line (for metadata or free text)
+REST_LINE: /.+/
+
+// A phrase boundary (usually ":||")
+PHRASE_BOUNDARY: WS ":||" WS?
+
+// Whitespace
+WS: (" " | /\t/) +
+
+CR: /\r/
+LF: /\n/
+NEWLINE: WS* (CR? LF)+
+
+%ignore WS
+%ignore NEWLINE
+%ignore CR
+%ignore LF
+%ignore PHRASE_BOUNDARY
