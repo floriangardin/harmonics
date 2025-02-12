@@ -15,15 +15,19 @@ from .models import (
     Key,
     Chord,
     BeatItem,
+    AbsoluteMelodyNote,
     Measure,
     MeasureRange,
     Repeat,
+    Silence,
     Note,
     PedalEntry,
     Pedal,
     Form,
     Comment,
     RomanTextDocument,
+    Melody,
+    MelodyNote,
 )
 
 def transform_token(token: Token) -> str:
@@ -128,7 +132,12 @@ def transform_standard_chord(node: Tree) -> str:
             if child.type == "CHORD_QUALITY":
                 chord_quality = transform_token(child)
         elif isinstance(child, Tree) and child.data == "inversion":
-            inversion = transform_token(child.children[0])
+            for subchild in child.children:
+                if isinstance(subchild, Token) and subchild.type == "INVERSION_STANDARD":
+                    inversion = transform_token(subchild)
+                elif isinstance(subchild, Tree) and subchild.data == "inversion_free":
+                    for sschild in subchild.children:
+                        inversion += sschild.value
     return chord_accidental + numeral + chord_quality + inversion
 
 def transform_special_chord(node: Tree) -> str:
@@ -139,15 +148,21 @@ def transform_special_chord(node: Tree) -> str:
         if isinstance(child, Token) and child.type == "SPECIAL_CHORD":
             special = transform_token(child)
         elif isinstance(child, Tree) and child.data == "inversion":
-            inversion = transform_token(child.children[0])
+            for subchild in child.children:
+                if isinstance(subchild, Token) and subchild.type == "INVERSION_STANDARD":
+                    inversion = transform_token(subchild)
+                elif isinstance(subchild, Tree) and subchild.data == "inversion_free":
+                    for sschild in subchild.children:
+                        inversion += sschild.value
     return special + inversion
 
 def transform_chord_alteration(node: Tree) -> str:
     # chord_alteration: "[" alteration_content "]"
+    alteration = ""
     for child in node.children:
         if isinstance(child, Tree) and child.data == "alteration_content":
-            return transform_alteration_content(child)
-    raise ValueError("ChordAlteration missing alteration_content")
+            alteration += transform_alteration_content(child)
+    return alteration
 
 def transform_alteration_content(node: Tree) -> str:
     # alteration_content: ((omit_alteration | add_alteration)? [ACCIDENTAL]? DIGITS)
@@ -179,7 +194,7 @@ def transform_chord_component(node: Tree) -> str:
             elif child.data == "standard_chord":
                 base = transform_standard_chord(child)
             elif child.data == "chord_alteration":
-                alterations = transform_chord_alteration(child)
+                alterations += transform_chord_alteration(child)
     if base is None:
         raise ValueError("ChordComponent missing base chord")
     text = base + alterations
@@ -369,6 +384,49 @@ def transform_repeat_line(node: Tree) -> Repeat:
         raise ValueError("RepeatLine must have two measure ranges")
     return Repeat(start_range=ranges[0], equals=equals, end_range=ranges[1])
 
+
+# ------------------------------
+# Melody line transformer
+# ------------------------------
+
+
+def transform_melody_line(node: Tree) -> Melody:
+    # melody_line: MELODY_MEASURE_INDICATOR (beat_note)* NEWLINE
+    notes = []
+    bar_octave = 0
+    
+    for child in node.children:
+        is_absolute_note = False
+        is_silence = False
+        if isinstance(child, Token) and child.type == "MELODY_MEASURE_INDICATOR":
+            measure_number = int(child.value[len("mel"):])
+        elif isinstance(child, Tree) and child.data in ["beat_note", "first_beat_note"]:
+            beat = 1
+            octave = 0
+            
+            note = ""
+            for token in child.children:
+                if isinstance(token, Token):
+                    if token.type == "MELODY_BEAT_INDICATOR":
+                        beat = float(token.value[1:]) # Remove 't' prefix
+                    elif token.type == "MELODY_NOTE":
+                        note = token.value.replace('/', '')
+                    elif token.type == "ABSOLUTE_NOTE":
+                        note = token.value.replace('/', '')
+                        is_absolute_note = True
+                    elif token.type == "SILENCE":
+                        is_silence = True
+                    elif token.type == 'DELTA_OCTAVE':
+                        octave = int(token.value[1:])
+            if is_silence:
+                notes.append(Silence(beat=beat))
+            elif is_absolute_note:
+                notes.append(AbsoluteMelodyNote(beat=beat, note=note))
+            else:
+                notes.append(MelodyNote(beat=beat, note=note, octave=octave))
+            
+    return Melody(measure_number=measure_number, notes=notes)
+    
 # ------------------------------
 # Statement line transformer
 # ------------------------------
@@ -386,6 +444,8 @@ def transform_statement_line(node: Tree) -> StatementLine:
         return transform_note_line(child)
     elif child.data == "repeat_line":
         return transform_repeat_line(child)
+    elif child.data == "melody_line":
+        return transform_melody_line(child)
     else:
         raise ValueError(f"Unknown statement_line type: {child.data}")
 

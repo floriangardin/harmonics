@@ -1,6 +1,32 @@
 from typing import List, Optional, Union, Tuple
 from pydantic import BaseModel
 
+
+
+    
+# ==============================
+# Melody Lines
+# ==============================
+
+
+
+class MelodyNote(BaseModel):
+    beat: float
+    note: str
+    octave: int = 0
+
+class Silence(MelodyNote):
+    beat: float
+    note: str = 'R'
+    octave: int = 0
+
+class AbsoluteMelodyNote(MelodyNote):
+    pass
+
+class Melody(BaseModel):
+    measure_number: int
+    notes: List[MelodyNote]
+
 # ==============================
 # Metadata Lines
 # ==============================
@@ -121,6 +147,7 @@ StatementLine = Union[
     Pedal,
     Form,
     Comment,
+    Melody,
 ]
 
 Line = Union[MetadataLine, StatementLine]
@@ -129,24 +156,40 @@ Line = Union[MetadataLine, StatementLine]
 # Top-level Document
 # ==============================
 
+
+class ChordItem(BaseModel):
+    time: float
+    duration: float
+    chord: Optional[str] = None
+    key: Optional[str] = None
+    time_signature: Optional[Tuple[int, int]] = None
+    pitches: Optional[List[str]] = None
+
 class NoteItem(BaseModel):
     time: float
     duration: float
-    chord: str
-    key: str
-    pitches: Optional[List[int]] = None
+    chord: Optional[str] = None
+    key: Optional[str] = None
+    time_signature: Optional[Tuple[int, int]] = None
+    pitch: Optional[str] = None
+    is_silence: bool = False
 
+
+class Score(BaseModel):
+    chords: List[ChordItem]
+    melody: List[NoteItem]
+
+def bar_duration_in_quarters(time_signature: Tuple[int, int]) -> int:
+    return 4 * time_signature[0] / time_signature[1]
+
+def beat_to_quarter(beat: float, time_signature: Tuple[int, int]) -> float:
+    return 4 * (beat - 1) / time_signature[1]
+    
 class RomanTextDocument(BaseModel):
     lines: List[Line]
 
     @property
-    def chords(self) -> List[Note]:
-        def bar_duration_in_quarters(time_signature: Tuple[int, int]) -> int:
-            return 4 * time_signature[0] / time_signature[1]
-        
-        def beat_to_quarter(beat: float, time_signature: Tuple[int, int]) -> float:
-            return 4 * (beat - 1) / time_signature[1]
-        
+    def chords(self) -> List[ChordItem]:
         results = []
         bar_start_time = 0 # In quarter (not in beat !)
         current_bar_index = 0
@@ -161,16 +204,77 @@ class RomanTextDocument(BaseModel):
                     duration = 0
                     if beat_item.key is not None:
                         current_key = beat_item.key
-                    results.append(NoteItem(time=beat_start_time+bar_start_time, duration=duration, 
+                    results.append(ChordItem(time=beat_start_time+bar_start_time, duration=duration, 
                                                    chord=beat_item.chord,
+                                                   time_signature=current_time_signature,
                                                    key=current_key))
                 bar_start_time += delta_bar * bar_duration_in_quarters(current_time_signature)
             elif isinstance(line, TimeSignature):
-                print(line.numerator, line.denominator)
                 current_time_signature = (line.numerator, line.denominator)
 
         # Fill the durations (using delta between next time)
         for i in range(len(results)-1):
             results[i].duration = results[i+1].time - results[i].time
         results[-1].duration = bar_start_time - results[-1].time
+        return results
+    
+    @property
+    def time_signatures(self) -> List[TimeSignature]:
+        pass
+    
+    @property
+    def melody(self) -> List[NoteItem]:
+        from .notes_utils import getPitchFromIntervalFromMinimallyModifiedScale
+
+        def get_current_chord_from_time(time: float, chords: List[NoteItem]) -> Optional[str]:
+            for chord in chords:
+                if chord.time <= time < chord.time + chord.duration:
+                    return chord
+            return None
+        
+        results = []
+        chords = self.chords
+        current_chord = None
+        previous_current_chord = None
+        bar_start_time = 0 # In quarter (not in beat !)
+        current_bar_index = 0
+        current_time_signature = (4, 4)
+        for line in self.lines:
+            if isinstance(line, TimeSignature):
+                current_time_signature = (line.numerator, line.denominator)
+            elif isinstance(line, Melody):
+                delta_bar = line.measure_number - current_bar_index
+                current_bar_index = line.measure_number
+                for note in line.notes:
+                    beat_start_time = beat_to_quarter(note.beat, current_time_signature)
+                    duration = 0
+                    time=beat_start_time+bar_start_time
+                    previous_current_chord = current_chord
+                    current_chord = get_current_chord_from_time(time, chords)
+                    if current_chord is None:
+                        raise Exception('No chord found for measure {} at beat {}'.format(current_bar_index, note.beat))
+                    
+                    current_chord_to_use = current_chord if current_chord.chord != "NC" else previous_current_chord
+
+                    is_silence = False
+                    if isinstance(note, Silence):
+                        pitch = None
+                        is_silence = True
+                    elif isinstance(note, AbsoluteMelodyNote):
+                        pitch = note.note
+                    else:
+                        pitch = getPitchFromIntervalFromMinimallyModifiedScale(current_chord_to_use.chord, current_chord_to_use.key, note.note, note.octave)
+                    results.append(NoteItem(time=beat_start_time+bar_start_time, duration=duration, 
+                                            chord=current_chord.chord,
+                                            key=current_chord.key,
+                                            time_signature=current_time_signature,
+                                            pitch=pitch,
+                                            is_silence=is_silence))
+                    
+                bar_start_time += delta_bar * bar_duration_in_quarters(current_time_signature)
+
+        if len(results) > 0:
+            for i in range(len(results)-1):
+                results[i].duration = results[i+1].time - results[i].time
+            results[-1].duration = bar_start_time - results[-1].time
         return results

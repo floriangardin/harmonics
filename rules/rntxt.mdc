@@ -1,3 +1,15 @@
+---
+description: Helpful to help for composing roman text numeral notation files
+globs: *.rntxt
+---
+
+# Rule content
+
+You help write in a language called roman text numeral notation (all files ending with .rntxt)
+This language is a context free grammar and follows this specific EBNF format : 
+
+EBNF DESCRIPTION :
+
 // ----------------------------
 // Lark grammar for RomanText
 // ----------------------------
@@ -87,7 +99,7 @@ denominator: DIGIT+
 SIGNED_INT: ("+"|"-")? DIGIT+
 
 // KEY: accepts optional ?( ... ) and : (e.g., C, c, C:, ?(Bb, ?(Bb) )
-KEY: /(\?\()?[A-Ga-g](?:#{1,}|b{1,})?(?:\))?:/
+KEY: /[A-Ga-g](mdc:?:#{1,}|b{1,})?(?:\))?:/
 
 SPECIAL_CHORD: "Ger" | "It" | "Fr" | "N" | "Cad" | "NC"
 ROMAN_NUMERAL: "I" | "II" | "III" | "IV" | "V" | "VI" | "VII"
@@ -109,8 +121,8 @@ LETTER: /[a-z]+/
 // Capture the rest of the line (for metadata or free text)
 REST_LINE: /.+/
 
-// A phrase boundary (usually "||")
-PHRASE_BOUNDARY: WS "||" WS?
+// A phrase boundary (usually ":||")
+PHRASE_BOUNDARY: WS ":||" WS?
 
 // Whitespace
 WS: (" "|/\t/)+
@@ -126,14 +138,9 @@ melody_line: MELODY_MEASURE_INDICATOR (first_beat_note)? (beat_note)* NEWLINE
 MELODY_MEASURE_INDICATOR: "mel" MEASURE_NUMBER
 MELODY_BEAT_INDICATOR: "t" DIGIT+ ("." DIGIT+)?
 first_beat_note: WS+ (MELODY_BEAT_INDICATOR WS+)? MELODY_NOTE (DELTA_OCTAVE)?
-beat_note: WS+ MELODY_BEAT_INDICATOR WS (MELODY_NOTE (DELTA_OCTAVE)? | ABSOLUTE_NOTE | SILENCE)
-
-SILENCE: "r" | "R"
+beat_note: WS+ MELODY_BEAT_INDICATOR WS MELODY_NOTE (DELTA_OCTAVE)?
 MELODY_NOTE: (SLASH)? (ACCIDENTAL)? DIGIT+
 DELTA_OCTAVE: "o" SIGNED_INT
-ABSOLUTE_NOTE: NOTELETTER_CAPITALIZED (ACCIDENTAL)? (ABSOLUTE_OCTAVE)?
-NOTELETTER_CAPITALIZED: /[A-G]/
-ABSOLUTE_OCTAVE: DIGIT+
 SLASH: "/"
 
 %ignore WS
@@ -141,3 +148,95 @@ SLASH: "/"
 %ignore CR
 %ignore LF
 %ignore PHRASE_BOUNDARY
+
+END OF EBNF DESCRIPTION
+
+
+Examples
+---------
+
+Here are a few examples of valid EBNF format : 
+
+Example 1 : (With melody)
+
+Composer: J. S. Bach
+Piece: Chorale BWV269
+Analyst: Dmitri Tymoczko
+Proofreader: David Castro
+Time Signature: 3/4
+Movement: 0
+Key Signature: 0
+Minor Sixth / Minor Seventh: quality
+Form: chorale
+Note: consecutive first inversion triads
+m1 b1 C: I b2 NC b3 V6
+mel1 t1 5 t1.5 4 t2 5 t3 5
+m2 b1 IV6 b3 V6
+mel2 t1 1 t2 #1 t2.5 2 t3 5o1 t4 4o1
+Pedal: G m3 b3 m5 b1
+m3 IV6 b2 V b4 V2
+mel3 1 t2 3 t4 3
+m4 b1 viio6
+mel4 t1 1
+m5 b1 V7[no5][b3]/V/V b3 V/V
+mel5 1
+
+=================
+
+Example 2 : (Without melody)
+
+Composer: Claude Debussy
+Piece: Nocturne in Ab Major
+Analyst: Harmony Scholar
+Proofreader: Anne Melodia
+Time Signature: 3/4
+Movement: 0
+Key Signature: 4
+Minor Sixth / Minor Seventh: quality
+
+Note: Simple opening progression with some enrichments
+m1 b1 Ab: I[add9] b2 V6[b5] b3 IV
+m2 b1 V7 b2 ii6 b3 V7
+Note: Building gentle motion
+m3 b1 vi b2 ii7 b3 V7/vi
+Note: Modulating to F minor
+m4 b1 f: i[add9] b2 iv6 b3 VI
+Note: Moving to Db minor
+m5 b1 Db: i b2 V7 b3 iv
+Note: Clear cadential motion
+m6 b1 viiø7 b2 V7 b3 i
+Note: Returning to Ab major
+m7 b1 Ab: vi b2 V7/IV b3 IV
+Note: Simple dominant to tonic
+m8 b1 viiø7 b2 V7 b3 I
+Note: Building motion
+m9 b1 vi b2 ii b3 V7
+Note: Exploring dominant preparation
+m10 b1 I b2 IV b3 viiø7
+Note: Clear resolution
+m11 b1 V7 b2 I b3 vi
+Note: Classic progression
+m12 b1 ii7 b2 V7 b3 I
+Note: Return to F minor
+m13 b1 f: i b2 iv b3 V7
+Note: Simple minor progression
+m14 b1 i b2 VI b3 V7
+Note: Preparing return to Ab major
+m15 b1 Ab: IV b2 viiø7 b3 V7
+Note: Simple final resolution
+m16 b1 I b2 IV b3 I
+Note: Shift to parallel minor
+m17 b1 ab: i b2 iv b3 V7
+Note: Simple minor harmonies
+m18 b1 i b2 VI b3 V7
+Note: Clear progression
+m19 b1 i b2 iv b3 V7
+Note: Final minor resolution
+m20 b1 i b2 V7 b3 i
+Form: nocturne
+Note: A harmonically rich nocturne exploring the full palette of extended harmonies and modal mixture. The piece moves through related keys before settling into the dramatic parallel minor, maintaining coherent voice-leading throughout despite complex chord extensions. The harmonic rhythm and added dissonances create an impressionistic atmosphere characteristic of Debussy.
+
+
+
+
+

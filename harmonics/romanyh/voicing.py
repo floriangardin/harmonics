@@ -7,6 +7,7 @@ Copyright (c) 2020 Eric Zhang (until commit d4bd33b)
 import copy
 from functools import lru_cache
 
+import music21 as m21
 from music21.layout import StaffGroup
 from music21.note import Note
 from music21.pitch import Pitch
@@ -14,7 +15,6 @@ from music21.chord import Chord
 from music21.key import Key
 from music21.clef import BassClef, TrebleClef
 from music21.interval import Interval
-
 from .enums import PartEnum, Cost, Rule, IntervalV
 
 _ruleCostMapping = {
@@ -195,12 +195,36 @@ def _voiceChord(pitches, closePosition=False, allowedUnisons=0):
                 pitchNames + [chord.root().name],
                 pitchNames + [chord.fifth.name],
             ]
+        else:
+            doublings = [pitchNames] + [chord.root().name]
     elif chord.isSeventh():
         doublings = [pitchNames]
         # TODO: Alternative doublings
     else:
         import itertools
-        doublings = [list(l) for l in list(itertools.combinations(pitchNames, 4))]
+        if len(pitchNames) >= 4:
+            doublings = [list(l) for l in list(itertools.combinations(pitchNames, 4))]
+            # Remove doublings where the root is not here
+            doublings = [l for l in doublings if chord.root().name in l]
+        elif len(pitchNames) == 3:
+            doublings = [pitchNames + [chord.root().name]]
+        elif len(pitchNames) == 2:
+            doubling = pitchNames + [chord.root().name]
+            if chord.fifth:
+                doubling += [chord.fifth.name]
+            elif chord.third:
+                doubling += [chord.third.name]
+            else:
+                all_names = [n.name for n in chord.pitches]
+                all_names = [n for n in all_names if n != chord.root().name]
+                doubling += [all_names[0]]
+            doublings = [doubling]
+        elif len(pitchNames) == 1:
+            doublings = [[pitchNames[0] for i in range(4)]]
+            allowedUnisons = max(allowedUnisons, 2) # Otherwise it does not fit in octave range
+        else:
+            raise ValueError(f"Unexpected number of pitches: {len(pitchNames)}")
+
     for doubling in doublings:
         minBassPitch, maxBassPitch = voice_ranges[PartEnum.BASS]
         octaveStart = minBassPitch.octave
@@ -419,8 +443,7 @@ def solveProgressionChords(chords, closePosition=False, firstVoicing=None, lastV
     Returns a list of four-pitch chords, corresponding to successive Roman
     numerals in the chord progression.
     """
-    from music21.roman import RomanNumeral
-    romanNumerals = [RomanNumeral(chord.chord, chord.key) for chord in chords]
+    romanNumerals = [m21.roman.RomanNumeral(chord.chord, chord.key) for chord in chords]
     return solveProgression(romanNumerals, closePosition, firstVoicing, lastVoicing, allowedUnisons)
     
 def solveProgression(
@@ -513,3 +536,4 @@ def generateHarmonization(costTable):
         yield (list(reversed(progression)), totalCost)
         # progressions[topNthAnswer] = (list(reversed(progression)), totalCost)
     return
+

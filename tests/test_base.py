@@ -20,4 +20,3 @@ def test_no_beat_one():
     m1 c: I
     """
     tree = parser.parse(text)
-    from pdb import set_trace; set_trace()

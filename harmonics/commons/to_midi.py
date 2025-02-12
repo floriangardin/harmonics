@@ -1,5 +1,5 @@
 from symusic import Score, Track, Note, Tempo, TimeSignature
-
+import music21 as m21
 def events_to_midi(events, output_file, tempo=120, quarter_value=1.0):
     """
     Converts a list of events to a MIDI file using Symusic.
@@ -73,9 +73,21 @@ def events_to_midi(events, output_file, tempo=120, quarter_value=1.0):
     symusic_score.dump_midi(output_file)
 
 
+def to_midi(filepath, score, tempo=120):
+            # Transform to list of events
+            CHORD_CHANNEL = 1
+            MELODY_CHANNEL = 41
+            events = []
+            for s in score.chords:
+                for idx, pitch in enumerate(s.pitches):
+                    events.append([s.time, m21.pitch.Pitch(pitch).midi,s.duration, CHORD_CHANNEL, 60])
+            for s in score.melody:
+                if not s.is_silence:
+                    events.append([s.time, m21.pitch.Pitch(s.pitch).midi, s.duration, MELODY_CHANNEL, 80])
+            events_to_midi(events, filepath, tempo)
 
 
-def to_midi(S, output_file, delta=1.0, channel=0, velocity=100, midi_offset=48, scale=None, programs=None, no_repeat=False, quarter_value=1.0):
+def _to_midi(S, output_file, delta=1.0, channel=0, velocity=100, midi_offset=48, scale=None, programs=None, no_repeat=False, quarter_value=1.0):
     events = to_events(S, delta, channel, velocity, midi_offset, scale, programs, no_repeat)
     events_to_midi(events, output_file, quarter_value=quarter_value)
 

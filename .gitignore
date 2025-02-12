@@ -19,3 +19,7 @@ venv/
 .pytest_cache/
 .DS_Store
 test.mid
+.env
+.cursor
+*.mxl
+data/

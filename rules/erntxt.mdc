@@ -1,0 +1,293 @@
+---
+description: 
+globs: *.erntxt
+---
+
+# Rule content
+
+You help write in a language called extended roman text numeral notation (all files ending with .erntxt).
+It allows to create harmonic grids in roman numeral notation (rntxt) with beats and measures.
+It allows also to write melodies using a specific syntax
+This language is a context free grammar and follows this specific EBNF format : 
+
+EBNF DESCRIPTION :
+
+// ----------------------------
+// Lark grammar for RomanText
+// ----------------------------
+?start: document
+document: (NEWLINE)* line*
+line: metadata_line
+     | statement_line
+
+metadata_line: composer_line
+             | piece_line
+             | analyst_line
+             | proofreader_line
+             | movement_line
+             | time_signature_line
+             | key_signature_line
+             | minor_mode_line
+
+composer_line: "Composer:" WS REST_LINE NEWLINE
+piece_line: "Piece:" WS REST_LINE NEWLINE
+analyst_line: "Analyst:" WS REST_LINE NEWLINE
+proofreader_line: "Proofreader:" WS REST_LINE NEWLINE
+movement_line: "Movement:" WS MEASURE_NUMBER NEWLINE
+time_signature_line: "Time Signature:" WS time_signature NEWLINE
+key_signature_line: "Key Signature:" WS SIGNED_INT NEWLINE
+minor_mode_line: "Minor Sixth / Minor Seventh:" WS MINOR_MODE_OPTION NEWLINE
+
+statement_line: measure_line
+              | pedal_line
+              | form_line
+              | note_line
+              | repeat_line
+              | melody_line
+
+
+// Updated measure_line to include standalone chords
+measure_line: MEASURE_INDICATOR (chord_beat_1)? (beat_chord | key_change)* PHRASE_BOUNDARY? NEWLINE
+beat_chord: WS BEAT_INDICATOR (WS key)? WS chord
+key_change: WS key
+chord_beat_1: (WS key)? WS chord
+key: KEY
+
+repeat_line: measure_range WS "=" WS measure_range NEWLINE
+measure_range: MEASURE_INDICATOR ("-" MEASURE_INDICATOR)+
+
+note: NOTELETTER ACCIDENTAL?
+NOTELETTER: /[A-Ga-g]/
+
+pedal_line: "Pedal:" WS note WS pedal_entries NEWLINE
+pedal_entries: pedal_entry (WS pedal_entry)* WS?
+pedal_entry: MEASURE_INDICATOR WS BEAT_INDICATOR
+
+form_line: "Form:" WS REST_LINE NEWLINE
+note_line: "Note:" WS REST_LINE NEWLINE
+
+// --------------------
+// Chord grammar
+// --------------------
+chord: ( chord_component ( "/" tonality_component )* )
+
+chord_component: ( special_chord | standard_chord ) chord_alteration*
+tonality_component: [chord_accidental] numeral
+special_chord: SPECIAL_CHORD [ inversion ]
+standard_chord: [ chord_accidental ] numeral [ CHORD_QUALITY ] [ inversion ]
+
+numeral: ROMAN_NUMERAL
+chord_accidental: ACCIDENTAL
+CHORD_QUALITY: "o" | "+" | "%" | "ø" | "°"
+
+chord_alteration: "[" alteration_content "]"
+omit_alteration: "no"
+add_alteration: "add"
+alteration_content: (( omit_alteration | add_alteration )? [ ACCIDENTAL ] DIGITS)
+
+// --------------------
+// Tokens (with regexes)
+// --------------------
+
+MEASURE_INDICATOR: "m" MEASURE_NUMBER
+MEASURE_NUMBER: DIGIT+ (LETTER+ | "var" DIGIT+)? 
+
+BEAT_INDICATOR: "b" BEAT_NUMBER
+BEAT_NUMBER: DIGIT+ ("." DIGIT+)?
+
+time_signature: numerator "/" denominator
+numerator: DIGIT+
+denominator: DIGIT+
+SIGNED_INT: ("+"|"-")? DIGIT+
+
+// KEY: accepts optional ?( ... ) and : (e.g., C, c, C:, ?(Bb, ?(Bb) )
+KEY: /(\?\()?[A-Ga-g](mdc:?:#{1,}|b{1,})?(?:\))?:/
+
+SPECIAL_CHORD: "Ger" | "It" | "Fr" | "N" | "Cad" | "NC"
+ROMAN_NUMERAL: "I" | "II" | "III" | "IV" | "V" | "VI" | "VII"
+             | "i" | "ii" | "iii" | "iv" | "v" | "vi" | "vii"
+ACCIDENTAL: /#{1,}|b{1,}/
+
+inversion: INVERSION_STANDARD | inversion_free
+INVERSION_STANDARD: "6" | "64" | "6/3" | "6/4" | "7" | "6/5" | "65" | "4/3" | "43" | "2" | "42" | "4/2" | "9" | "11" | "13"
+inversion_free: ACCIDENTAL? DIGIT+
+
+
+MINOR_MODE_OPTION: "quality" | "cautionary" | "sharp" | "flat"
+
+DIGIT: /[0-9]/
+DIGITS: DIGIT+
+
+LETTER: /[a-z]+/
+
+// Capture the rest of the line (for metadata or free text)
+REST_LINE: /.+/
+
+// A phrase boundary (usually ":||")
+PHRASE_BOUNDARY: WS ":||" WS?
+
+// Whitespace
+WS: (" "|/\t/)+
+
+CR : /\r/
+LF : /\n/
+NEWLINE: WS* (CR? LF)+
+
+
+
+// Melody line
+melody_line: MELODY_MEASURE_INDICATOR (first_beat_note)? (beat_note)* NEWLINE
+MELODY_MEASURE_INDICATOR: "mel" MEASURE_NUMBER
+MELODY_BEAT_INDICATOR: "t" DIGIT+ ("." DIGIT+)?
+first_beat_note: WS+ (MELODY_BEAT_INDICATOR WS+)? MELODY_NOTE (DELTA_OCTAVE)?
+beat_note: WS+ MELODY_BEAT_INDICATOR WS MELODY_NOTE (DELTA_OCTAVE)?
+MELODY_NOTE: (SLASH)? (ACCIDENTAL)? DIGIT+
+DELTA_OCTAVE: "o" SIGNED_INT
+SLASH: "/"
+
+%ignore WS
+%ignore NEWLINE
+%ignore CR
+%ignore LF
+%ignore PHRASE_BOUNDARY
+
+END OF EBNF DESCRIPTION
+
+
+Examples
+---------
+
+Here are a few examples of valid EBNF format : 
+
+Example 1 : (With melody)
+
+Composer: J. S. Bach
+Piece: Chorale BWV269
+Analyst: Dmitri Tymoczko
+Proofreader: David Castro
+Time Signature: 3/4
+Movement: 0
+Key Signature: 0
+Minor Sixth / Minor Seventh: quality
+Form: chorale
+Note: consecutive first inversion triads
+m1 b1 C: I b2 NC b3 V6
+mel1 t1 5 t1.5 4 t2 5 t3 5
+m2 b1 IV6 b3 V6
+mel2 t1 1 t2 #1 t2.5 2 t3 5o1 t4 4o1
+Pedal: G m3 b3 m5 b1
+m3 IV6 b2 V b4 V2
+mel3 1 t2 3 t4 3
+m4 b1 viio6
+mel4 t1 1
+m5 b1 V7[no5][b3]/V/V b3 V/V
+mel5 1
+
+=================
+
+Example 2 : (Without melody)
+
+Composer: Claude Debussy
+Piece: Nocturne in Ab Major
+Analyst: Harmony Scholar
+Proofreader: Anne Melodia
+Time Signature: 3/4
+Movement: 0
+Key Signature: 4
+Minor Sixth / Minor Seventh: quality
+
+Note: Simple opening progression with some enrichments
+m1 b1 Ab: I[add9] b2 V6[b5] b3 IV
+m2 b1 V7 b2 ii6 b3 V7
+Note: Building gentle motion
+m3 b1 vi b2 ii7 b3 V7/vi
+Note: Modulating to F minor
+m4 b1 f: i[add9] b2 iv6 b3 VI
+Note: Moving to Db minor
+m5 b1 Db: i b2 V7 b3 iv
+Note: Clear cadential motion
+m6 b1 viiø7 b2 V7 b3 i
+Note: Returning to Ab major
+m7 b1 Ab: vi b2 V7/IV b3 IV
+Note: Simple dominant to tonic
+m8 b1 viiø7 b2 V7 b3 I
+Note: Building motion
+m9 b1 vi b2 ii b3 V7
+Note: Exploring dominant preparation
+m10 b1 I b2 IV b3 viiø7
+Note: Clear resolution
+m11 b1 V7 b2 I b3 vi
+Note: Classic progression
+m12 b1 ii7 b2 V7 b3 I
+Note: Return to F minor
+m13 b1 f: i b2 iv b3 V7
+Note: Simple minor progression
+m14 b1 i b2 VI b3 V7
+Note: Preparing return to Ab major
+m15 b1 Ab: IV b2 viiø7 b3 V7
+Note: Simple final resolution
+m16 b1 I b2 IV b3 I
+Note: Shift to parallel minor
+m17 b1 ab: i b2 iv b3 V7
+Note: Simple minor harmonies
+m18 b1 i b2 VI b3 V7
+Note: Clear progression
+m19 b1 i b2 iv b3 V7
+Note: Final minor resolution
+m20 b1 i b2 V7 b3 i
+Form: nocturne
+Note: A harmonically rich nocturne exploring the full palette of extended harmonies and modal mixture. The piece moves through related keys before settling into the dramatic parallel minor, maintaining coherent voice-leading throughout despite complex chord extensions. The harmonic rhythm and added dissonances create an impressionistic atmosphere characteristic of Debussy.
+
+
+Rules for melody (lines starting with mel<index>)
+-------------------------------------------------
+
+**Bar specification**
+
+You write "mel" then the bar number, so "mel2" means the second bar of the song. This is 1-indexed
+
+**Time in bar specification**
+
+You use "t" + the beat number as a float number. It is 1-indexed so t1 is the first beat.
+
+Warning : Be careful to change beat names from "b" for harmonic lines to "t" for melody lines (to avoid confusion with flat symbol in melodies). You can use any floating point beat (for example t3.5 is the third beat + half a beat).
+
+**Chord Interval note specifications**
+
+Melody notes are specified with interval names (For example 9 is the ninth of the chord, b9 is the flat nine)
+The interval is calculated using a projection on the minimal modification scale for example : 
+
+"C: iv" has pitches (F,A-,C)
+C major has the scale : C,D,E,F,G,A,B so the "minimally modified scale" would be F,G,A-,B,C,D,E
+For the "iv" (fourth degree in minor) the notes are F,A-,C so the "modified scale"
+So in this case the "9" symbol would give E, the "3" would be A- (also called Ab)
+
+Another example : 
+"D: I[add#11]" has pitches (D,F#,A,G#)
+D major has the scale : D,E,F#,G,A,B,C# so the "minimally modified scale" would be 
+D,E,F#,G#,A,B,C#
+
+Here the "#11" would be G# (one sharp over the fourth note of the scale which is G)
+
+
+Optionally if it is clearer that you meant an interval you can use a "/" before the symbol ("/#4")
+
+**Octavation**
+
+By default all notes will be written on the 4th octave, so "3" in the context of "c: i" will be E-4
+If you want another octave you must specify a delta octave using the "o" notation. 
+For example if you want E-5 you will write "3o1", if you want E-3 you write "3o-1"
+
+
+Rules for harmony (lines starting by m<index>)
+------------------------------------------------
+
+**Bar specification**
+
+You write "m" then the bar number, so "mel2" means the second bar of the song. This is 1-indexed
+
+**Time in bear specification (beat)**
+You use "t" + the beat number as a float number. It is 1-indexed so t1 is the first beat.
+
+
+
