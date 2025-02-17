@@ -15,6 +15,7 @@ metadata_line: composer_line
              | key_signature_line
              | minor_mode_line
              | tempo_line
+             | instrument_line
 
 composer_line: "Composer:" WS REST_LINE NEWLINE
 piece_line: "Piece:" WS REST_LINE NEWLINE
@@ -26,6 +27,9 @@ time_signature_line: "Time Signature:" WS time_signature NEWLINE
 tempo_line: "Tempo:" WS* TEMPO_NUMBER NEWLINE
 key_signature_line: "Key Signature:" WS SIGNED_INT NEWLINE
 minor_mode_line: "Minor Sixth / Minor Seventh:" WS MINOR_MODE_OPTION NEWLINE
+instrument_line: "Instrument:" WS VOICE_NAME WS* "=" WS* GM_NUMBER  ("," WS* VOICE_NAME WS* "=" WS* GM_NUMBER)* NEWLINE
+VOICE_NAME: "V" DIGIT | "B" | "T" | "A" | "S"
+GM_NUMBER: DIGIT+
 
 TEMPO_NUMBER: DIGIT+
 statement_line: measure_line
@@ -41,9 +45,9 @@ statement_line: measure_line
 // Event line
 event_line: "e" MEASURE_NUMBER WS* event_content+ NEWLINE
 event_content: BEAT_INDICATOR WS* EVENT_FUNCTION_NAME + "(" + EVENT_ARGUMENT + ")"
-EVENT_FUNCTION_NAME: "tempo" | "velocity"
+EVENT_FUNCTION_NAME: "tempo" | "velocity" | "start_crescendo" | "end_crescendo" | "start_diminuendo" | "end_diminuendo" | "start_accelerando" | "end_accelerando" | "start_ritardando" | "end_ritardando"
 EVENT_ARGUMENT: TEMPO_NUMBER | VELOCITY_VALUE
-VELOCITY_VALUE: "pppp" | "ppp" | "pp" | "p" | "mp" | "f" | "ff" | "fff" | "ffff"
+VELOCITY_VALUE: "pppp" | "ppp" | "pp" | "p" | "mp" | "mf" | "f" | "ff" | "fff" | "ffff"
 
 
 // Harmonic line
@@ -138,7 +142,7 @@ NEWLINE: WS* (CR? LF)+
 // Melody grammar
 // --------------------
 
-melody_line: MELODY_MEASURE_INDICATOR (first_beat_note)? (beat_note)* NEWLINE
+melody_line: MELODY_MEASURE_INDICATOR (WS+ VOICE_NAME)? (first_beat_note)? (beat_note)* NEWLINE
 MELODY_MEASURE_INDICATOR: "mel" MEASURE_NUMBER
 MELODY_BEAT_INDICATOR: ("b" | "t") DIGIT+ ("." DIGIT+)?
 first_beat_note: WS+ (MELODY_BEAT_INDICATOR WS+)? MELODY_NOTE (DELTA_OCTAVE)?

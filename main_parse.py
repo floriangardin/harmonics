@@ -30,5 +30,5 @@ if __name__ == "__main__":
     # print(tree)
     # print(melody)
     parser.parse_to_midi(text, "test.mid")
-    tree = parser.parse_to_mxl(text, "test.mxl")
-    print(tree)
+    #   tree = parser.parse_to_mxl(text, "test.mxl")
+    # print(tree)

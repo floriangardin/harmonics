@@ -32,7 +32,9 @@ from .models import (
     AccompanimentBeat,
     Tempo,
     Events,
-    Event
+    Event,
+    Instrument,
+    Instruments
 )
 
 def transform_token(token: Token) -> str:
@@ -115,6 +117,8 @@ def transform_metadata_line(node: Tree) -> MetadataLine:
             if isinstance(token, Token) and token.type == "TEMPO_NUMBER":
                 return Tempo(tempo=int(token.value))
         return Tempo(tempo=120)
+    elif child.data == "instrument_line":
+        return transform_instrument_line(child)
     else:
         raise ValueError(f"Unknown metadata_line type: {child.data}")
 
@@ -404,16 +408,17 @@ def transform_melody_line(node: Tree) -> Melody:
     # melody_line: MELODY_MEASURE_INDICATOR (beat_note)* NEWLINE
     notes = []
     bar_octave = 0
-    
+    voice_name = "V1"
     for child in node.children:
         is_absolute_note = False
         is_silence = False
         if isinstance(child, Token) and child.type == "MELODY_MEASURE_INDICATOR":
             measure_number = int(child.value[len("mel"):])
+        elif isinstance(child, Token) and child.type == "VOICE_NAME":
+            voice_name = transform_token(child)
         elif isinstance(child, Tree) and child.data in ["beat_note", "first_beat_note"]:
             beat = 1
             octave = 0
-            
             note = ""
             for token in child.children:
                 if isinstance(token, Token):
@@ -433,9 +438,9 @@ def transform_melody_line(node: Tree) -> Melody:
             elif is_absolute_note:
                 notes.append(AbsoluteMelodyNote(beat=beat, note=note))
             else:
-                notes.append(MelodyNote(beat=beat, note=note, octave=octave))
+                notes.append(MelodyNote(beat=beat, note=note, octave=octave, voice_name=voice_name))
             
-    return Melody(measure_number=measure_number, notes=notes)
+    return Melody(measure_number=measure_number, notes=notes, voice_name=voice_name)
     
 # ------------------------------
 # Statement line transformer
@@ -469,6 +474,20 @@ def transform_tempo_line(node: Tree) -> Tempo:
         if isinstance(child, Token) and child.type == "TEMPO_NUMBER":
             tempo = int(child.value)
     return Tempo(tempo=tempo)
+
+def transform_instrument_line(node: Tree) -> Instruments:
+    # instrument_line: "Instrument:" WS VOICE_NAME WS* "=" WS* GM_NUMBER NEWLINE
+    instruments = []
+    voice_name = ""
+    gm_number = ""
+    for child in node.children:
+        if isinstance(child, Token) and child.type == "VOICE_NAME":
+            voice_name = transform_token(child)
+        elif isinstance(child, Token) and child.type == "GM_NUMBER":
+            gm_number = int(transform_token(child))
+            instruments.append(Instrument(voice_name=voice_name, gm_number=gm_number))
+    return Instruments(instruments=instruments)
+
 
 def transform_statement_line(node: Tree) -> StatementLine:
     # statement_line: measure_line | pedal_line | form_line | note_line | repeat_line | melody_line | accompaniment_line

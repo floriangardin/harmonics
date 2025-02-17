@@ -25,6 +25,7 @@ metadata_line: composer_line
              | key_signature_line
              | minor_mode_line
              | tempo_line
+             | instrument_line
 
 composer_line: "Composer:" WS REST_LINE NEWLINE
 piece_line: "Piece:" WS REST_LINE NEWLINE
@@ -36,6 +37,9 @@ time_signature_line: "Time Signature:" WS time_signature NEWLINE
 tempo_line: "Tempo:" WS* TEMPO_NUMBER NEWLINE
 key_signature_line: "Key Signature:" WS SIGNED_INT NEWLINE
 minor_mode_line: "Minor Sixth / Minor Seventh:" WS MINOR_MODE_OPTION NEWLINE
+instrument_line: "Instrument:" WS VOICE_NAME WS* "=" WS* GM_NUMBER  ("," WS* VOICE_NAME WS* "=" WS* GM_NUMBER)* NEWLINE
+VOICE_NAME: "V" DIGIT | "B" | "T" | "A" | "S"
+GM_NUMBER: DIGIT+
 
 TEMPO_NUMBER: DIGIT+
 statement_line: measure_line
@@ -51,9 +55,9 @@ statement_line: measure_line
 // Event line
 event_line: "e" MEASURE_NUMBER WS* event_content+ NEWLINE
 event_content: BEAT_INDICATOR WS* EVENT_FUNCTION_NAME + "(" + EVENT_ARGUMENT + ")"
-EVENT_FUNCTION_NAME: "tempo" | "velocity"
+EVENT_FUNCTION_NAME: "tempo" | "velocity" | "start_crescendo" | "end_crescendo" | "start_diminuendo" | "end_diminuendo" | "start_accelerando" | "end_accelerando" | "start_ritardando" | "end_ritardando"
 EVENT_ARGUMENT: TEMPO_NUMBER | VELOCITY_VALUE
-VELOCITY_VALUE: "pppp" | "ppp" | "pp" | "p" | "mp" | "f" | "ff" | "fff" | "ffff"
+VELOCITY_VALUE: "pppp" | "ppp" | "pp" | "p" | "mp" | "mf" | "f" | "ff" | "fff" | "ffff"
 
 
 // Harmonic line
@@ -148,7 +152,7 @@ NEWLINE: WS* (CR? LF)+
 // Melody grammar
 // --------------------
 
-melody_line: MELODY_MEASURE_INDICATOR (first_beat_note)? (beat_note)* NEWLINE
+melody_line: MELODY_MEASURE_INDICATOR (WS+ VOICE_NAME)? (first_beat_note)? (beat_note)* NEWLINE
 MELODY_MEASURE_INDICATOR: "mel" MEASURE_NUMBER
 MELODY_BEAT_INDICATOR: ("b" | "t") DIGIT+ ("." DIGIT+)?
 first_beat_note: WS+ (MELODY_BEAT_INDICATOR WS+)? MELODY_NOTE (DELTA_OCTAVE)?
@@ -190,26 +194,34 @@ Minor Sixth / Minor Seventh: quality
 Form: chorale
 Note: consecutive first inversion triads
 
+Note: Voice 1 (V1) will be violin (41 in General Midi), Voice 2 a flute (74 in General Midi), B=bass, T=tenor, A=alto, S=soprano will all be piano (1 in General Midi)
+Instrument: V1=41, V2=74, B=1, T=1, A=1, S=1
 Note: Setting tempo and velocity at the first beat, note that you need to repeat the beat number for each event.
 e1 b1 tempo(160) b1 velocity(p)
 m1 b1 C: I b2 NC b3 V6
-mel1 b1 E5 b1.5 B4 b2 E5 b2.5 G5 b3 A5 b3.5 A#5 b4 B5
+mel1 V1 b1 E5 b1.5 B4 b2 E5 b2.5 G5 b3 A5 b3.5 A#5 b4 B5
+Note: Second voice with third doubling of first voice
+mel1 V2 b1 G5 b1.5 D5 b2 F5 b2.5 B5 b3 C5 b3.5 C#5 b4 B5
 Note: Beat 1 bass, beat 2 : tenor, alto, soprano, beat 3 : bass, beat 4 tenor, alto, soprano
 acc1 b1 1 b2 234 b3 1 b4 234
 
 m2 b1 IV6 b3 V6
-mel2 b1 A5 b2 F5 b2.5 E5 b3 D5 b4 B4
+mel2 V1 b1 A5 b2 F5 b2.5 E5 b3 D5 b4 B4
+Note: Don't forget the rest in the second voice to stop it.
+mel2 V2 b1 R 
 acc2 b1 1 b2 234 b3 234 b4 234
 
 Pedal: G m3 b3 m5 b1
 m3 IV6 b2 V b4 V2
+Note: By default we use V1 for the melody. 
 mel3 A4 b2 Ab4 b4 R
 acc3 b1 1 b2 234 b3 234 b4 234
 
 Note: You can change tempo at any time
 Tempo: 120
 m4 b1 viio6
-mel4 b1 B4
+mel4 V1 b1 R
+mel4 V2 b1 B4
 acc4 b1 1 b2 234 b3 1 b4 234
 
 m5 b1 V7[no5][b3]/V/V b3 V/V b4 V7
@@ -323,11 +335,13 @@ Key Signature: 0
 Minor Sixth / Minor Seventh: quality
 Form: chorale
 Note: consecutive first inversion triads
+e1 b1 tempo(120) b1 velocity(p)
 m1 b1 C: I b2 NC b3 V6
 mel1 b1 /5 b1.5 B4 /4 E5 b2.5 /5 b3 /5 b3.5 /#5 b4 /5
 m2 b1 IV6 b3 V6
 mel2 b1 /1o1 b2 /#1 b2.5 /2o1 b3 /5o1 b4 /4o1
 Pedal: G m3 b3 m5 b1
+e3 b1 start_crescendo(p) b4 end_crescendo(f)
 m3 IV6 b2 V b4 V2
 mel3 /1 b2 /3 b4 /3
 m4 b1 viio6
@@ -352,11 +366,13 @@ Key Signature: 4
 Minor Sixth / Minor Seventh: quality
 
 Note: Simple opening progression with some enrichments
+e1 b1 tempo(120) b1 start_crescendo(p)
 m1 b1 Ab: I[add9] b2 V6[b5] b3 IV
 m2 b1 V7 b2 ii6 b3 V7
 Note: Building gentle motion
 m3 b1 vi b2 ii7 b3 V7/vi
 Note: Modulating to F minor
+e4 b1 end_crescendo(fff)
 m4 b1 f: i[add9] b2 iv6 b3 VI
 Note: Moving to Db minor
 m5 b1 Db: i b2 V7 b3 iv
@@ -438,13 +454,18 @@ Rules for melody (lines starting with mel<index>)
 
 You write "mel" then the bar number, so "mel2" means the second bar of the song. It is 1-indexed (as everything in the language)
 
+**Voice specification**
+
+You can specify the voice with the voice name (V1, V2, B, T, A, S). By default the melody will be played by the first voice (V1).
+You are not forced to specify all voices for each bar, sometime a voice can remain silent.
+When stopping a voice, don't forget to use the "R" symbol to stop the voice.
+
 **Time in bar specification**
 
 You use "b" + the beat number as a float number. It is 1-indexed so b1 is the first beat.
 
 Warning : Be careful to use "b" for both harmonic and melody lines. You can use any floating point beat (for example b3.5 is the third beat + half a beat).
 You can use whole notes (4), half notes (2), quarter (1), eights (.5), sixteenth (.25) notes and 3-uplets (.33, .66) for the decimal expansion of the beat.
-
 
 **Absolute note specification**
 
@@ -549,8 +570,19 @@ e1 b1 tempo(120)
 
 Here is the list of available functions:
 - tempo(tempo) : change the tempo to the given tempo
+- velocity(dynamic) : change the velocity to the given dynamic marking
+  where dynamic can be: pppp, ppp, pp, p, mp, mf, f, ff, fff, ffff
+- start_crescendo(start_velocity) : start a crescendo from the given velocity
+- end_crescendo(end_velocity) : end the crescendo in this velocity 
+- start_diminuendo(start_velocity) : start a diminuendo from the given velocity
+- end_diminuendo(end_velocity) : end the diminuendo in this velocity
+- start_accelerando(start_tempo) : start an accelerando from the given tempo
+- end_accelerando(end_tempo) : end the accelerando in this tempo
+- start_ritardando(start_tempo) : start a ritardando from the given tempo
+- end_ritardando(end_tempo) : end the ritardando in this tempo
 
-
+Multiple events can be specified at the same beat. For example:
+e1 b1 tempo(120) b1 velocity(mf)
 
 
 
@@ -568,7 +600,6 @@ Rhythm and Melody
 - Create melodic patterns and motifs but vary them through development
 - Include chromatic passing tones and neighbor tones for color
 - Pay attention to voice leading, especially with leading tones in minor keys
-- Use event track to change the tempo regularly to create accelerando and ritardando.
 
 Harmony and Structure 
 ---------------------
@@ -602,3 +633,9 @@ Musical Expression
 - Make intentional choices rather than random notes
 - Use rests strategically to create space and breathing points in the music
 - Use tempo events to change the tempo making accelerando and ritardando
+- Use event track to change the tempo regularly to create accelerando and ritardando.
+- Prefer using accelerando and ritardando to create interest rather than directly modifying the tempo.
+- Prefer using crescendo and diminuendo to create smoother dynamics rather than directly modifying the velocity (except for sudden dynamics changes).
+- Use all piano voices by default (GM=1) and only one voice for the melody.
+- When writing for multiple voices, never use the same note density for all the voices, sometimes voices can rest. 
+- The rhythm of each voice has to be different to avoid monotony and to give a polyphonic texture.

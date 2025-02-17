@@ -22,9 +22,15 @@ class Silence(MelodyNote):
 class AbsoluteMelodyNote(MelodyNote):
     pass
 
+
+class Instrument(BaseModel):
+    voice_name: str
+    gm_number: int
+
 class Melody(BaseModel):
     measure_number: int
     notes: List[MelodyNote]
+    voice_name: str
 
 # ==============================
 # Metadata Lines
@@ -75,6 +81,9 @@ class EventItem(BaseModel):
     event_type: str
     event_value: Any
 
+class Instruments(BaseModel):
+    instruments: List[Instrument]
+
 # A metadata line is one of the above types.
 MetadataLine = Union[
     Composer,
@@ -86,6 +95,7 @@ MetadataLine = Union[
     KeySignature,
     MinorMode,
     Tempo,
+    Instruments,
 ]
 
 # ==============================
@@ -209,6 +219,7 @@ class NoteItem(BaseModel):
     time_signature: Optional[Tuple[int, int]] = None
     pitch: Optional[str] = None
     is_silence: bool = False
+    voice_name: Optional[str] = None
 
 class TempoItem(BaseModel):
     time: float
@@ -227,6 +238,12 @@ class AccompanimentItem(BaseModel):
     voices: List[int]
     chord_index: Optional[int] = None
 
+class InstrumentItem(BaseModel):
+    time: float
+    voice_name: str
+    voice_index: Optional[int] = None
+    gm_number: int
+
 class Score(BaseModel):
     chords: List[ChordItem]
     melody: List[NoteItem]
@@ -234,6 +251,7 @@ class Score(BaseModel):
     time_signatures: List[TimeSignatureItem] = []
     tempos: List[TempoItem] = []
     events: List[EventItem] = []
+    instruments: List[InstrumentItem] = []
 
 def bar_duration_in_quarters(time_signature: Tuple[int, int]) -> int:
     return 4 * time_signature[0] / time_signature[1]
@@ -261,18 +279,21 @@ class RomanTextDocument(BaseModel):
     def data(self) -> Tuple[List[ChordItem], List[TimeSignatureItem], List[TempoItem]]:
         results = []
         bar_start_time = 0 # In quarter (not in beat !)
-        current_bar_index = 0
+        current_bar_index = 1 # Start at bar 1
         current_time_signature = (4, 4)
+        next_current_time_signature = (4, 4)
         current_key = None
         time_signatures = []
         tempos = []
+        instruments = []
 
         for line in self.lines:
             if isinstance(line, Measure):
                 delta_bar = line.measure_number - current_bar_index
                 current_bar_index = line.measure_number
+                bar_start_time += delta_bar * bar_duration_in_quarters(current_time_signature)
                 for beat_item in line.beat_items:
-                    beat_start_time = beat_to_quarter(beat_item.beat, current_time_signature)
+                    beat_start_time = beat_to_quarter(beat_item.beat, next_current_time_signature)
                     duration = 0
                     if beat_item.key is not None:
                         current_key = beat_item.key
@@ -280,18 +301,27 @@ class RomanTextDocument(BaseModel):
                                                    chord=beat_item.chord,
                                                    time_signature=current_time_signature,
                                                    key=current_key))
-                bar_start_time += delta_bar * bar_duration_in_quarters(current_time_signature)
             elif isinstance(line, TimeSignature):
-                current_time_signature = (line.numerator, line.denominator)
+                next_current_time_signature = (line.numerator, line.denominator)
                 time_signatures.append(TimeSignatureItem(time=bar_start_time, time_signature=current_time_signature))
+            elif isinstance(line, Instruments):
+                for instrument in line.instruments:
+                    voice_index = 1
+                    if instrument.voice_name.startswith("V"):
+                        voice_index = int(instrument.voice_name[1:])
+                        voice_cat = "V"
+                    else:
+                        voice_cat = instrument.voice_name
+                    instruments.append(InstrumentItem(time=bar_start_time, voice_name=voice_cat,
+                                                    voice_index=voice_index, gm_number=instrument.gm_number))
             elif isinstance(line, Tempo):
                 tempos.append(TempoItem(time=bar_start_time, measure_number=current_bar_index, beat=1, tempo=line.tempo))
         # Fill the durations (using delta between next time)
         if len(results) > 0:    
             for i in range(len(results)-1):
                 results[i].duration = results[i+1].time - results[i].time
-            results[-1].duration = bar_start_time - results[-1].time
-        return results, time_signatures, tempos
+            results[-1].duration = bar_start_time + bar_duration_in_quarters(current_time_signature) - results[-1].time
+        return results, time_signatures, tempos, instruments
     
     @property
     def chords(self) -> List[ChordItem]:
@@ -299,21 +329,46 @@ class RomanTextDocument(BaseModel):
     
     @property
     def melody(self) -> List[NoteItem]:
-        results = []
+        # Loop trough all lines to get all voice_names
+        voice_names = {}
+        for line in self.lines:
+            if isinstance(line, Melody):
+                voice_names[line.voice_name] = []
+        # Now loop trough all lines again to group the melody by voice_name, with time signature elements
+        for line in self.lines:
+            if isinstance(line, TimeSignature):
+                # Append the time signature to all voice_names
+                for key in voice_names.keys():
+                    voice_names[key].append(line)
+            elif isinstance(line, Melody):
+                voice_names[line.voice_name].append(line)
+        # Now return the melody grouped by voice_name
+        
+        all_results = []
         chords = self.chords
+        for key in voice_names.keys():
+            all_results.extend(self.melody_group(chords, voice_names[key]))
+        # Sort the results by time
+        all_results.sort(key=lambda x: x.time)
+        return all_results
+
+    def melody_group(self, chords, lines) -> List[NoteItem]:
+        results = []
         current_chord = None
         previous_current_chord = None
         bar_start_time = 0 # In quarter (not in beat !)
-        current_bar_index = 0
+        current_bar_index = 1
         current_time_signature = (4, 4)
-        for line in self.lines:
+        next_current_time_signature = (4, 4)
+        for line in lines:
             if isinstance(line, TimeSignature):
-                current_time_signature = (line.numerator, line.denominator)
+                next_current_time_signature = (line.numerator, line.denominator)
             elif isinstance(line, Melody):
                 delta_bar = line.measure_number - current_bar_index
+                bar_start_time += delta_bar * bar_duration_in_quarters(current_time_signature)
                 current_bar_index = line.measure_number
                 for note in line.notes:
-                    beat_start_time = beat_to_quarter(note.beat, current_time_signature)
+                    beat_start_time = beat_to_quarter(note.beat, next_current_time_signature)
                     duration = 0
                     time=beat_start_time+bar_start_time
                     previous_current_chord = current_chord
@@ -342,14 +397,16 @@ class RomanTextDocument(BaseModel):
                                             key=current_chord.key,
                                             time_signature=current_time_signature,
                                             pitch=pitch,
-                                            is_silence=is_silence))
+                                            is_silence=is_silence,
+                                            voice_name=line.voice_name))
                     
-                bar_start_time += delta_bar * bar_duration_in_quarters(current_time_signature)
+                current_time_signature = next_current_time_signature
+                
 
         if len(results) > 0:
             for i in range(len(results)-1):
                 results[i].duration = results[i+1].time - results[i].time
-            results[-1].duration = bar_start_time - results[-1].time
+            results[-1].duration = bar_start_time+bar_duration_in_quarters(current_time_signature) - results[-1].time
 
         return results
     
@@ -357,45 +414,47 @@ class RomanTextDocument(BaseModel):
     def events(self) -> List[EventItem]:
         results = []
         bar_start_time = 0 # In quarter (not in beat !)
-        current_bar_index = 0
+        current_bar_index = 1
         current_time_signature = (4, 4)
+        next_current_time_signature = (4, 4)
         for line in self.lines:
             if isinstance(line, TimeSignature):
-                current_time_signature = (line.numerator, line.denominator)
+                next_current_time_signature = (line.numerator, line.denominator)
             elif isinstance(line, Events):
                 delta_bar = line.measure_number - current_bar_index
                 current_bar_index = line.measure_number
+                bar_start_time += delta_bar * bar_duration_in_quarters(current_time_signature)
+
                 for event in line.events:
-                    beat_start_time = beat_to_quarter(event.beat, current_time_signature)
+                    # We use the next time signature because the event is in the next bar
+                    beat_start_time = beat_to_quarter(event.beat, next_current_time_signature)
                     time = beat_start_time + bar_start_time
                     results.append(EventItem(time=time,
                                              measure_number=event.measure_number,
                                              beat=event.beat,
                                              event_type=event.event_type,
                                              event_value=event.event_value))
+                current_time_signature = next_current_time_signature
                     
-                bar_start_time += delta_bar * bar_duration_in_quarters(current_time_signature)
-
-
         return results
 
     @property
     def accompaniment(self) -> List[AccompanimentItem]:
         results = []
         chords = self.chords
-        current_chord = None
-        previous_current_chord = None
         bar_start_time = 0 # In quarter (not in beat !)
-        current_bar_index = 0
+        current_bar_index = 1
         current_time_signature = (4, 4)
+        next_current_time_signature = (4, 4)
         for line in self.lines:
             if isinstance(line, TimeSignature):
-                current_time_signature = (line.numerator, line.denominator)
+                next_current_time_signature = (line.numerator, line.denominator)
             elif isinstance(line, Accompaniment):
                 delta_bar = line.measure_number - current_bar_index
                 current_bar_index = line.measure_number
+                bar_start_time += delta_bar * bar_duration_in_quarters(current_time_signature)
                 for beat in line.beats:
-                    beat_start_time = beat_to_quarter(beat.beat, current_time_signature)
+                    beat_start_time = beat_to_quarter(beat.beat, next_current_time_signature)
                     duration = 0
                     time=beat_start_time+bar_start_time
                     current_chord_index = get_current_chord_index_from_time(time, chords)
@@ -403,11 +462,11 @@ class RomanTextDocument(BaseModel):
                                             voices=beat.voices,
                                             chord_index=current_chord_index))
                     
-                bar_start_time += delta_bar * bar_duration_in_quarters(current_time_signature)
+                current_time_signature = next_current_time_signature
 
         if len(results) > 0:
             for i in range(len(results)-1):
                 results[i].duration = results[i+1].time - results[i].time
-            results[-1].duration = bar_start_time - results[-1].time
+            results[-1].duration = bar_start_time + bar_duration_in_quarters(current_time_signature) - results[-1].time
 
         return results
