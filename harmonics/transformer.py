@@ -28,6 +28,8 @@ from .models import (
     RomanTextDocument,
     Melody,
     MelodyNote,
+    Accompaniment,
+    AccompanimentBeat,
 )
 
 def transform_token(token: Token) -> str:
@@ -431,8 +433,28 @@ def transform_melody_line(node: Tree) -> Melody:
 # Statement line transformer
 # ------------------------------
 
+def transform_accompaniment_line(node: Tree) -> Accompaniment:
+    # accompaniment_line: ACCOMPANIMENT_INDICATOR (voice_list)* NEWLINE
+    measure_number = 0
+    beats: List[AccompanimentBeat] = []
+    for child in node.children:
+        if isinstance(child, Token) and child.type == "ACCOMPANIMENT_INDICATOR":
+            # Remove the 'acc' prefix to get the measure number
+            measure_number = int(child.value[3:])
+        elif isinstance(child, Token) and child.type == "BEAT_INDICATOR":
+            beat = float(child.value[1:])
+        elif isinstance(child, Tree) and child.data == "voice_list":
+            voices: List[int] = []
+            for subchild in child.children:
+                if isinstance(subchild, Token) and subchild.type == "VOICE":
+                    voices.append(int(subchild.value))
+            
+            beats.append(AccompanimentBeat(beat=beat, voices=voices))
+
+    return Accompaniment(measure_number=measure_number, beats=beats)
+
 def transform_statement_line(node: Tree) -> StatementLine:
-    # statement_line: measure_line | pedal_line | form_line | note_line | repeat_line
+    # statement_line: measure_line | pedal_line | form_line | note_line | repeat_line | melody_line | accompaniment_line
     child = node.children[0]
     if child.data == "measure_line":
         return transform_measure_line(child)
@@ -446,6 +468,8 @@ def transform_statement_line(node: Tree) -> StatementLine:
         return transform_repeat_line(child)
     elif child.data == "melody_line":
         return transform_melody_line(child)
+    elif child.data == "accompaniment_line":
+        return transform_accompaniment_line(child)
     else:
         raise ValueError(f"Unknown statement_line type: {child.data}")
 

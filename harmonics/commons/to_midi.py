@@ -78,9 +78,16 @@ def to_midi(filepath, score, tempo=120):
             CHORD_CHANNEL = 1
             MELODY_CHANNEL = 41
             events = []
-            for s in score.chords:
-                for idx, pitch in enumerate(s.pitches):
-                    events.append([s.time, m21.pitch.Pitch(pitch).midi,s.duration, CHORD_CHANNEL, 60])
+            if len(score.accompaniment) == 0:   
+                for s in score.chords:
+                    for idx, pitch in enumerate(s.pitches):
+                        events.append([s.time, m21.pitch.Pitch(pitch).midi,s.duration, CHORD_CHANNEL, 60])
+            else:
+                for accompaniment_beat in score.accompaniment:
+                    current_chord = score.chords[accompaniment_beat.chord_index]
+                    for voice in accompaniment_beat.voices:
+                        events.append([accompaniment_beat.time, m21.pitch.Pitch(current_chord.pitches[voice-1]).midi, accompaniment_beat.duration, CHORD_CHANNEL, 80])
+
             for s in score.melody:
                 if not s.is_silence:
                     events.append([s.time, m21.pitch.Pitch(s.pitch).midi, s.duration, MELODY_CHANNEL, 80])

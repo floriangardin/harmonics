@@ -1,5 +1,5 @@
 ---
-description: Helpful to help for composing roman text numeral notation files
+description: Helpful to help for composing roman text numeral notation filesKEY
 globs: *.rntxt
 ---
 
@@ -98,7 +98,7 @@ numerator: DIGIT+
 denominator: DIGIT+
 SIGNED_INT: ("+"|"-")? DIGIT+
 
-// KEY: accepts optional ?( ... ) and : (e.g., C, c, C:, ?(Bb, ?(Bb) )
+// KEY: (e.g., C:, c:, d#:)
 KEY: /[A-Ga-g](mdc:?:#{1,}|b{1,})?(?:\))?:/
 
 SPECIAL_CHORD: "Ger" | "It" | "Fr" | "N" | "Cad" | "NC"

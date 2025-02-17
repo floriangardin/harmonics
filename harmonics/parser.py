@@ -34,14 +34,17 @@ class HarmonicsParser:
     def parse_to_events(self, input_string):
         document = self.parse(input_string)
         chords = document.chords
-        progression = generateBestHarmonization(chords, closePosition=False,  firstVoicing=None, lastVoicing=None, allowedUnisons=0)
+        if len(chords) > 0:
+            progression = generateBestHarmonization(chords, closePosition=False, firstVoicing=None, lastVoicing=None, allowedUnisons=0)
+        else:
+            progression = []
 
         for chord, pitches in zip(chords, progression):
             pitches = [Pitch(p).nameWithOctave for p in pitches]
             chord.pitches = pitches
 
         melody = document.melody
-        score = Score(chords=chords, melody=melody)
+        score = Score(chords=chords, melody=melody, accompaniment=document.accompaniment)
         return score
 
     def parse_to_mxl(self, input_string, output_filename):

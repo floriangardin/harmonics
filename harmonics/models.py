@@ -1,13 +1,11 @@
 from typing import List, Optional, Union, Tuple
 from pydantic import BaseModel
+from .notes_utils import getPitchFromIntervalFromMinimallyModifiedScale
 
 
-
-    
 # ==============================
 # Melody Lines
 # ==============================
-
 
 
 class MelodyNote(BaseModel):
@@ -140,6 +138,20 @@ class Comment(BaseModel):
     # note_line: "Note:" WS REST_LINE NEWLINE
     comment: str
 
+# ------------------------------
+# Accompaniment Models (NEW)
+# ------------------------------
+
+class AccompanimentBeat(BaseModel):
+    beat: float
+    voices: List[int]
+
+class Accompaniment(BaseModel):
+    measure_number: int
+    beats: List[AccompanimentBeat]
+
+
+
 # A statement line can be any of the following:
 StatementLine = Union[
     Measure,
@@ -148,6 +160,7 @@ StatementLine = Union[
     Form,
     Comment,
     Melody,
+    Accompaniment,  # <-- NEW: Added accompaniment as a statement line
 ]
 
 Line = Union[MetadataLine, StatementLine]
@@ -174,16 +187,36 @@ class NoteItem(BaseModel):
     pitch: Optional[str] = None
     is_silence: bool = False
 
+# This is a new model for rendering accompaniment events.
+class AccompanimentItem(BaseModel):
+    time: float
+    duration: float
+    voices: List[int]
+    chord_index: Optional[int] = None
 
 class Score(BaseModel):
     chords: List[ChordItem]
     melody: List[NoteItem]
+    accompaniment: List[AccompanimentItem] = []  # <-- NEW: Field added to Score
 
 def bar_duration_in_quarters(time_signature: Tuple[int, int]) -> int:
     return 4 * time_signature[0] / time_signature[1]
 
 def beat_to_quarter(beat: float, time_signature: Tuple[int, int]) -> float:
     return 4 * (beat - 1) / time_signature[1]
+
+
+def get_current_chord_from_time(time: float, chords: List[NoteItem]) -> Optional[str]:
+    for chord in chords:
+        if chord.time <= time < chord.time + chord.duration:
+            return chord
+    return None
+
+def get_current_chord_index_from_time(time: float, chords: List[NoteItem]) -> Optional[int]:
+    for i, chord in enumerate(chords):
+        if chord.time <= time < chord.time + chord.duration:
+            return i
+    return None
     
 class RomanTextDocument(BaseModel):
     lines: List[Line]
@@ -213,9 +246,10 @@ class RomanTextDocument(BaseModel):
                 current_time_signature = (line.numerator, line.denominator)
 
         # Fill the durations (using delta between next time)
-        for i in range(len(results)-1):
-            results[i].duration = results[i+1].time - results[i].time
-        results[-1].duration = bar_start_time - results[-1].time
+        if len(results) > 0:    
+            for i in range(len(results)-1):
+                results[i].duration = results[i+1].time - results[i].time
+            results[-1].duration = bar_start_time - results[-1].time
         return results
     
     @property
@@ -224,14 +258,6 @@ class RomanTextDocument(BaseModel):
     
     @property
     def melody(self) -> List[NoteItem]:
-        from .notes_utils import getPitchFromIntervalFromMinimallyModifiedScale
-
-        def get_current_chord_from_time(time: float, chords: List[NoteItem]) -> Optional[str]:
-            for chord in chords:
-                if chord.time <= time < chord.time + chord.duration:
-                    return chord
-            return None
-        
         results = []
         chords = self.chords
         current_chord = None
@@ -251,10 +277,6 @@ class RomanTextDocument(BaseModel):
                     time=beat_start_time+bar_start_time
                     previous_current_chord = current_chord
                     current_chord = get_current_chord_from_time(time, chords)
-                    if current_chord is None:
-                        raise Exception('No chord found for measure {} at beat {}'.format(current_bar_index, note.beat))
-                    
-                    current_chord_to_use = current_chord if current_chord.chord != "NC" else previous_current_chord
 
                     is_silence = False
                     if isinstance(note, Silence):
@@ -263,7 +285,17 @@ class RomanTextDocument(BaseModel):
                     elif isinstance(note, AbsoluteMelodyNote):
                         pitch = note.note
                     else:
+                        if current_chord is None:
+                            raise Exception('No chord found for measure {} at beat {}, while using an interval note'.format(current_bar_index, note.beat))
+                        current_chord_to_use = current_chord if current_chord.chord != "NC" else previous_current_chord
+
                         pitch = getPitchFromIntervalFromMinimallyModifiedScale(current_chord_to_use.chord, current_chord_to_use.key, note.note, note.octave)
+                    
+                    if current_chord is None:
+                        current_chord = ChordItem(time=beat_start_time+bar_start_time, duration=duration, 
+                                                   chord="NC",
+                                                   time_signature=current_time_signature,
+                                                   key=None)
                     results.append(NoteItem(time=beat_start_time+bar_start_time, duration=duration, 
                                             chord=current_chord.chord,
                                             key=current_chord.key,
@@ -277,4 +309,38 @@ class RomanTextDocument(BaseModel):
             for i in range(len(results)-1):
                 results[i].duration = results[i+1].time - results[i].time
             results[-1].duration = bar_start_time - results[-1].time
+
+        return results
+    
+    @property
+    def accompaniment(self) -> List[AccompanimentItem]:
+        results = []
+        chords = self.chords
+        current_chord = None
+        previous_current_chord = None
+        bar_start_time = 0 # In quarter (not in beat !)
+        current_bar_index = 0
+        current_time_signature = (4, 4)
+        for line in self.lines:
+            if isinstance(line, TimeSignature):
+                current_time_signature = (line.numerator, line.denominator)
+            elif isinstance(line, Accompaniment):
+                delta_bar = line.measure_number - current_bar_index
+                current_bar_index = line.measure_number
+                for beat in line.beats:
+                    beat_start_time = beat_to_quarter(beat.beat, current_time_signature)
+                    duration = 0
+                    time=beat_start_time+bar_start_time
+                    current_chord_index = get_current_chord_index_from_time(time, chords)
+                    results.append(AccompanimentItem(time=beat_start_time+bar_start_time, duration=duration, 
+                                            voices=beat.voices,
+                                            chord_index=current_chord_index))
+                    
+                bar_start_time += delta_bar * bar_duration_in_quarters(current_time_signature)
+
+        if len(results) > 0:
+            for i in range(len(results)-1):
+                results[i].duration = results[i+1].time - results[i].time
+            results[-1].duration = bar_start_time - results[-1].time
+
         return results

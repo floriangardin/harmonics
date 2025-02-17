@@ -30,9 +30,8 @@ statement_line: measure_line
               | note_line
               | repeat_line
               | melody_line
+              | accompaniment_line
 
-
-// Updated measure_line to include standalone chords
 measure_line: MEASURE_INDICATOR (chord_beat_1)? (beat_chord | key_change)* PHRASE_BOUNDARY? NEWLINE
 beat_chord: WS BEAT_INDICATOR (WS key)? WS chord
 key_change: WS key
@@ -72,6 +71,14 @@ add_alteration: "add"
 alteration_content: (( omit_alteration | add_alteration )? [ ACCIDENTAL ] DIGITS)
 
 // --------------------
+// Accompaniment grammar (NEW)
+// --------------------
+accompaniment_line: ACCOMPANIMENT_INDICATOR WS+ (voice_list)? (BEAT_INDICATOR WS+ voice_list)* NEWLINE
+ACCOMPANIMENT_INDICATOR: "acc" DIGIT+
+voice_list: (VOICE)+
+VOICE: /[1-4]/
+
+// --------------------
 // Tokens (with regexes)
 // --------------------
 
@@ -86,8 +93,8 @@ numerator: DIGIT+
 denominator: DIGIT+
 SIGNED_INT: ("+"|"-")? DIGIT+
 
-// KEY: accepts optional ?( ... ) and : (e.g., C, c, C:, ?(Bb, ?(Bb) )
-KEY: /(\?\()?[A-Ga-g](?:#{1,}|b{1,})?(?:\))?:/
+// KEY
+KEY: /[A-Ga-g](#{1,}|b{1,})?:/
 
 SPECIAL_CHORD: "Ger" | "It" | "Fr" | "N" | "Cad" | "NC"
 ROMAN_NUMERAL: "I" | "II" | "III" | "IV" | "V" | "VI" | "VII"
@@ -97,7 +104,6 @@ ACCIDENTAL: /#{1,}|b{1,}/
 inversion: INVERSION_STANDARD | inversion_free
 INVERSION_STANDARD: "6" | "64" | "6/3" | "6/4" | "7" | "6/5" | "65" | "4/3" | "43" | "2" | "42" | "4/2" | "9" | "11" | "13"
 inversion_free: ACCIDENTAL? DIGIT+
-
 
 MINOR_MODE_OPTION: "quality" | "cautionary" | "sharp" | "flat"
 
@@ -118,8 +124,6 @@ WS: (" "|/\t/)+
 CR : /\r/
 LF : /\n/
 NEWLINE: WS* (CR? LF)+
-
-
 
 // Melody line
 melody_line: MELODY_MEASURE_INDICATOR (first_beat_note)? (beat_note)* NEWLINE
