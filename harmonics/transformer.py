@@ -30,6 +30,9 @@ from .models import (
     MelodyNote,
     Accompaniment,
     AccompanimentBeat,
+    Tempo,
+    Events,
+    Event
 )
 
 def transform_token(token: Token) -> str:
@@ -107,6 +110,11 @@ def transform_metadata_line(node: Tree) -> MetadataLine:
             if isinstance(token, Token) and token.type == "MINOR_MODE_OPTION":
                 return MinorMode(minor_mode=transform_token(token))
         return MinorMode(minor_mode="")
+    elif child.data == "tempo_line":
+        for token in child.children:
+            if isinstance(token, Token) and token.type == "TEMPO_NUMBER":
+                return Tempo(tempo=int(token.value))
+        return Tempo(tempo=120)
     else:
         raise ValueError(f"Unknown metadata_line type: {child.data}")
 
@@ -453,6 +461,15 @@ def transform_accompaniment_line(node: Tree) -> Accompaniment:
 
     return Accompaniment(measure_number=measure_number, beats=beats)
 
+
+def transform_tempo_line(node: Tree) -> Tempo:
+    # tempo_line: "Tempo:" WS TEMPO_NUMBER NEWLINE
+    tempo = 0
+    for child in node.children:
+        if isinstance(child, Token) and child.type == "TEMPO_NUMBER":
+            tempo = int(child.value)
+    return Tempo(tempo=tempo)
+
 def transform_statement_line(node: Tree) -> StatementLine:
     # statement_line: measure_line | pedal_line | form_line | note_line | repeat_line | melody_line | accompaniment_line
     child = node.children[0]
@@ -470,12 +487,66 @@ def transform_statement_line(node: Tree) -> StatementLine:
         return transform_melody_line(child)
     elif child.data == "accompaniment_line":
         return transform_accompaniment_line(child)
+    elif child.data == "event_line":
+        return transform_event_line(child)
     else:
         raise ValueError(f"Unknown statement_line type: {child.data}")
 
 # ------------------------------
 # New Function to Populate Properties
 # ------------------------------
+
+"""
+class Event(BaseModel):
+    measure_number: int
+    beat: float
+    event_type: str
+    event_value: str
+
+class Events(BaseModel):
+    events: List[Event]
+    measure_number: int 
+"""
+def transform_event_line(node: Tree) -> Events:
+    
+    def eval_argument(argument: str) -> str:
+        try:
+            return eval(argument)
+        except Exception as e:
+            return eval('"' + argument + '"')
+    measure_number = 0
+    events: List[Event] = []
+    # Parse measure number
+    for child in node.children:
+        if isinstance(child, Token) and child.type == "MEASURE_NUMBER":
+            measure_number = int(child.value)
+        elif isinstance(child, Tree) and child.data == "event_content":
+            # event_content: BEAT_INDICATOR WS* event_type WS* event_value
+            beat = 0.0
+            event_type = ""
+            event_value = ""
+            
+            for content_child in child.children:
+                if isinstance(content_child, Token):
+                    if content_child.type == "BEAT_INDICATOR":
+                        # Remove 'b' or 't' prefix and convert to float
+                        beat_str = content_child.value[1:]
+                        beat = float(beat_str)
+                    elif content_child.type == "EVENT_FUNCTION_NAME":
+                        event_type = content_child.value
+                    elif content_child.type == "EVENT_ARGUMENT":
+                        event_value = eval_argument(content_child.value)
+            event = Event(
+                measure_number=measure_number,
+                beat=beat,
+                event_type=event_type,
+                event_value=event_value
+            )
+            events.append(event)
+    
+    result =  Events(events=events, measure_number=measure_number)
+    return result
+
 
 
 def parse_key_signature(key_signature: str) -> tuple[Optional[str], Optional[str]]:
@@ -510,5 +581,6 @@ def transform_document(tree: Tree) -> RomanTextDocument:
                     lines.append(transform_metadata_line(subchild))
                 elif subchild.data == "statement_line":
                     lines.append(transform_statement_line(subchild))
+
     document = RomanTextDocument(lines=lines)
     return document 

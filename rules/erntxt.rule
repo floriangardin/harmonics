@@ -6,6 +6,7 @@ It allows to create harmonic grids in roman numeral notation (rntxt) & melodies 
 This language can be described by a context free grammar (CFG) and follows this specific EBNF format : 
 
 EBNF DESCRIPTION :
+===================
 
 // ----------------------------
 // Lark grammar for RomanText
@@ -23,6 +24,7 @@ metadata_line: composer_line
              | time_signature_line
              | key_signature_line
              | minor_mode_line
+             | tempo_line
 
 composer_line: "Composer:" WS REST_LINE NEWLINE
 piece_line: "Piece:" WS REST_LINE NEWLINE
@@ -30,9 +32,12 @@ analyst_line: "Analyst:" WS REST_LINE NEWLINE
 proofreader_line: "Proofreader:" WS REST_LINE NEWLINE
 movement_line: "Movement:" WS MEASURE_NUMBER NEWLINE
 time_signature_line: "Time Signature:" WS time_signature NEWLINE
+// Tempo number in QPM (quarter note per minute)
+tempo_line: "Tempo:" WS* TEMPO_NUMBER NEWLINE
 key_signature_line: "Key Signature:" WS SIGNED_INT NEWLINE
 minor_mode_line: "Minor Sixth / Minor Seventh:" WS MINOR_MODE_OPTION NEWLINE
 
+TEMPO_NUMBER: DIGIT+
 statement_line: measure_line
               | pedal_line
               | form_line
@@ -40,16 +45,25 @@ statement_line: measure_line
               | repeat_line
               | melody_line
               | accompaniment_line
+              | event_line
 
+
+// Event line
+event_line: "e" MEASURE_NUMBER WS* event_content+ NEWLINE
+event_content: BEAT_INDICATOR WS* EVENT_FUNCTION_NAME + "(" + EVENT_ARGUMENT + ")"
+EVENT_FUNCTION_NAME: "tempo" | "velocity"
+EVENT_ARGUMENT: TEMPO_NUMBER | VELOCITY_VALUE
+VELOCITY_VALUE: "pppp" | "ppp" | "pp" | "p" | "mp" | "f" | "ff" | "fff" | "ffff"
+
+
+// Harmonic line
 measure_line: MEASURE_INDICATOR (chord_beat_1)? (beat_chord | key_change)* PHRASE_BOUNDARY? NEWLINE
 beat_chord: WS BEAT_INDICATOR (WS key)? WS chord
 key_change: WS key
 chord_beat_1: (WS key)? WS chord
 key: KEY
-
 repeat_line: measure_range WS "=" WS measure_range NEWLINE
 measure_range: MEASURE_INDICATOR ("-" MEASURE_INDICATOR)+
-
 note: NOTELETTER ACCIDENTAL?
 NOTELETTER: /[A-Ga-g]/
 
@@ -80,21 +94,17 @@ add_alteration: "add"
 alteration_content: (( omit_alteration | add_alteration )? [ ACCIDENTAL ] DIGITS)
 
 // --------------------
-// Accompaniment grammar (NEW)
+// Accompaniment grammar
 // --------------------
 accompaniment_line: ACCOMPANIMENT_INDICATOR WS+ (voice_list)? (BEAT_INDICATOR WS+ voice_list)* NEWLINE
 ACCOMPANIMENT_INDICATOR: "acc" DIGIT+
 voice_list: (VOICE)+
 VOICE: /[1-4]/
 
-// --------------------
-// Tokens (with regexes)
-// --------------------
-
 MEASURE_INDICATOR: "m" MEASURE_NUMBER
 MEASURE_NUMBER: DIGIT+ (LETTER+ | "var" DIGIT+)? 
 
-BEAT_INDICATOR: "b" BEAT_NUMBER
+BEAT_INDICATOR: ("b" | "t") BEAT_NUMBER
 BEAT_NUMBER: DIGIT+ ("." DIGIT+)?
 
 time_signature: numerator "/" denominator
@@ -134,26 +144,29 @@ CR : /\r/
 LF : /\n/
 NEWLINE: WS* (CR? LF)+
 
-// Melody line
+// --------------------
+// Melody grammar
+// --------------------
+
 melody_line: MELODY_MEASURE_INDICATOR (first_beat_note)? (beat_note)* NEWLINE
 MELODY_MEASURE_INDICATOR: "mel" MEASURE_NUMBER
-MELODY_BEAT_INDICATOR: "t" DIGIT+ ("." DIGIT+)?
+MELODY_BEAT_INDICATOR: ("b" | "t") DIGIT+ ("." DIGIT+)?
 first_beat_note: WS+ (MELODY_BEAT_INDICATOR WS+)? MELODY_NOTE (DELTA_OCTAVE)?
 beat_note: WS+ MELODY_BEAT_INDICATOR WS (MELODY_NOTE (DELTA_OCTAVE)? | ABSOLUTE_NOTE | SILENCE)
 
 SILENCE: "r" | "R"
-MELODY_NOTE: (SLASH)? (ACCIDENTAL)? DIGIT+
+MELODY_NOTE: "/" (ACCIDENTAL)? DIGIT+
 DELTA_OCTAVE: "o" SIGNED_INT
 ABSOLUTE_NOTE: NOTELETTER_CAPITALIZED (ACCIDENTAL)? (ABSOLUTE_OCTAVE)?
 NOTELETTER_CAPITALIZED: /[A-G]/
 ABSOLUTE_OCTAVE: DIGIT+
-SLASH: "/"
 
 %ignore WS
 %ignore NEWLINE
 %ignore CR
 %ignore LF
 %ignore PHRASE_BOUNDARY
+
 
 END OF EBNF DESCRIPTION
 
@@ -171,31 +184,39 @@ Analyst: Dmitri Tymoczko
 Proofreader: David Castro
 Time Signature: 4/4
 Movement: 0
+Tempo: 160
 Key Signature: 0
 Minor Sixth / Minor Seventh: quality
 Form: chorale
 Note: consecutive first inversion triads
+
+Note: Setting tempo and velocity at the first beat, note that you need to repeat the beat number for each event.
+e1 b1 tempo(160) b1 velocity(p)
 m1 b1 C: I b2 NC b3 V6
-mel1 t1 E5 t1.5 B4 t2 E5 t2.5 G5 t3 A5 t3.5 A#5 t4 B5
+mel1 b1 E5 b1.5 B4 b2 E5 b2.5 G5 b3 A5 b3.5 A#5 b4 B5
 Note: Beat 1 bass, beat 2 : tenor, alto, soprano, beat 3 : bass, beat 4 tenor, alto, soprano
 acc1 b1 1 b2 234 b3 1 b4 234
 
 m2 b1 IV6 b3 V6
-mel2 t1 A5 t2 F5 t2.5 E5 t3 D5 t4 B4
+mel2 b1 A5 b2 F5 b2.5 E5 b3 D5 b4 B4
 acc2 b1 1 b2 234 b3 234 b4 234
 
 Pedal: G m3 b3 m5 b1
 m3 IV6 b2 V b4 V2
-mel3 A4 t2 Ab4 t4 R
+mel3 A4 b2 Ab4 b4 R
 acc3 b1 1 b2 234 b3 234 b4 234
 
+Note: You can change tempo at any time
+Tempo: 120
 m4 b1 viio6
-mel4 t1 B4
+mel4 b1 B4
 acc4 b1 1 b2 234 b3 1 b4 234
 
 m5 b1 V7[no5][b3]/V/V b3 V/V b4 V7
 mel5 b1 C5 b3 D5 b4 B4
 acc5 b1 1 b2 234 b3 234 b4 234
+Note: You can also change the tempo and velocity at any beat using the tempo and velocity functions
+e5 b1 velocity(f) b3 tempo(125)
 
 m6 I
 Note: Usually we finish the melody on the root of the chord.
@@ -212,78 +233,80 @@ Analyst: AI Composer
 Proofreader: Claude Assistant
 Time Signature: 4/4
 Movement: 0
+Tempo: 90
 Key Signature: 1
 Minor Sixth / Minor Seventh: quality
 Form: Nocturne
 Note: Section A - Mysterious opening
 
+e1 b1 tempo(90) b1 velocity(f)
 m1 b1 e: i[add9] b3 III+ ||
-mel1 t1 B4 t2 E5 t2.5 F#5 t3 G5 t4 B5
+mel1 b1 B4 b2 E5 b2.5 F#5 b3 G5 b4 B5
 acc1 b1 1 b2 2 b3 4 b4 3
 
 m2 b1 VI b3 iiø7 b4 V7 ||
-mel2 t1 A5 t2 G5 t3 F#5 t4 D5
+mel2 b1 A5 b2 G5 b3 F#5 b4 D5
 acc2 b1 1 b2 2 b3 4 b4 3
 
 m3 b1 i b3 III[add6] ||
-mel3 t1 E5 t2 G5 t3 B5 t4 r
+mel3 b1 E5 b2 G5 b3 B5 b4 r
 acc3 b1 1 b2 2 b3 4 b4 3
 
 m4 b1 VI b2 iv6 b3 V7 b4 i ||
-mel4 t1.5 C6 t2 B5 t3 A5 t4 G5
+mel4 b1.5 C6 b2 B5 b3 A5 b4 G5
 acc4 b1 1 b2 2 b3 4 b4 3
 
 Note: Section B - More chromatic
 
 m5 b1 bII b3 Fr6/V ||
-mel5 t1 F5 t2 Ab5 t3 B5 t4 D6
+mel5 b1 F5 b2 Ab5 b3 B5 b4 D6
 acc5 b1 1 b2 2 b3 4 b4 3
 
 m6 b1 V7 b3 i ||
-mel6 t1 B5 t2 A5 t3 G5 t4 E5
+mel6 b1 B5 b2 A5 b3 G5 b4 E5
 acc6 b1 1 b2 2 b3 1 b4 3 b4.5 4
 
 m7 b1 iv b2 III b3 VI b4 iiø7 ||
-mel7 t1 A5 t1.5 G5 t2 F#5 t3 C6 t4 F#5
+mel7 b1 A5 b1.5 G5 b2 F#5 b3 C6 b4 F#5
 acc7 b1 1 b2 2 b3 4 b4 3
 
 m8 b1 V7 b3 i ||
-mel8 t1 B5 t2 A5 t3 E5 t4 r
+mel8 b1 B5 b2 A5 b3 E5 b4 r
 acc8 b1 1 b2 2 b3 4 b4 3
 Note: Section C - Modal mixture
 
 m9 b1 E: I b3 e: vi ||
-mel9 t1 E6 t2 D6 t3 C6 t4 B5
+mel9 b1 E6 b2 D6 b3 C6 b4 B5
 acc9 b1 1 b2 2 b3 4 b4 3
 
 m10 b1 III+ b3 VI b4 V7 ||
-mel10 t1 G#5 t2 A5 t3 C6 t4 B5
+mel10 b1 G#5 b2 A5 b3 C6 b4 B5
 acc10 b1 1 b2 2 b3 4 b4 3
 
 m11 b1 i b2 iv6 b3 V7 b4 VI ||
-mel11 t1 E5 t2 A5 t3 B5 t4 C6
+mel11 b1 E5 b2 A5 b3 B5 b4 C6
 acc11 b1 1 b1.5 1 b2 1 b2.5 2 b3 4 b4 3
 
 m12 b1 Fr6 b3 V7 ||
-mel12 t1 D6 t2 B5 t3 F#5 t4 r
+mel12 b1 D6 b2 B5 b3 F#5 b4 r
 acc12 b1 1 b1.5 1 b2 1 b2.5 2 b3 4 b4 3
 
 Note: Section D - Whole tone passage
 
 m13 b1 bII b2 V7[b5] b3 i ||
-mel13 t1 F5 t1.5 G5 t2 A5 t2.5 B5 t3 E6
+mel13 b1 F5 b1.5 G5 b2 A5 b2.5 B5 b3 E6
 acc13 b1 1 b1.5 1 b2 1 b2.5 2 b3 4 b4 3
 
 m14 b1 VI b2 iiø7 b3 V7[b5] b4 i ||
-mel14 t1 C6 t2 F#5 t3 B5 t4 E5
+mel14 b1 C6 b2 F#5 b3 B5 b4 E5
 acc14 b1 1 b1.5 1 b2 1 b2.5 2 b3 4 b4 3
 
 m15 b1 bVI b3 V7/V ||
-mel15 t1 C6 t2 B5 t3 F#6 t4 E6
+mel15 b1 C6 b2 B5 b3 F#6 b4 E6
 acc15 b1 1 b1.5 1 b2 1 b2.5 2 b3 4 b4 3
 
 m16 b1 V7 b3 i ||
-mel16 t1 B5 t2 A5 t3 E5 t4 r
+mel16 b1 B5 b2 A5 b3 E5 b4 r
 acc16 b1 1 b1.5 1 b2 1 b2.5 2 b3 4 b4 3
 
 ---------------
@@ -301,19 +324,19 @@ Minor Sixth / Minor Seventh: quality
 Form: chorale
 Note: consecutive first inversion triads
 m1 b1 C: I b2 NC b3 V6
-mel1 t1 5 t1.5 B4 4 E5 t2.5 5 t3 5 t3.5 #5 t4 5
+mel1 b1 /5 b1.5 B4 /4 E5 b2.5 /5 b3 /5 b3.5 /#5 b4 /5
 m2 b1 IV6 b3 V6
-mel2 t1 1o1 t2 #1 t2.5 2o1 t3 5o1 t4 4o1
+mel2 b1 /1o1 b2 /#1 b2.5 /2o1 b3 /5o1 b4 /4o1
 Pedal: G m3 b3 m5 b1
 m3 IV6 b2 V b4 V2
-mel3 1 t2 3 t4 3
+mel3 /1 b2 /3 b4 /3
 m4 b1 viio6
-mel4 t1 1
+mel4 b1 /1
 m5 b1 V7[no5][b3]/V/V b3 V/V b4 V7
-mel5 b1 3 b3 3 b4 3
+mel5 b1 /3 b3 /3 b4 /3
 m6 I
 Note: Usually we finish the melody on the root of the chord.
-mel6 1 b3 R
+mel6 /1 b3 R
 
 --------
 
@@ -379,7 +402,7 @@ You write "m" then the bar number, so "m2" means the second bar of the song. It 
 
 **Time in bar specification**
 
-You use "b" + the beat number as a float number. It is 1-indexed so t1 is the first beat.
+You use "b" + the beat number as a float number. It is 1-indexed so b1 is the first beat.
 
 Warning : Be careful to use "b" and not "t" in this notation. You can use any floating point beat (for example b3.5 is the third beat + half a beat).
 You can use whole notes (4), half notes (2), quarter (1), eights (.5), sixteenth (.25) notes and 3-uplets (.33, .66) for the decimal expansion of the beat.
@@ -417,9 +440,9 @@ You write "mel" then the bar number, so "mel2" means the second bar of the song.
 
 **Time in bar specification**
 
-You use "t" + the beat number as a float number. It is 1-indexed so t1 is the first beat.
+You use "b" + the beat number as a float number. It is 1-indexed so b1 is the first beat.
 
-Warning : Be careful to change beat names from "b" for harmonic lines to "t" for melody lines (to avoid confusion with flat symbol in melodies). You can use any floating point beat (for example t3.5 is the third beat + half a beat).
+Warning : Be careful to use "b" for both harmonic and melody lines. You can use any floating point beat (for example b3.5 is the third beat + half a beat).
 You can use whole notes (4), half notes (2), quarter (1), eights (.5), sixteenth (.25) notes and 3-uplets (.33, .66) for the decimal expansion of the beat.
 
 
@@ -471,7 +494,7 @@ Rules for harmony (lines starting by m<index>)
 You write "m" then the bar number, so "mel2" means the second bar of the song. This is 1-indexed
 
 **Time in bear specification (beat)**
-You use "t" + the beat number as a float number. It is 1-indexed so t1 is the first beat.
+You use "b" + the beat number as a float number. It is 1-indexed so b1 is the first beat.
 
 
 
@@ -508,6 +531,31 @@ The voices will play the appropriate notes from the harmony specified in the cor
 By default a note will play until next specified beat. If no specified beat a note will play until the end of the bar.
 
 
+Rules for events (lines starting by e<index>)
+===========================================
+
+**Bar specification**
+
+You write "e" then the bar number, so "e2" means the second bar of the song. This is 1-indexed
+
+**Time in bar specification**
+
+You use "b" + the beat number as a float number. It is 1-indexed so b1 is the first beat.
+
+**Event specification**
+
+You can specify an event with the function name and an argument. For example:
+e1 b1 tempo(120)
+
+Here is the list of available functions:
+- tempo(tempo) : change the tempo to the given tempo
+
+
+
+
+
+
+
 General guidelines for musical composition
 ===========================================
 
@@ -520,6 +568,7 @@ Rhythm and Melody
 - Create melodic patterns and motifs but vary them through development
 - Include chromatic passing tones and neighbor tones for color
 - Pay attention to voice leading, especially with leading tones in minor keys
+- Use event track to change the tempo regularly to create accelerando and ritardando.
 
 Harmony and Structure 
 ---------------------
@@ -539,7 +588,9 @@ Accompaniment
 - Consider using pedal points in bass for stability
 - Allow inner voices (alto/tenor) to have melodic moments
 - Use contrasting textures (full chords vs sparse voicing)
-- The accompaniment SATB is deduced from the harmony, so you only specify the voices that are playing at each beat.
+- The accompaniment SATB is deduced from the harmony, so you only specify the voices that are playing at each rhythm beat.
+- The rhythm of the accompaniment can be different from the harmony, it is up to you to find the best rhythm for the accompaniment.
+- Vary the rhythm of the accompaniment to avoid monotony.
 
 Musical Expression
 -----------------
@@ -550,4 +601,4 @@ Musical Expression
 - Maintain good voice leading in all parts
 - Make intentional choices rather than random notes
 - Use rests strategically to create space and breathing points in the music
-
+- Use tempo events to change the tempo making accelerando and ritardando

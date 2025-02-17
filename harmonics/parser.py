@@ -33,7 +33,7 @@ class HarmonicsParser:
     
     def parse_to_events(self, input_string):
         document = self.parse(input_string)
-        chords = document.chords
+        chords, time_signatures, tempos = document.data
         if len(chords) > 0:
             progression = generateBestHarmonization(chords, closePosition=False, firstVoicing=None, lastVoicing=None, allowedUnisons=0)
         else:
@@ -44,7 +44,13 @@ class HarmonicsParser:
             chord.pitches = pitches
 
         melody = document.melody
-        score = Score(chords=chords, melody=melody, accompaniment=document.accompaniment)
+        events = document.events
+        score = Score(chords=chords, 
+                      melody=melody, 
+                      accompaniment=document.accompaniment, 
+                      time_signatures=time_signatures, 
+                      tempos=tempos,
+                      events=events)
         return score
 
     def parse_to_mxl(self, input_string, output_filename):
@@ -52,7 +58,7 @@ class HarmonicsParser:
         to_mxl(output_filename, score)
         return score
 
-    def parse_to_midi(self, input_string, output_filename, tempo=None):
+    def parse_to_midi(self, input_string, output_filename):
         score = self.parse_to_events(input_string)
-        to_midi(output_filename, score, tempo=tempo)
+        to_midi(output_filename, score)
         return score

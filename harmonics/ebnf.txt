@@ -14,6 +14,7 @@ metadata_line: composer_line
              | time_signature_line
              | key_signature_line
              | minor_mode_line
+             | tempo_line
 
 composer_line: "Composer:" WS REST_LINE NEWLINE
 piece_line: "Piece:" WS REST_LINE NEWLINE
@@ -21,9 +22,12 @@ analyst_line: "Analyst:" WS REST_LINE NEWLINE
 proofreader_line: "Proofreader:" WS REST_LINE NEWLINE
 movement_line: "Movement:" WS MEASURE_NUMBER NEWLINE
 time_signature_line: "Time Signature:" WS time_signature NEWLINE
+// Tempo number in QPM (quarter note per minute)
+tempo_line: "Tempo:" WS* TEMPO_NUMBER NEWLINE
 key_signature_line: "Key Signature:" WS SIGNED_INT NEWLINE
 minor_mode_line: "Minor Sixth / Minor Seventh:" WS MINOR_MODE_OPTION NEWLINE
 
+TEMPO_NUMBER: DIGIT+
 statement_line: measure_line
               | pedal_line
               | form_line
@@ -31,16 +35,25 @@ statement_line: measure_line
               | repeat_line
               | melody_line
               | accompaniment_line
+              | event_line
 
+
+// Event line
+event_line: "e" MEASURE_NUMBER WS* event_content+ NEWLINE
+event_content: BEAT_INDICATOR WS* EVENT_FUNCTION_NAME + "(" + EVENT_ARGUMENT + ")"
+EVENT_FUNCTION_NAME: "tempo" | "velocity"
+EVENT_ARGUMENT: TEMPO_NUMBER | VELOCITY_VALUE
+VELOCITY_VALUE: "pppp" | "ppp" | "pp" | "p" | "mp" | "f" | "ff" | "fff" | "ffff"
+
+
+// Harmonic line
 measure_line: MEASURE_INDICATOR (chord_beat_1)? (beat_chord | key_change)* PHRASE_BOUNDARY? NEWLINE
 beat_chord: WS BEAT_INDICATOR (WS key)? WS chord
 key_change: WS key
 chord_beat_1: (WS key)? WS chord
 key: KEY
-
 repeat_line: measure_range WS "=" WS measure_range NEWLINE
 measure_range: MEASURE_INDICATOR ("-" MEASURE_INDICATOR)+
-
 note: NOTELETTER ACCIDENTAL?
 NOTELETTER: /[A-Ga-g]/
 
@@ -71,21 +84,17 @@ add_alteration: "add"
 alteration_content: (( omit_alteration | add_alteration )? [ ACCIDENTAL ] DIGITS)
 
 // --------------------
-// Accompaniment grammar (NEW)
+// Accompaniment grammar
 // --------------------
 accompaniment_line: ACCOMPANIMENT_INDICATOR WS+ (voice_list)? (BEAT_INDICATOR WS+ voice_list)* NEWLINE
 ACCOMPANIMENT_INDICATOR: "acc" DIGIT+
 voice_list: (VOICE)+
 VOICE: /[1-4]/
 
-// --------------------
-// Tokens (with regexes)
-// --------------------
-
 MEASURE_INDICATOR: "m" MEASURE_NUMBER
 MEASURE_NUMBER: DIGIT+ (LETTER+ | "var" DIGIT+)? 
 
-BEAT_INDICATOR: "b" BEAT_NUMBER
+BEAT_INDICATOR: ("b" | "t") BEAT_NUMBER
 BEAT_NUMBER: DIGIT+ ("." DIGIT+)?
 
 time_signature: numerator "/" denominator
@@ -125,20 +134,22 @@ CR : /\r/
 LF : /\n/
 NEWLINE: WS* (CR? LF)+
 
-// Melody line
+// --------------------
+// Melody grammar
+// --------------------
+
 melody_line: MELODY_MEASURE_INDICATOR (first_beat_note)? (beat_note)* NEWLINE
 MELODY_MEASURE_INDICATOR: "mel" MEASURE_NUMBER
-MELODY_BEAT_INDICATOR: "t" DIGIT+ ("." DIGIT+)?
+MELODY_BEAT_INDICATOR: ("b" | "t") DIGIT+ ("." DIGIT+)?
 first_beat_note: WS+ (MELODY_BEAT_INDICATOR WS+)? MELODY_NOTE (DELTA_OCTAVE)?
 beat_note: WS+ MELODY_BEAT_INDICATOR WS (MELODY_NOTE (DELTA_OCTAVE)? | ABSOLUTE_NOTE | SILENCE)
 
 SILENCE: "r" | "R"
-MELODY_NOTE: (SLASH)? (ACCIDENTAL)? DIGIT+
+MELODY_NOTE: "/" (ACCIDENTAL)? DIGIT+
 DELTA_OCTAVE: "o" SIGNED_INT
 ABSOLUTE_NOTE: NOTELETTER_CAPITALIZED (ACCIDENTAL)? (ABSOLUTE_OCTAVE)?
 NOTELETTER_CAPITALIZED: /[A-G]/
 ABSOLUTE_OCTAVE: DIGIT+
-SLASH: "/"
 
 %ignore WS
 %ignore NEWLINE

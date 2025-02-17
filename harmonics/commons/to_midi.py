@@ -1,6 +1,6 @@
 from symusic import Score, Track, Note, Tempo, TimeSignature
 import music21 as m21
-def events_to_midi(events, output_file, tempo=120, quarter_value=1.0):
+def events_to_midi(note_events, output_file, tempos=None, time_signatures=None, quarter_value=1.0, events=None):
     """
     Converts a list of events to a MIDI file using Symusic.
 
@@ -14,33 +14,82 @@ def events_to_midi(events, output_file, tempo=120, quarter_value=1.0):
         output_file (str): Path to the output MIDI file.
     """
 
+    def get_current_velocity(time: float) -> int:
+        for velocity in velocities_array:
+            if velocity[0] >= time:
+                return velocity[1]
+        return 80
+
     # Initialize a Symusic Score object
     symusic_score = Score()
     target_tpq = 480
     symusic_score.tpq = target_tpq
 
-    # Set default tempo and time signature
-    default_tempo = tempo  # BPM
-    default_time_signature = (4, 4)
+    velocities_map = {
+        "pppp": 10,
+        "ppp": 20,
+        "pp": 30,
+        "p": 40,
+        "mp": 60,
+        "f": 70,
+        "ff": 80,
+        "fff": 90,
+        "ffff": 100
+    }
 
-    # Add default Time Signature
-    sym_ts = TimeSignature(
-        time=0,
-        numerator=default_time_signature[0],
-        denominator=default_time_signature[1]
-    )
-    symusic_score.time_signatures.append(sym_ts)
+    velocities_array = []
+    for event in events:
+        if event.event_type == "velocity":
+            velocities_array.append((event.time, velocities_map[event.event_value]))
 
-    # Add default Tempo
-    sym_tempo = Tempo(
-        time=0,
-        qpm=default_tempo
-    )
-    symusic_score.tempos.append(sym_tempo)
+    
+    velocities_array.sort(key=lambda x: x[0])
+
+    if time_signatures is not None:
+        for ts in time_signatures:
+
+            sym_ts = TimeSignature(
+                time=int(ts.time*target_tpq),
+                numerator=ts.time_signature[0],
+                denominator=ts.time_signature[1]
+            )
+            symusic_score.time_signatures.append(sym_ts)
+    else:
+        # Add default Time Signature
+        sym_ts = TimeSignature(
+            time=0,
+            numerator=4,
+            denominator=4
+        )
+        symusic_score.time_signatures.append(sym_ts)
+
+    if tempos is not None:
+        for t in tempos:
+            sym_tempo = Tempo(
+                time=int(t.time*target_tpq),
+                qpm=int(t.tempo)
+            )
+            symusic_score.tempos.append(sym_tempo)
+    else:
+        # Add default Tempo
+        sym_tempo = Tempo(
+            time=0,
+            qpm=120
+        )
+        symusic_score.tempos.append(sym_tempo)
+
+    # Add events
+    for event in events:
+        if event.event_type == "tempo":
+            tempo = Tempo(
+                time=int(event.time*target_tpq),
+                qpm=int(event.event_value)
+            )
+            symusic_score.tempos.append(tempo)
 
     # Group events by MIDI program
     program_events = {}
-    for event in events:
+    for event in note_events:
         time, pitch, duration, midi_program, velocity = event
         if midi_program not in program_events:
             program_events[midi_program] = []
@@ -54,6 +103,10 @@ def events_to_midi(events, output_file, tempo=120, quarter_value=1.0):
         prog_events.sort(key=lambda x: x[0])
         for event in prog_events:
             time, pitch, duration, _, velocity = event
+
+            if velocity is None:
+                velocity = get_current_velocity(time)
+            
 
             # Convert time and duration from event units to ticks
             note_start_time = int((time / quarter_value) * target_tpq)
@@ -73,32 +126,33 @@ def events_to_midi(events, output_file, tempo=120, quarter_value=1.0):
     symusic_score.dump_midi(output_file)
 
 
-def to_midi(filepath, score, tempo=120):
+def to_midi(filepath, score):
+            default_tempo = 120
             # Transform to list of events
             CHORD_CHANNEL = 1
             MELODY_CHANNEL = 41
-            events = []
+            note_events = []
             if len(score.accompaniment) == 0:   
                 for s in score.chords:
                     for idx, pitch in enumerate(s.pitches):
-                        events.append([s.time, m21.pitch.Pitch(pitch).midi,s.duration, CHORD_CHANNEL, 60])
+                        note_events.append([s.time, m21.pitch.Pitch(pitch).midi,s.duration, CHORD_CHANNEL, 60])
             else:
                 for accompaniment_beat in score.accompaniment:
                     current_chord = score.chords[accompaniment_beat.chord_index]
                     for voice in accompaniment_beat.voices:
-                        events.append([accompaniment_beat.time, m21.pitch.Pitch(current_chord.pitches[voice-1]).midi, accompaniment_beat.duration, CHORD_CHANNEL, 80])
+                        note_events.append([accompaniment_beat.time, m21.pitch.Pitch(current_chord.pitches[voice-1]).midi, accompaniment_beat.duration, CHORD_CHANNEL, 80])
 
             for s in score.melody:
                 if not s.is_silence:
-                    events.append([s.time, m21.pitch.Pitch(s.pitch).midi, s.duration, MELODY_CHANNEL, 80])
-            events_to_midi(events, filepath, tempo)
+                    note_events.append([s.time, m21.pitch.Pitch(s.pitch).midi, s.duration, MELODY_CHANNEL, 80])
+            events_to_midi(note_events, filepath, tempos=score.tempos, time_signatures=score.time_signatures, events=score.events)
 
 
 def _to_midi(S, output_file, delta=1.0, channel=0, velocity=100, midi_offset=48, scale=None, programs=None, no_repeat=False, quarter_value=1.0):
     events = to_events(S, delta, channel, velocity, midi_offset, scale, programs, no_repeat)
     events_to_midi(events, output_file, quarter_value=quarter_value)
 
-def to_events(S, delta=1.0, channel=0, velocity=100, midi_offset=48, scale=None, programs=None, no_repeat=False):
+def to_events(S, delta=1.0, channel=0, velocity=None, midi_offset=48, scale=None, programs=None, no_repeat=False):
     events = []
     if programs is None:
         programs = [0] * S.shape[0]

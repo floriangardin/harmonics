@@ -1,4 +1,5 @@
-from typing import List, Optional, Union, Tuple
+from typing import List, Optional, Union, Tuple, Any
+
 from pydantic import BaseModel
 from .notes_utils import getPitchFromIntervalFromMinimallyModifiedScale
 
@@ -48,11 +49,31 @@ class TimeSignature(BaseModel):
     numerator: int
     denominator: int
 
+class Tempo(BaseModel):
+    tempo: int
+
 class KeySignature(BaseModel):
     key_signature: str
 
 class MinorMode(BaseModel):
     minor_mode: str
+
+class Event(BaseModel):
+    measure_number: int
+    beat: float
+    event_type: str
+    event_value: Any
+
+class Events(BaseModel):
+    events: List[Event]
+    measure_number: int
+
+class EventItem(BaseModel):
+    time: float
+    measure_number: int
+    beat: float
+    event_type: str
+    event_value: Any
 
 # A metadata line is one of the above types.
 MetadataLine = Union[
@@ -64,6 +85,7 @@ MetadataLine = Union[
     TimeSignature,
     KeySignature,
     MinorMode,
+    Tempo,
 ]
 
 # ==============================
@@ -161,6 +183,7 @@ StatementLine = Union[
     Comment,
     Melody,
     Accompaniment,  # <-- NEW: Added accompaniment as a statement line
+    Events,
 ]
 
 Line = Union[MetadataLine, StatementLine]
@@ -187,6 +210,16 @@ class NoteItem(BaseModel):
     pitch: Optional[str] = None
     is_silence: bool = False
 
+class TempoItem(BaseModel):
+    time: float
+    tempo: int
+    measure_number: Optional[int] = None
+    beat: Optional[float] = None
+
+class TimeSignatureItem(BaseModel):
+    time: float
+    time_signature: Tuple[int, int]
+
 # This is a new model for rendering accompaniment events.
 class AccompanimentItem(BaseModel):
     time: float
@@ -198,6 +231,9 @@ class Score(BaseModel):
     chords: List[ChordItem]
     melody: List[NoteItem]
     accompaniment: List[AccompanimentItem] = []  # <-- NEW: Field added to Score
+    time_signatures: List[TimeSignatureItem] = []
+    tempos: List[TempoItem] = []
+    events: List[EventItem] = []
 
 def bar_duration_in_quarters(time_signature: Tuple[int, int]) -> int:
     return 4 * time_signature[0] / time_signature[1]
@@ -222,12 +258,15 @@ class RomanTextDocument(BaseModel):
     lines: List[Line]
 
     @property
-    def chords(self) -> List[ChordItem]:
+    def data(self) -> Tuple[List[ChordItem], List[TimeSignatureItem], List[TempoItem]]:
         results = []
         bar_start_time = 0 # In quarter (not in beat !)
         current_bar_index = 0
         current_time_signature = (4, 4)
         current_key = None
+        time_signatures = []
+        tempos = []
+
         for line in self.lines:
             if isinstance(line, Measure):
                 delta_bar = line.measure_number - current_bar_index
@@ -244,17 +283,19 @@ class RomanTextDocument(BaseModel):
                 bar_start_time += delta_bar * bar_duration_in_quarters(current_time_signature)
             elif isinstance(line, TimeSignature):
                 current_time_signature = (line.numerator, line.denominator)
-
+                time_signatures.append(TimeSignatureItem(time=bar_start_time, time_signature=current_time_signature))
+            elif isinstance(line, Tempo):
+                tempos.append(TempoItem(time=bar_start_time, measure_number=current_bar_index, beat=1, tempo=line.tempo))
         # Fill the durations (using delta between next time)
         if len(results) > 0:    
             for i in range(len(results)-1):
                 results[i].duration = results[i+1].time - results[i].time
             results[-1].duration = bar_start_time - results[-1].time
-        return results
+        return results, time_signatures, tempos
     
     @property
-    def time_signatures(self) -> List[TimeSignature]:
-        pass
+    def chords(self) -> List[ChordItem]:
+        return self.data[0]
     
     @property
     def melody(self) -> List[NoteItem]:
@@ -312,6 +353,32 @@ class RomanTextDocument(BaseModel):
 
         return results
     
+    @property
+    def events(self) -> List[EventItem]:
+        results = []
+        bar_start_time = 0 # In quarter (not in beat !)
+        current_bar_index = 0
+        current_time_signature = (4, 4)
+        for line in self.lines:
+            if isinstance(line, TimeSignature):
+                current_time_signature = (line.numerator, line.denominator)
+            elif isinstance(line, Events):
+                delta_bar = line.measure_number - current_bar_index
+                current_bar_index = line.measure_number
+                for event in line.events:
+                    beat_start_time = beat_to_quarter(event.beat, current_time_signature)
+                    time = beat_start_time + bar_start_time
+                    results.append(EventItem(time=time,
+                                             measure_number=event.measure_number,
+                                             beat=event.beat,
+                                             event_type=event.event_type,
+                                             event_value=event.event_value))
+                    
+                bar_start_time += delta_bar * bar_duration_in_quarters(current_time_signature)
+
+
+        return results
+
     @property
     def accompaniment(self) -> List[AccompanimentItem]:
         results = []
