@@ -219,7 +219,7 @@ def events_to_midi(note_events, output_file, tempos=None, time_signatures=None, 
 
 def to_midi(filepath, score):
     # Default MIDI programs if not specified
-    DEFAULT_CHORD_CHANNEL = 46
+    DEFAULT_CHORD_CHANNEL = 1
     DEFAULT_MELODY_CHANNEL = 1
 
     # Create a mapping for voice types to their default MIDI programs
@@ -266,6 +266,7 @@ def to_midi(filepath, score):
         if not s.is_silence:
             program = voice_program_map.get(s.voice_name, DEFAULT_MELODY_CHANNEL)
             note_events.append([s.time, m21.pitch.Pitch(s.pitch).midi, s.duration, program, None])
+
 
     events_to_midi(note_events, filepath, tempos=score.tempos, time_signatures=score.time_signatures, events=score.events)
 

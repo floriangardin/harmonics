@@ -2,10 +2,14 @@
 // Lark grammar for RomanText
 // ----------------------------
 ?start: document
+
 document: (NEWLINE)* line*
 line: metadata_line
      | statement_line
 
+// ----------------------------
+// Metadata Rules
+// ----------------------------
 metadata_line: composer_line
              | piece_line
              | analyst_line
@@ -23,15 +27,18 @@ analyst_line: "Analyst:" WS REST_LINE NEWLINE
 proofreader_line: "Proofreader:" WS REST_LINE NEWLINE
 movement_line: "Movement:" WS MEASURE_NUMBER NEWLINE
 time_signature_line: "Time Signature:" WS time_signature NEWLINE
-// Tempo number in QPM (quarter note per minute)
-tempo_line: "Tempo:" WS* TEMPO_NUMBER NEWLINE
+tempo_line: "Tempo:" WS* TEMPO_NUMBER NEWLINE  // Tempo number in QPM
 key_signature_line: "Key Signature:" WS SIGNED_INT NEWLINE
 minor_mode_line: "Minor Sixth / Minor Seventh:" WS MINOR_MODE_OPTION NEWLINE
-instrument_line: "Instrument:" WS VOICE_NAME WS* "=" WS* GM_NUMBER  ("," WS* VOICE_NAME WS* "=" WS* GM_NUMBER)* NEWLINE
+instrument_line: "Instrument:" WS VOICE_NAME WS* "=" WS* GM_NUMBER ("," WS* VOICE_NAME WS* "=" WS* GM_NUMBER)* NEWLINE
+
 VOICE_NAME: "V" DIGIT | "B" | "T" | "A" | "S"
 GM_NUMBER: DIGIT+
-
 TEMPO_NUMBER: DIGIT+
+
+// ----------------------------
+// Statement Rules
+// ----------------------------
 statement_line: measure_line
               | pedal_line
               | form_line
@@ -41,63 +48,79 @@ statement_line: measure_line
               | accompaniment_line
               | event_line
 
-
-// Event line
+// --- Event Lines
 event_line: "e" MEASURE_NUMBER WS* event_content+ NEWLINE
 event_content: BEAT_INDICATOR WS* EVENT_FUNCTION_NAME + "(" + EVENT_ARGUMENT + ")"
 EVENT_FUNCTION_NAME: "tempo" | "velocity" | "start_crescendo" | "end_crescendo" | "start_diminuendo" | "end_diminuendo" | "start_accelerando" | "end_accelerando" | "start_ritardando" | "end_ritardando"
 EVENT_ARGUMENT: TEMPO_NUMBER | VELOCITY_VALUE
 VELOCITY_VALUE: "pppp" | "ppp" | "pp" | "p" | "mp" | "mf" | "f" | "ff" | "fff" | "ffff"
 
-
-// Harmonic line
+// --- Measure / Harmonic Lines
 measure_line: MEASURE_INDICATOR (chord_beat_1)? (beat_chord | key_change)* PHRASE_BOUNDARY? NEWLINE
+chord_beat_1: (WS key)? WS chord
 beat_chord: WS BEAT_INDICATOR (WS key)? WS chord
 key_change: WS key
-chord_beat_1: (WS key)? WS chord
 key: KEY
+
 repeat_line: measure_range WS "=" WS measure_range NEWLINE
 measure_range: MEASURE_INDICATOR ("-" MEASURE_INDICATOR)+
+
 note: NOTELETTER ACCIDENTAL?
 NOTELETTER: /[A-Ga-g]/
 
+// --- Pedal Lines
 pedal_line: "Pedal:" WS note WS pedal_entries NEWLINE
 pedal_entries: pedal_entry (WS pedal_entry)* WS?
 pedal_entry: MEASURE_INDICATOR WS BEAT_INDICATOR
 
+// --- Form and Note Lines
 form_line: "Form:" WS REST_LINE NEWLINE
 note_line: "Note:" WS REST_LINE NEWLINE
 
-// --------------------
-// Chord grammar
-// --------------------
+// ----------------------------
+// Chord Grammar
+// ----------------------------
 chord: ( chord_component ( "/" tonality_component )* )
-
 chord_component: ( special_chord | standard_chord ) chord_alteration*
 tonality_component: [chord_accidental] numeral
 special_chord: SPECIAL_CHORD [ inversion ]
 standard_chord: [ chord_accidental ] numeral [ CHORD_QUALITY ] [ inversion ]
-
 numeral: ROMAN_NUMERAL
 chord_accidental: ACCIDENTAL
 CHORD_QUALITY: "o" | "+" | "%" | "ø" | "°"
-
 chord_alteration: "[" alteration_content "]"
 omit_alteration: "no"
 add_alteration: "add"
 alteration_content: (( omit_alteration | add_alteration )? [ ACCIDENTAL ] DIGITS)
 
-// --------------------
-// Accompaniment grammar
-// --------------------
-accompaniment_line: ACCOMPANIMENT_INDICATOR WS+ (voice_list)? (BEAT_INDICATOR WS+ voice_list)* NEWLINE
+// ----------------------------
+// Accompaniment Grammar
+// ----------------------------
+accompaniment_line: ACCOMPANIMENT_INDICATOR WS+ (voice_list)? (BEAT_INDICATOR WS+ (voice_list | SILENCE))* NEWLINE
 ACCOMPANIMENT_INDICATOR: "acc" DIGIT+
 voice_list: (VOICE)+
 VOICE: /[1-4]/
 
+// ----------------------------
+// Melody Grammar
+// ----------------------------
+melody_line: MELODY_MEASURE_INDICATOR (WS+ VOICE_NAME)? (first_beat_note)? (beat_note)* NEWLINE
+MELODY_MEASURE_INDICATOR: "mel" MEASURE_NUMBER
+MELODY_BEAT_INDICATOR: ("b" | "t") DIGIT+ ("." DIGIT+)?
+first_beat_note: WS+ (MELODY_BEAT_INDICATOR WS+)? MELODY_NOTE (DELTA_OCTAVE)?
+beat_note: WS+ MELODY_BEAT_INDICATOR WS (MELODY_NOTE (DELTA_OCTAVE)? | ABSOLUTE_NOTE | SILENCE)
+SILENCE: "r" | "R"
+MELODY_NOTE: "/" (ACCIDENTAL)? DIGIT+
+DELTA_OCTAVE: "o" SIGNED_INT
+ABSOLUTE_NOTE: NOTELETTER_CAPITALIZED (ACCIDENTAL)? (ABSOLUTE_OCTAVE)?
+NOTELETTER_CAPITALIZED: /[A-G]/
+ABSOLUTE_OCTAVE: DIGIT+
+
+// ----------------------------
+// Tokens & Basic Patterns
+// ----------------------------
 MEASURE_INDICATOR: "m" MEASURE_NUMBER
 MEASURE_NUMBER: DIGIT+ (LETTER+ | "var" DIGIT+)? 
-
 BEAT_INDICATOR: ("b" | "t") BEAT_NUMBER
 BEAT_NUMBER: DIGIT+ ("." DIGIT+)?
 
@@ -106,9 +129,7 @@ numerator: DIGIT+
 denominator: DIGIT+
 SIGNED_INT: ("+"|"-")? DIGIT+
 
-// KEY
 KEY: /[A-Ga-g](#{1,}|b{1,})?:/
-
 SPECIAL_CHORD: "Ger" | "It" | "Fr" | "N" | "Cad" | "NC"
 ROMAN_NUMERAL: "I" | "II" | "III" | "IV" | "V" | "VI" | "VII"
              | "i" | "ii" | "iii" | "iv" | "v" | "vi" | "vii"
@@ -122,38 +143,15 @@ MINOR_MODE_OPTION: "quality" | "cautionary" | "sharp" | "flat"
 
 DIGIT: /[0-9]/
 DIGITS: DIGIT+
-
 LETTER: /[a-z]+/
 
-// Capture the rest of the line (for metadata or free text)
 REST_LINE: /.+/
-
-// A phrase boundary (usually "||")
 PHRASE_BOUNDARY: WS "||" WS?
 
-// Whitespace
-WS: (" "|/\t/)+
-
-CR : /\r/
-LF : /\n/
+WS: (" " | /\t/)+
+CR: /\r/
+LF: /\n/
 NEWLINE: WS* (CR? LF)+
-
-// --------------------
-// Melody grammar
-// --------------------
-
-melody_line: MELODY_MEASURE_INDICATOR (WS+ VOICE_NAME)? (first_beat_note)? (beat_note)* NEWLINE
-MELODY_MEASURE_INDICATOR: "mel" MEASURE_NUMBER
-MELODY_BEAT_INDICATOR: ("b" | "t") DIGIT+ ("." DIGIT+)?
-first_beat_note: WS+ (MELODY_BEAT_INDICATOR WS+)? MELODY_NOTE (DELTA_OCTAVE)?
-beat_note: WS+ MELODY_BEAT_INDICATOR WS (MELODY_NOTE (DELTA_OCTAVE)? | ABSOLUTE_NOTE | SILENCE)
-
-SILENCE: "r" | "R"
-MELODY_NOTE: "/" (ACCIDENTAL)? DIGIT+
-DELTA_OCTAVE: "o" SIGNED_INT
-ABSOLUTE_NOTE: NOTELETTER_CAPITALIZED (ACCIDENTAL)? (ABSOLUTE_OCTAVE)?
-NOTELETTER_CAPITALIZED: /[A-G]/
-ABSOLUTE_OCTAVE: DIGIT+
 
 %ignore WS
 %ignore NEWLINE

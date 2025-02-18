@@ -100,7 +100,7 @@ alteration_content: (( omit_alteration | add_alteration )? [ ACCIDENTAL ] DIGITS
 // --------------------
 // Accompaniment grammar
 // --------------------
-accompaniment_line: ACCOMPANIMENT_INDICATOR WS+ (voice_list)? (BEAT_INDICATOR WS+ voice_list)* NEWLINE
+accompaniment_line: ACCOMPANIMENT_INDICATOR WS+ (voice_list)? (BEAT_INDICATOR WS+ (voice_list | SILENCE))* NEWLINE
 ACCOMPANIMENT_INDICATOR: "acc" DIGIT+
 voice_list: (VOICE)+
 VOICE: /[1-4]/
@@ -409,6 +409,83 @@ m20 b1 i b2 V7 b3 i
 Form: nocturne
 Note: A harmonically rich nocturne exploring the full palette of extended harmonies and modal mixture. The piece moves through related keys before settling into the dramatic parallel minor, maintaining coherent voice-leading throughout despite complex chord extensions. The harmonic rhythm and added dissonances create an impressionistic atmosphere characteristic of Debussy.
 
+
+--------------------------------
+
+Example 5 : Full featured score with several voices
+
+Composer: AI Assistant
+Piece: Requiem in D minor
+Analyst: AI Composer
+Proofreader: Claude Assistant
+Time Signature: 4/4
+Movement: 1
+Tempo: 72
+Key Signature: -1
+Minor Sixth / Minor Seventh: quality
+Form: Requiem - Dies Irae
+Note: Solemn opening with polyphonic texture
+
+Instrument: V1=49, V2=61, V3=53, V4=48, B=46, T=53, A=53, S=53
+Note: V1=Violin 1, V2=French horn 2, V3=Choirs (barytons) 3, V4=Timpani (third octave), B=Cello pizzicato, T=Choirs, A=Choirs, S=Choirs
+
+e1 b1 tempo(72) b1 velocity(f)
+m1 b1 d: i b3 V
+mel1 V1 b1 D5 b2 E5 b3 F5 b4 G5
+mel1 V2 b1 A4 b3 C5
+mel1 V3 b1 F4 b2 G4 b3 A4 b4 B4
+acc1 b1 1234
+
+m2 b1 i b3 iv
+mel2 V1 b1 A5 b2 G5 b3 F5 b4 E5
+mel2 V2 b1 F5 b3 D5
+mel2 V3 b1 D4 b2 E4 b3 F4 b4 G4
+acc2 b1 1234
+
+m3 b1 V b3 i
+mel3 V1 b1 D5 b3 Bb4 b4.5 A4
+mel3 V2 b1 A4 b2 G4 b3 F4 b4 E4
+mel3 V3 b1 F4 b2 E4 b3 D4 b4.5 C4
+acc3 b1 1234
+
+e4 b1 velocity(ff)
+m4 b1 iv b2 V b3 VI b4 V/V
+mel4 V1 b1 G5 b3 Bb5 b4 E5
+mel4 V2 b1 R b4 C#5
+mel4 V3 b1 Bb4 b2 C5 b3 D5 b4 A4
+mel4 V4 b1 D4 b4 A3
+acc4 b1 1234
+
+e5 b1 start_crescendo(f) b4 end_crescendo(ff)
+m5 b1 V b2 i6 b3 iv b4 V7
+mel5 V1 b1 A5 b2 F5 b3 G5 b4 A5
+mel5 V2 b1 E5 b2 D5 b3 E5 b4 E5
+mel5 V3 b1 C5 b2 A4 b3 Bb4 b4 C5
+mel5 V4 b1 R
+acc5 b1 1234
+
+m6 b1 i b2 V6/iv b3 iv b4 V7
+mel6 V1 b1 D5 b2 C5 b3 Bb4 b4 A4
+mel6 V2 b1 A4 b2 G4 b3 F4 b4 E4
+mel6 V3 b1 F4 b2 E4 b3 D4 b4 C#4
+mel6 V4 b1 D4 b2 D4 b3 D4 b4 A3
+acc6 b1 1234
+
+e7 start_diminuendo(f) b4 end_diminuendo(p)
+m7 b1 i b2 VI b3 iio6 b4 V
+mel7 V1 b1 D5 b2 Bb4 b3 E5 b4 A4
+mel7 V2 b1 F4 b2 D4 b3 C5 b4 E4
+mel7 V3 b1 A4 b2 F4 b3 G4 b4 C#4
+mel7 V4 b1 D4 b2 Bb3 b3 E4 b4 A3
+acc7 b1 1234
+
+m8 b1 i b2 iv6 b3 V b4 i
+mel8 V1 b1 D5 b2 F5 b3 E5 b4 D5
+mel8 V2 b1 A4 b2 D5 b3 C#5 b4 D5
+mel8 V3 b1 F4 b2 Bb4 b3 A4 b4 F4
+mel8 V4 b1 D4 b2 D4 b3 A3 b4 D4
+acc8 b1 1234
+
 Rules for harmony (lines starting with m<index>)
 ======================================================
 
@@ -447,6 +524,125 @@ You can add, modify or omit notes using the keywords "[add<interval>] or "[<inte
 You can specify a silenced harmony (no chord or no definissable chord) using the `NC` symbol. This symbol can't have an inversion or extension of secondary tonality.
 
 
+
+Rules for instrument specification
+=================================
+
+You can specify the instrument in the instrument line (starting with "Instrument:").
+We use 1-indexed general midi. For reference here is a list of the general midi instruments:
+
+- 1 : Acoustic Grand Piano
+- 2 : Bright Acoustic Piano
+- 3 : Electric Grand Piano
+- 4 : Honky-Tonk Piano
+- 5 : Rhodes Piano
+- 6 : Chorused Piano
+- 7 : Harpsichord
+- 9 : Celesta
+- 10 : Glockenspiel
+- 11 : Music Box
+- 12 : Vibraphone
+- 13 : Marimba
+- 14 : Xylophone
+- 15 : Tubular Bells
+- 16 : Dulcimer or Santoor
+- 17 : Drawbar Organ or Organ 1
+- 18 : Percussive Organ or Organ 2
+- 19 : Rock Organ or Organ 3
+- 20 : Church Organ
+- 21 : Reed Organ
+- 22 : Accordion
+- 23 : Harmonica
+- 24 : Bandoneon or Tango Accordion
+- 25 : Acoustic Guitar (nylon)
+- 26 : Acoustic Guitar (steel)
+- 27 : Electric Guitar (jazz)
+- 28 : Electric Guitar (clean, often chorused, resembling a Stratocaster run through a Roland Jazz Chorus amplifier)
+- 29 : Electric Guitar (muted)
+- 30 : Electric Guitar (overdrive)
+- 31 : Electric Guitar (distortion)
+- 32 Electric Guitar (harmonics)
+- 33 Acoustic Bass
+- 34 Electric Bass (finger)
+- 35 Electric Bass (picked)
+- 36 Electric Bass (fretless)
+- 37 : Slap Bass 1
+- 38 : Slap Bass 2
+- 39 : Synth Bass 1
+- 40 : Synth Bass 2
+- 41 : Violin
+- 42 : Viola
+- 43 : Cello
+- 44 : Contrabass
+- 45 : Tremolo Strings
+- 46 : Pizzicato Strings
+- 47 : Orchestral Harp
+- 48 : Timpani
+- 49 : String Ensemble 1 (often in marcato)
+- 50 : String Ensemble 2 (slower attack than String Ensemble 1)
+- 51 : Synth Strings 1
+- 52 : Synth Strings 2
+- 53 : Choir Aahs
+- 54 : Voice Oohs (or Doos)
+- 55 : Synth Voice or Synth Choir
+- 56 : Orchestra Hit
+- 57 : Trumpet
+- 58 : Trombone
+- 59 : Tuba
+- 60 : Muted Trumpet
+- 61 : French Horn
+- 62 : Brass Section
+- 63 : Synth Brass 1
+- 64 : Synth Brass 2
+- 65 : Soprano Sax
+- 66 : Alto Sax
+- 67 : Tenor Sax
+- 68 : Baritone Sax
+- 69 : Oboe
+- 70 : English Horn
+- 71 : Bassoon
+- 72 : Clarinet
+- 73 : Piccolo
+- 74 : Flute
+- 75 : Recorder
+- 76 : Pan Flute
+- 77 : Blown bottle
+- 78 : Shakuhachi
+- 79 : Whistle
+- 80 : Ocarina
+- 81 : Lead 1 (square, often chorused)
+- 82 : Lead 2 (sawtooth or saw, often chorused)
+- 83 : Lead 3 (calliope, usually resembling a woodwind)
+- 84 : Lead 4 (chiff)
+- 85 : Lead 5 (charang, a guitar-like lead)
+- 86 : Lead 6 (voice, derived from "synth voice" with faster attack)
+- 87 : Lead 7 (fifths)
+- 88 : Lead 8 (bass and lead or solo lead or sometimes mistakenly called "brass and lead")
+- 89 : Pad 1 (new age, pad stacked with a bell, often derived from "Fantasia" patch from Roland D-50)
+- 90 : Pad 2 (warm, a mellower pad with slow attack)
+- 91 : Pad 3 (polysynth or poly, a saw-like percussive pad resembling an early 1980s polyphonic synthesizer)
+- 92 : Pad 4 (choir, identical to "synth voice" with longer decay)
+- 93 : Pad 5 (bowed glass or bowed, a sound resembling a glass harmonica)
+- 94 : Pad 6 (metallic, often created from a piano or guitar sample played with the attack removed)
+- 95 : Pad 7 (halo, choir-like pad, often with a filter effect)
+- 96 : Pad 8 (sweep, pad with a pronounced "wah" filter effect)
+- 97 : FX 1 (rain, a bright pluck with echoing pulses that decreases in pitch)
+- 98 : FX 2 (soundtrack, a bright perfect fifth pad)
+- 99 : FX 3 (crystal, a synthesized bell sound)
+- 100 : FX 4 (atmosphere, usually a classical guitar-like sound)
+- 101 : FX 5 (brightness, bright pad stacked with choir or bell)
+- 102 : FX 6 (goblins, a slow-attack pad with chirping or murmuring sounds)
+- 103 : FX 7 (echoes or echo drops, similar to "rain")
+- 104 : FX 8 (sci-fi or star theme, usually an electric guitar-like pad)
+- 105 : Sitar
+- 106 : Banjo
+- 107 : Shamisen
+- 108 : Koto
+- 109 : Kalimba
+- 110 : Bag pipe
+- 111 : Fiddle
+- 112 : Shanai
+
 Rules for melody (lines starting with mel<index>)
 ==================================================
 
@@ -456,9 +652,10 @@ You write "mel" then the bar number, so "mel2" means the second bar of the song.
 
 **Voice specification**
 
-You can specify the voice with the voice name (V1, V2, B, T, A, S). By default the melody will be played by the first voice (V1).
+You can specify the voice with the voice name (V1, V2, V3, V4, ...). By default the melody will be played by the first voice (V1).
 You are not forced to specify all voices for each bar, sometime a voice can remain silent.
-When stopping a voice, don't forget to use the "R" symbol to stop the voice.
+When stopping a voice, don't forget to use the "R" symbol to stop the voice, a note lasts until next note if you don't !
+S,A,T,B voices are reserved for the accompaniment line (acc), do not use them in a melody line.
 
 **Time in bar specification**
 
@@ -516,7 +713,6 @@ You write "m" then the bar number, so "mel2" means the second bar of the song. T
 
 **Time in bear specification (beat)**
 You use "b" + the beat number as a float number. It is 1-indexed so b1 is the first beat.
-
 
 
 Rules for accompaniment (lines starting by acc<index>)
@@ -585,9 +781,6 @@ Multiple events can be specified at the same beat. For example:
 e1 b1 tempo(120) b1 velocity(mf)
 
 
-
-
-
 General guidelines for musical composition
 ===========================================
 
@@ -600,6 +793,7 @@ Rhythm and Melody
 - Create melodic patterns and motifs but vary them through development
 - Include chromatic passing tones and neighbor tones for color
 - Pay attention to voice leading, especially with leading tones in minor keys
+- Never use "S" "A" "T" "B" voices for melody, they are reserved for the accompaniment line.
 
 Harmony and Structure 
 ---------------------
@@ -638,4 +832,5 @@ Musical Expression
 - Prefer using crescendo and diminuendo to create smoother dynamics rather than directly modifying the velocity (except for sudden dynamics changes).
 - Use all piano voices by default (GM=1) and only one voice for the melody.
 - When writing for multiple voices, never use the same note density for all the voices, sometimes voices can rest. 
-- The rhythm of each voice has to be different to avoid monotony and to give a polyphonic texture.
+- The rhythm of each voice has to be very different to avoid monotony and to give a polyphonic texture.
+- When writing for multiple voices, put one voice in syncopation, one voice with one note per bar, one note playing fast, .... Find a way to differentiate the voices in each bar OTHER than playing different notes. 

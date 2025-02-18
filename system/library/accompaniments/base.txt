@@ -1,0 +1,418 @@
+Title: Eight note Alberti bass
+Time Signature: 4/4
+Duration: 1 bar
+Tempo: 90 to 160
+Description: Standard alternating arpeggio bass in eight notes, pattern of one bar. Typical classic era accompaniment pattern. Used very often in Mozart sonatas.
+Accompaniment: 
+acc1 b1 1 b1.5 3 b2 2 b2.5 3 b3 1 b3.5 3 b4 2 b4.5 3
+
+Title: Waltz bass
+Time Signature: 3/4
+Duration: 1 bar
+Tempo: 120 to 180
+Description: Classic waltz pattern with strong bass on first beat followed by two chordal accompaniments. The foundation of Viennese waltz.
+Accompaniment:
+acc1 b1 1 b2 23 b3 23
+
+Title: Bossa Nova basic
+Time Signature: 4/4
+Duration: 2 bars
+Tempo: 80 to 130
+Description: Syncopated Latin pattern characteristic of Bossa Nova. Two-bar pattern with subtle variations.
+Accompaniment:
+acc1 b1 1 b2 23 b2.5 23 b3 1 b4 23 b4.5 23
+acc2 b1 1 b2 23 b2.5 23 b3 1 b4 23
+
+Title: Chorale block chords
+Time Signature: 4/4
+Duration: 1 bar
+Tempo: 60 to 120
+Description: Simple four-part chorale texture with all voices moving together. Typical in hymns and Bach chorales.
+Accompaniment:
+acc1 b1 1234 b2 1234 b3 1234 b4 1234
+
+Title: Slow ballad
+Time Signature: 4/4
+Duration: 1 bar
+Tempo: 60 to 80
+Description: Romantic ballad pattern with rolled chords. Common in pop ballads and slow jazz.
+Accompaniment:
+acc1 b1 1 b1.1 2 b1.2 3 b1.3 4 b3 1 b3.1 2 b3.2 3 b3.3 4
+
+Title: Baroque walking bass
+Time Signature: 4/4
+Duration: 1 bar
+Tempo: 80 to 120
+Description: Quarter note bass line with sustained upper voices. Common in Baroque continuo playing.
+Accompaniment:
+acc1 b1 1234 b2 1 b3 1 b4 1
+
+Title: Tango basic rhythm
+Time Signature: 4/4
+Duration: 2 bars
+Tempo: 100 to 130
+Description: Classic tango rhythm with characteristic syncopation and marcato accents.
+Accompaniment:
+acc1 b1 1234 b2 1 b3 1234 b4 1
+acc2 b1 1234 b2.5 1234 b3 1234 b4 1
+
+Title: Sixteenth note perpetuum mobile
+Time Signature: 4/4
+Duration: 1 bar
+Tempo: 60 to 100
+Description: Continuous sixteenth note pattern. Common in virtuosic classical pieces.
+Accompaniment:
+acc1 b1 1 b1.25 2 b1.5 3 b1.75 4 b2 1 b2.25 2 b2.5 3 b2.75 4 b3 1 b3.25 2 b3.5 3 b3.75 4 b4 1 b4.25 2 b4.5 3 b4.75 4
+
+Title: Gospel shuffle
+Time Signature: 4/4
+Duration: 1 bar
+Tempo: 60 to 100
+Description: Swung eighth notes with full chords. Essential gospel piano pattern.
+Accompaniment:
+acc1 b1 1234 b1.67 234 b2 234 b2.67 234 b3 1234 b3.67 234 b4 234 b4.67 234
+
+Title: 6/8 Irish jig
+Time Signature: 6/8
+Duration: 1 bar
+Tempo: 120 to 160
+Description: Traditional Irish jig accompaniment pattern. Light and bouncy character.
+Accompaniment:
+acc1 b1 1 b1.33 23 b1.67 23 b2 1 b2.33 23 b2.67 23
+
+Title: Habanera rhythm
+Time Signature: 2/4
+Duration: 1 bar
+Tempo: 70 to 100
+Description: Classic Latin rhythm with dotted eighth note pattern. Famous from Carmen's aria.
+Accompaniment:
+acc1 b1 1 b1.75 1 b2 234
+
+Title: Ragtime stride
+Time Signature: 4/4
+Duration: 1 bar
+Tempo: 90 to 120
+Description: Classic ragtime left hand pattern with alternating bass and chord. Essential Scott Joplin style.
+Accompaniment:
+acc1 b1 1 b2 234 b3 1 b4 234
+
+Title: Boogie woogie basic
+Time Signature: 4/4
+Duration: 2 bars
+Tempo: 120 to 180
+Description: Eight note walking bass pattern with occasional chord hits. Foundation of boogie woogie piano.
+Accompaniment:
+acc1 b1 1 b1.5 1 b2 1 b2.5 1 b3 1 b3.5 1 b4 234
+acc2 b1 1 b1.5 1 b2 1 b2.5 1 b3 1 b3.5 1 b4 234
+
+Title: Baroque siciliana
+Time Signature: 12/8
+Duration: 1 bar
+Tempo: 60 to 90
+Description: Lilting dotted rhythm characteristic of baroque slow movements. Pastoral character.
+Accompaniment:
+acc1 b1 1234 b1.67 1 b2 234 b2.67 1 b3 234 b3.67 1 b4 234 b4.67 1
+
+Title: Jazz swing comping
+Time Signature: 4/4
+Duration: 1 bar
+Tempo: 120 to 220
+Description: Syncopated chord hits typical of jazz piano comping. Leaves space for soloist.
+Accompaniment:
+acc1 b1.5 234 b2.75 234 b3.25 234 b4.5 234
+
+Title: Bolero rhythm
+Time Signature: 3/4
+Duration: 2 bars
+Tempo: 60 to 90
+Description: Famous Spanish dance rhythm with characteristic triplet pattern.
+Accompaniment:
+acc1 b1 1 b1.33 2 b1.67 3 b2 23 b3 23
+acc2 b1 1 b1.33 2 b1.67 3 b2 23 b3 23
+
+Title: Nocturne accompaniment
+Time Signature: 4/4
+Duration: 1 bar
+Tempo: 60 to 100
+Description: Wide-spread broken chord pattern typical of Chopin nocturnes. Dreamy character.
+Accompaniment:
+acc1 b1 1 b1.33 2 b1.67 3 b2 4 b3 1 b3.33 2 b3.67 3 b4 4
+
+Title: Viennese waltz variation
+Time Signature: 3/4
+Duration: 2 bars
+Tempo: 150 to 180
+Description: More elaborate waltz pattern with passing notes in bass. Elegant dance character.
+Accompaniment:
+acc1 b1 1 b1.5 1 b2 23 b3 23
+acc2 b1 1 b2 23 b2.5 23 b3 23
+
+Title: March rhythm
+Time Signature: 2/4
+Duration: 1 bar
+Tempo: 110 to 140
+Description: Strong military march pattern with emphasis on downbeats. Ceremonial character.
+Accompaniment:
+acc1 b1 1234 b1.5 1 b2 234
+
+Title: Barcarolle
+Time Signature: 6/8
+Duration: 1 bar
+Tempo: 60 to 80
+Description: Gentle rocking motion imitating Venetian gondolier songs. Flowing character.
+Accompaniment:
+acc1 b1 1 b1.33 2 b1.67 3 b2 1 b2.33 2 b2.67 3
+
+Title: Rumba clave
+Time Signature: 4/4
+Duration: 2 bars
+Tempo: 90 to 120
+Description: Classic Cuban rhythm with syncopated pattern. Essential Latin dance rhythm.
+Accompaniment:
+acc1 b1 1234 b2.5 234 b3 234 b4.5 234
+acc2 b1 234 b2.5 234 b3 1234 b4 234
+
+Title: Baroque gigue
+Time Signature: 6/8
+Duration: 1 bar
+Tempo: 100 to 140
+Description: Lively baroque dance pattern with dotted rhythms. Common in Bach suites.
+Accompaniment:
+acc1 b1 1234 b1.67 1 b2 234 b2.33 1 b2.67 234
+
+Title: Romantic guitar
+Time Signature: 4/4
+Duration: 1 bar
+Tempo: 70 to 100
+Description: Arpeggiated pattern reminiscent of classical guitar. Suitable for lyrical passages.
+Accompaniment:
+acc1 b1 1 b1.25 2 b1.5 3 b1.75 4 b2 3 b2.25 2 b2.5 1 b2.75 2 b3 1 b3.25 2 b3.5 3 b3.75 4 b4 3 b4.25 2 b4.5 1 b4.75 2
+
+Title: Samba basic
+Time Signature: 2/4
+Duration: 2 bars
+Tempo: 90 to 130
+Description: Brazilian samba pattern with characteristic syncopation. Energetic dance rhythm.
+Accompaniment:
+acc1 b1 1 b1.25 23 b1.75 23 b2 1 b2.25 23
+acc2 b1 1 b1.25 23 b1.75 23 b2 1234
+
+Title: Minimalist pulse
+Time Signature: 4/4
+Duration: 1 bar
+Tempo: 120 to 160
+Description: Steady eighth note pattern with alternating dynamics. Inspired by minimalist composers.
+Accompaniment:
+acc1 b1 1234 b1.5 23 b2 1234 b2.5 23 b3 1234 b3.5 23 b4 1234 b4.5 23
+
+Title: Passacaglia ground
+Time Signature: 3/4
+Duration: 1 bar
+Tempo: 60 to 90
+Description: Stately baroque bass pattern with sustained chords. Foundation for variations.
+Accompaniment:
+acc1 b1 1234 b1.5 1 b2 234 b2.5 1 b3 234
+
+Title: Jazz ballad
+Time Signature: 4/4
+Duration: 2 bars
+Tempo: 50 to 80
+Description: Sparse, rubato style accompaniment. Leaves space for expressive melody.
+Accompaniment:
+acc1 b1 1234 b2.5 234 b3.75 234
+acc2 b1.5 234 b3 1234 b4.5 234
+
+Title: Tarantella
+Time Signature: 6/8
+Duration: 2 bars
+Tempo: 140 to 180
+Description: Fast Italian folk dance pattern. Whirling, perpetual motion character.
+Accompaniment:
+acc1 b1 1 b1.33 23 b1.67 23 b2 1 b2.33 23 b2.67 23
+acc2 b1 1 b1.33 23 b1.67 1 b2 23 b2.33 1 b2.67 23
+
+Title: Contemporary ostinato
+Time Signature: 5/4
+Duration: 1 bar
+Tempo: 90 to 120
+Description: Modern asymmetrical pattern. Creates forward momentum through irregular grouping.
+Accompaniment:
+acc1 b1 1234 b2 23 b3 1234 b4 23 b5 1234
+
+Title: Baroque sarabande
+Time Signature: 3/4
+Duration: 1 bar
+Tempo: 60 to 80
+Description: Dignified baroque dance with emphasis on second beat. Noble character.
+Accompaniment:
+acc1 b1 1 b2 1234 b2.5 23 b3 234
+
+Title: Impressionist waves
+Time Signature: 4/4
+Duration: 1 bar
+Tempo: 60 to 90
+Description: Flowing arpeggios with irregular groupings. Debussy-inspired texture.
+Accompaniment:
+acc1 b1 1 b1.2 2 b1.4 3 b1.6 4 b1.8 3 b2 2 b2.2 1 b2.4 2 b2.6 3 b2.8 4 b3 3 b3.2 2 b3.4 1 b3.6 2 b3.8 3 b4 4 b4.2 3 b4.4 2 b4.6 1
+
+Title: Renaissance galliard
+Time Signature: 3/4
+Duration: 2 bars
+Tempo: 100 to 140
+Description: Lively Renaissance dance with hemiola patterns. Strong rhythmic character.
+Accompaniment:
+acc1 b1 1234 b2 234 b3 234
+acc2 b1 1234 b2.5 234 b3 1234
+
+Title: Funk groove
+Time Signature: 4/4
+Duration: 1 bar
+Tempo: 90 to 120
+Description: Syncopated funk pattern with ghost notes. Strong emphasis on beat one.
+Accompaniment:
+acc1 b1 1234 b1.75 1 b2.5 234 b3 1 b3.5 234 b4.25 1 b4.75 234
+
+Title: Medieval estampie
+Time Signature: 6/8
+Duration: 2 bars
+Tempo: 110 to 150
+Description: Medieval dance pattern with drone bass. Modal character.
+Accompaniment:
+acc1 b1 1234 b1.67 23 b2 1234 b2.67 23
+acc2 b1 1234 b1.67 23 b2 1234
+
+Title: Contemporary clusters
+Time Signature: 4/4
+Duration: 1 bar
+Tempo: 40 to 80
+Description: Modern cluster chords with varying densities. Atmospheric texture.
+Accompaniment:
+acc1 b1 1234 b2.25 23 b2.75 234 b3.5 1234 b4.25 23 b4.75 1234
+
+Title: Gamelan-inspired
+Time Signature: 7/8
+Duration: 2 bars
+Tempo: 120 to 160
+Description: Pattern inspired by Indonesian gamelan. Layered rhythmic cycles.
+Accompaniment:
+acc1 b1 1234 b1.5 23 b2 1 b2.5 234 b3 23 b3.5 1
+acc2 b1 1234 b1.5 23 b2 1234 b3 1234
+
+Title: Baroque courante
+Time Signature: 3/4
+Duration: 1 bar
+Tempo: 100 to 140
+Description: Running passages with triple meter. Common in baroque suites.
+Accompaniment:
+acc1 b1 1234 b1.33 1 b1.67 234 b2 1 b2.33 234 b2.67 1 b3 234
+
+Title: Jazz fusion
+Time Signature: 4/4
+Duration: 2 bars
+Tempo: 100 to 140
+Description: Complex jazz fusion pattern with mixed subdivisions. Modern jazz texture.
+Accompaniment:
+acc1 b1 1234 b1.67 23 b2.33 234 b3 1 b3.33 234 b4.67 23
+acc2 b1.33 1234 b2 23 b2.67 234 b3.33 1 b4 1234
+
+Title: Celtic slip jig
+Time Signature: 9/8
+Duration: 1 bar
+Tempo: 110 to 150
+Description: Traditional Irish slip jig pattern. Flowing triple meter dance.
+Accompaniment:
+acc1 b1 1 b1.33 23 b1.67 23 b2 1 b2.33 23 b2.67 23 b3 1 b3.33 23 b3.67 23
+
+Title: Flamenco bulería
+Time Signature: 12/8
+Duration: 1 bar
+Tempo: 180 to 240
+Description: Complex flamenco rhythm with characteristic accents. Intense Spanish character.
+Accompaniment:
+acc1 b1 1234 b1.67 1 b2 234 b2.67 1 b3 234 b3.33 1 b3.67 234 b4 1 b4.33 234 b4.67 1
+
+Title: Minimalist phase pattern
+Time Signature: 3/4
+Duration: 3 bars
+Tempo: 120 to 160
+Description: Repeating pattern that shifts phase gradually. Inspired by Steve Reich.
+Accompaniment:
+acc1 b1 1234 b1.33 23 b2 1234 b2.33 23 b3 1234
+acc2 b1.17 1234 b1.5 23 b2.17 1234 b2.5 23 b3.17 1234
+acc3 b1.33 1234 b1.67 23 b2.33 1234 b2.67 23 b3.33 1234
+
+Title: Baroque allemande
+Time Signature: 4/4
+Duration: 1 bar
+Tempo: 80 to 120
+Description: Elegant baroque dance with upbeat character. Common in Bach suites.
+Accompaniment:
+acc1 b1 1234 b1.75 1 b2 234 b2.75 1 b3 234 b3.75 1 b4 234
+
+Title: Contemporary jazz waltz
+Time Signature: 3/4
+Duration: 2 bars
+Tempo: 160 to 200
+Description: Modern take on jazz waltz with displaced accents. Complex rhythmic feel.
+Accompaniment:
+acc1 b1 1234 b1.67 23 b2.33 234 b3 1
+acc2 b1.33 234 b2 1234 b2.67 23 b3.33 234
+
+Title: Indian tala inspired
+Time Signature: 7/4
+Duration: 1 bar
+Tempo: 80 to 120
+Description: Pattern based on North Indian classical rhythms. Cyclical structure.
+Accompaniment:
+acc1 b1 1234 b1.5 23 b2 1 b3 234 b4 1234 b5 23 b6 1234 b7 23
+
+Title: Baroque passepied
+Time Signature: 3/8
+Duration: 2 bars
+Tempo: 100 to 140
+Description: Light and quick baroque dance. Similar to minuet but faster.
+Accompaniment:
+acc1 b1 1234 b2 23 b3 234
+acc2 b1 1 b2 234 b3 1234
+
+Title: Modern tango variation
+Time Signature: 4/4
+Duration: 2 bars
+Tempo: 90 to 120
+Description: Contemporary take on tango rhythm with jazz influences. Sophisticated texture.
+Accompaniment:
+acc1 b1 1234 b2.33 23 b3 1 b3.67 234 b4.33 23
+acc2 b1 1234 b1.67 23 b2.33 1 b3 234 b4.33 1234
+
+Title: Renaissance pavane
+Time Signature: 2/2
+Duration: 2 bars
+Tempo: 60 to 80
+Description: Stately Renaissance court dance. Processional character.
+Accompaniment:
+acc1 b1 1234 b1.5 23 b2 1234
+acc2 b1 1234 b1.75 23 b2 1234 b2.5 23
+
+Title: Afro-Cuban bembe
+Time Signature: 12/8
+Duration: 1 bar
+Tempo: 140 to 180
+Description: Traditional Afro-Cuban bell pattern with supporting voices. Sacred drumming style.
+Accompaniment:
+acc1 b1 1234 b1.33 23 b1.67 1 b2 234 b2.33 1 b2.67 23 b3 1234 b3.33 23 b3.67 1 b4 234 b4.33 1 b4.67 23
+
+Title: Contemporary polyrhythm
+Time Signature: 4/4
+Duration: 1 bar
+Tempo: 90 to 120
+Description: Modern pattern combining 3 against 4 against 5. Complex layered texture.
+Accompaniment:
+acc1 b1 1234 b1.33 23 b1.67 234 b2 1 b2.25 23 b2.5 234 b3 1 b3.33 23 b3.67 234 b4 1 b4.25 23 b4.5 234
+
+Title: Medieval conductus
+Time Signature: 6/4
+Duration: 1 bar
+Tempo: 60 to 90
+Description: Medieval rhythmic pattern with sustained voices. Ceremonial character.
+Accompaniment:
+acc1 b1 1234 b2 23 b3 1234 b4 23 b5 1234 b6 23

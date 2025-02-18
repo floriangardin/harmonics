@@ -463,6 +463,8 @@ def transform_accompaniment_line(node: Tree) -> Accompaniment:
                     voices.append(int(subchild.value))
             
             beats.append(AccompanimentBeat(beat=beat, voices=voices))
+        elif isinstance(child, Token) and child.type == "SILENCE":
+            beats.append(AccompanimentBeat(beat=beat, voices=[]))
 
     return Accompaniment(measure_number=measure_number, beats=beats)
 
