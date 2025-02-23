@@ -174,19 +174,30 @@ class Comment(BaseModel):
 # Accompaniment Models (NEW)
 # ------------------------------
 
+class AccompanimentVoice(BaseModel):
+    voice: int
+    octave: Optional[int] = 0
+    alteration: Optional[int] = 0
+
 class AccompanimentBeat(BaseModel):
     beat: float
-    voices: List[int]
+    voices: List[AccompanimentVoice]
 
 class AccompanimentBeatSilence(BaseModel):
     beat: float
-    voices: List[int] = []
+    voices: List[AccompanimentVoice] = []
 
 class Accompaniment(BaseModel):
     measure_number: int
     beats: List[AccompanimentBeat]
 
 
+class VariableDeclaration(BaseModel):
+    variable_name: str
+    variable_value: str
+
+class VariableCalling(BaseModel):
+    variable_name: str
 
 # A statement line can be any of the following:
 StatementLine = Union[
@@ -198,6 +209,7 @@ StatementLine = Union[
     Melody,
     Accompaniment,  # <-- NEW: Added accompaniment as a statement line
     Events,
+    VariableDeclaration,
 ]
 
 Line = Union[MetadataLine, StatementLine]
@@ -239,7 +251,7 @@ class TimeSignatureItem(BaseModel):
 class AccompanimentItem(BaseModel):
     time: float
     duration: float
-    voices: List[int]
+    voices: List[AccompanimentVoice]
     chord_index: Optional[int] = None
 
 class InstrumentItem(BaseModel):

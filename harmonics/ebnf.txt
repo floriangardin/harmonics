@@ -47,6 +47,15 @@ statement_line: measure_line
               | melody_line
               | accompaniment_line
               | event_line
+              | variable_declaration_line
+
+
+// --- Variable declaration line
+variable_declaration_line: VARIABLE_NAME WS* "=" WS* variable_content NEWLINE
+variable_content: accompaniment_line_content
+VARIABLE_NAME: /[_a-zA-Z][_a-zA-Z0-9]*/
+VARIABLE_VALUE: REST_LINE
+VARIABLE_CALLING: "@" VARIABLE_NAME
 
 // --- Event Lines
 event_line: "e" MEASURE_NUMBER WS* event_content+ NEWLINE
@@ -96,10 +105,15 @@ alteration_content: (( omit_alteration | add_alteration )? [ ACCIDENTAL ] DIGITS
 // ----------------------------
 // Accompaniment Grammar
 // ----------------------------
-accompaniment_line: ACCOMPANIMENT_INDICATOR WS+ (voice_list)? (BEAT_INDICATOR WS+ (voice_list | SILENCE))* NEWLINE
+accompaniment_line: ACCOMPANIMENT_INDICATOR WS+ (accompaniment_line_content | VARIABLE_CALLING) NEWLINE
+accompaniment_line_content: (voice_list)? (BEAT_INDICATOR WS+ (voice_list | SILENCE))* 
 ACCOMPANIMENT_INDICATOR: "acc" DIGIT+
-voice_list: (VOICE)+
+voice_list: (ALTERATION? VOICE OCTAVE?)+
 VOICE: /[1-4]/
+// Set the octave one octave higher or lower (o2=2 octaves up, o-2=2 octaves down)
+OCTAVE: "o" SIGNED_INT
+// Set the note one semitone higher or lower (++=2 semitones up, --=2 semitones down)
+ALTERATION: ("+" | "-")+
 
 // ----------------------------
 // Melody Grammar

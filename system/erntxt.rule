@@ -100,7 +100,8 @@ alteration_content: (( omit_alteration | add_alteration )? [ ACCIDENTAL ] DIGITS
 // --------------------
 // Accompaniment grammar
 // --------------------
-accompaniment_line: ACCOMPANIMENT_INDICATOR WS+ (voice_list)? (BEAT_INDICATOR WS+ (voice_list | SILENCE))* NEWLINE
+accompaniment_line: ACCOMPANIMENT_INDICATOR WS+ accompaniment_line_content
+accompaniment_line_content: (voice_list)? (BEAT_INDICATOR WS+ (voice_list | SILENCE))* NEWLINE
 ACCOMPANIMENT_INDICATOR: "acc" DIGIT+
 voice_list: (VOICE)+
 VOICE: /[1-4]/

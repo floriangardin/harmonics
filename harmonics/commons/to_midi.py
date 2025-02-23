@@ -251,12 +251,15 @@ def to_midi(filepath, score):
     else:
         for accompaniment_beat in score.accompaniment:
             current_chord = score.chords[accompaniment_beat.chord_index]
-            for voice in accompaniment_beat.voices:
+            for voice_obj in accompaniment_beat.voices:
+                voice = voice_obj.voice
+                octave = voice_obj.octave
+                total_alteration = voice_obj.alteration
                 voice_type = ["B", "T", "A", "S"][voice-1] if voice <= 4 else "S"
                 program = voice_program_map.get(voice_type, default_voice_programs[voice_type])
                 note_events.append([
                     accompaniment_beat.time,
-                    m21.pitch.Pitch(current_chord.pitches[voice-1]).midi,
+                    m21.pitch.Pitch(current_chord.pitches[voice-1]).midi + (octave)*12 + total_alteration,
                     accompaniment_beat.duration,
                     program,
                     None

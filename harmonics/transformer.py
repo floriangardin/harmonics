@@ -1,4 +1,4 @@
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict
 from lark import Tree, Token
 from .models import (
     Composer,
@@ -34,7 +34,10 @@ from .models import (
     Events,
     Event,
     Instrument,
-    Instruments
+    Instruments,
+    AccompanimentVoice,
+    VariableDeclaration,
+    VariableCalling,
 )
 
 def transform_token(token: Token) -> str:
@@ -445,26 +448,43 @@ def transform_melody_line(node: Tree) -> Melody:
 # ------------------------------
 # Statement line transformer
 # ------------------------------
-
-def transform_accompaniment_line(node: Tree) -> Accompaniment:
-    # accompaniment_line: ACCOMPANIMENT_INDICATOR (voice_list)* NEWLINE
-    measure_number = 0
+def transform_accompaniment_line_content(node: Tree) -> List[AccompanimentBeat]:
     beats: List[AccompanimentBeat] = []
     for child in node.children:
-        if isinstance(child, Token) and child.type == "ACCOMPANIMENT_INDICATOR":
-            # Remove the 'acc' prefix to get the measure number
-            measure_number = int(child.value[3:])
-        elif isinstance(child, Token) and child.type == "BEAT_INDICATOR":
+        if isinstance(child, Token) and child.type == "BEAT_INDICATOR":
             beat = float(child.value[1:])
         elif isinstance(child, Tree) and child.data == "voice_list":
-            voices: List[int] = []
+            voices: List[AccompanimentVoice] = []
+            total_alteration = 0
             for subchild in child.children:
                 if isinstance(subchild, Token) and subchild.type == "VOICE":
-                    voices.append(int(subchild.value))
+                    voices.append(AccompanimentVoice(voice=int(subchild.value), alteration=total_alteration))
+                    total_alteration = 0
+                elif isinstance(subchild, Token) and subchild.type == "OCTAVE":
+                    octave = int(subchild.value[1:])
+                    voices[-1].octave = octave
+                elif isinstance(subchild, Token) and subchild.type == "ALTERATION":
+                    total_alteration = subchild.value.count('+') - subchild.value.count('-')
             
             beats.append(AccompanimentBeat(beat=beat, voices=voices))
         elif isinstance(child, Token) and child.type == "SILENCE":
             beats.append(AccompanimentBeat(beat=beat, voices=[]))
+    return beats
+
+def transform_accompaniment_line(node: Tree, context: Dict[str, List[AccompanimentBeat]]) -> Accompaniment:
+    # accompaniment_line: ACCOMPANIMENT_INDICATOR (voice_list)* NEWLINE
+    measure_number = 0
+    beats: List[AccompanimentBeat] = []
+    for first_child in node.children:
+        octave = 0
+        if isinstance(first_child, Token) and first_child.type == "ACCOMPANIMENT_INDICATOR":
+            # Remove the 'acc' prefix to get the measure number
+            measure_number = int(first_child.value[3:])
+        elif isinstance(first_child, Token) and first_child.type == "VARIABLE_CALLING":
+            variable_name = first_child.value[1:]
+            beats = context[variable_name]
+        elif isinstance(first_child, Tree) and first_child.data == "accompaniment_line_content":
+            beats += transform_accompaniment_line_content(first_child)
 
     return Accompaniment(measure_number=measure_number, beats=beats)
 
@@ -490,8 +510,23 @@ def transform_instrument_line(node: Tree) -> Instruments:
             instruments.append(Instrument(voice_name=voice_name, gm_number=gm_number))
     return Instruments(instruments=instruments)
 
+def transform_variable_declaration_line(node: Tree, context: Dict[str, List[AccompanimentBeat]]) -> Dict[str, List[AccompanimentBeat]]:
+    # variable_declaration_line: VARIABLE_NAME WS* "=" WS* VARIABLE_VALUE NEWLINE
+    variable_name = ""
+    variable_value = ""
+    beats = []
+    for child in node.children:
+        if isinstance(child, Token) and child.type == "VARIABLE_NAME":
+            variable_name = transform_token(child)
+        elif isinstance(child, Tree) and child.data == "variable_content":
+            for subchild in child.children:
+                if isinstance(subchild, Tree) and subchild.data == "accompaniment_line_content":
+                    beats += transform_accompaniment_line_content(subchild)
+    context[variable_name] = beats
+    return None
 
-def transform_statement_line(node: Tree) -> StatementLine:
+
+def transform_statement_line(node: Tree, context: Dict[str, List[AccompanimentBeat]]) -> StatementLine:
     # statement_line: measure_line | pedal_line | form_line | note_line | repeat_line | melody_line | accompaniment_line
     child = node.children[0]
     if child.data == "measure_line":
@@ -507,9 +542,11 @@ def transform_statement_line(node: Tree) -> StatementLine:
     elif child.data == "melody_line":
         return transform_melody_line(child)
     elif child.data == "accompaniment_line":
-        return transform_accompaniment_line(child)
+        return transform_accompaniment_line(child, context)
     elif child.data == "event_line":
         return transform_event_line(child)
+    elif child.data == "variable_declaration_line":
+        return transform_variable_declaration_line(child, context)
     else:
         raise ValueError(f"Unknown statement_line type: {child.data}")
 
@@ -593,6 +630,7 @@ def parse_key_signature(key_signature: str) -> tuple[Optional[str], Optional[str
 
 def transform_document(tree: Tree) -> RomanTextDocument:
     lines = []
+    context = {}
     for child in tree.children:
         if isinstance(child, Token):
             pass
@@ -601,7 +639,9 @@ def transform_document(tree: Tree) -> RomanTextDocument:
                 if subchild.data == "metadata_line":
                     lines.append(transform_metadata_line(subchild))
                 elif subchild.data == "statement_line":
-                    lines.append(transform_statement_line(subchild))
+                    result = transform_statement_line(subchild, context)
+                    if result is not None:
+                        lines.append(result)
 
     document = RomanTextDocument(lines=lines)
     return document 

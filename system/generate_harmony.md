@@ -8,7 +8,7 @@ Duration: 16 bars
 Tempo: 90 to 160
 Description: 
 Example Tonality: C minor
-Accompaniment: 
+Harmony: 
 m1 b1 c: i
 m2 b1 V
 m3 b1 i
@@ -25,3 +25,11 @@ m13 b1 III
 m14 b1 VII
 m15 b1 i b2 V
 m16 b1 i ||
+
+
+Guidelines:
+
+- Use the markdown rules to structure the harmony.
+- Vary the harmonic rhythms and associated time signatures.
+- Vary the style of the harmony but focus on classic period era harmonies.
+- Vary the time signatures on the database

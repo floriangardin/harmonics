@@ -1,0 +1,241 @@
+Title: Mozart Manheim Rocket
+Time Signature: 4/4
+Duration: 1 bar
+Tempo: 90 to 160
+Description: Standard up arpeggiated melody in 4/4 time signature.
+Main Tonality: C Major
+Melody: 
+mel1 V1 b1 C4 b1.5 E4 b2 G4 b2.5 C5 b3 G4 b4 E4
+mel2 V1 b1 F4 b1.5 A4 b2 C5 b2.5 F5 b3 C5 b4 A4
+mel3 V1 b1 G4 b1.5 B4 b2 D5 b2.5 G5 b3 E5 b4 C5
+mel4 V1 b1 D5 b2 B4 b3 C5 b4 R
+
+Title: Bach Chorale Theme
+Time Signature: 4/4
+Duration: 2 bars
+Tempo: 60 to 80
+Description: Stepwise motion with occasional leaps, typical of Bach chorales
+Main Tonality: G Major
+Melody:
+mel1 V1 b1 G4 b2 A4 b3 B4 b4 C5
+mel2 V1 b1 D5 b2 B4 b3 G4 b4 R
+
+Title: Waltz Pattern
+Time Signature: 3/4
+Duration: 2 bars
+Tempo: 120 to 180
+Description: Classic waltz melody with emphasis on first beat
+Main Tonality: F Major
+Melody:
+mel1 V1 b1 F4 b2 A4 b3 C5
+mel2 V1 b1 F5 b2 D5 b3 A4
+
+Title: Baroque Sixteenth Run
+Time Signature: 4/4
+Duration: 1 bar
+Tempo: 80 to 120
+Description: Fast scalar passage with sixteenth notes
+Main Tonality: D Minor
+Melody:
+mel1 V1 b1 D4 b1.25 E4 b1.5 F4 b1.75 G4 b2 A4 b2.25 B4 b2.5 C#5 b2.75 D5 b3 A4 b4 D5
+
+Title: Renaissance Dance
+Time Signature: 6/8
+Duration: 2 bars
+Tempo: 100 to 140
+Description: Lilting compound meter dance pattern
+Main Tonality: A Minor
+Melody:
+mel1 V1 b1 A4 b1.33 C5 b1.67 E5 b2 A5 b2.33 G#5 b2.67 E5
+mel2 V1 b1 F5 b1.33 D5 b1.67 B4 b2 A4 b2.33 B4 b2.67 C5
+
+Title: Minimalist Pattern
+Time Signature: 5/4
+Duration: 1 bar
+Tempo: 100 to 120
+Description: Repetitive pattern with additive rhythm
+Main Tonality: E Minor
+Melody:
+mel1 V1 b1 E4 b2 G4 b3 B4 b4 A4 b5 B4
+
+Title: Jazz Blues Lick
+Time Signature: 4/4
+Duration: 1 bar
+Tempo: 120 to 160
+Description: Blues-scale based melodic pattern
+Main Tonality: Bb Major
+Melody:
+mel1 V1 b1 Bb4 b1.5 D5 b2 F5 b2.5 Gb5 b3 F5 b3.5 D5 b4 Bb4
+
+Title: Gregorian Chant
+Time Signature: 4/4
+Duration: 2 bars
+Tempo: 60 to 80
+Description: Flowing melodic line without strict meter
+Main Tonality: D Minor
+Melody:
+mel1 V1 b1 D4 b2 F4 b3 E4 b4 D4
+mel2 V1 b1 F4 b2 G4 b3 A4 b4 R
+
+Title: Folk Dance
+Time Signature: 2/4
+Duration: 4 bars
+Tempo: 110 to 140
+Description: Simple folk melody with dotted rhythms
+Main Tonality: D Major
+Melody:
+mel1 V1 b1 D4 b1.75 E4 b2 F#4
+mel2 V1 b1 G4 b1.5 A4 b2 B4
+mel3 V1 b1 A4 b2 F#4
+mel4 V1 b1 G4 b1.5 E4 b2 D4
+
+Title: Impressionist Motif
+Time Signature: 7/8
+Duration: 2 bars
+Tempo: 80 to 100
+Description: Irregular meter with whole tone scale fragments
+Main Tonality: C Major
+Melody:
+mel1 V1 b1 C5 b1.5 D5 b2 E5 b2.5 F#5 b3 G#5
+mel2 V1 b1 A#5 b2 G#5 b2.5 F#5 b3 E5
+
+Title: Bebop Line
+Time Signature: 4/4
+Duration: 2 bars
+Tempo: 160 to 220
+Description: Fast bebop phrase with chromatic approach notes
+Main Tonality: F Major
+Melody:
+mel1 V1 b1 F4 b1.5 G4 b2 Ab4 b2.5 A4 b3 Bb4 b3.5 B4 b4 C5
+mel2 V1 b1 D5 b1.5 Eb5 b2 E5 b2.5 F5 b3 D5 b4 F5
+
+Title: Gamelan Pattern
+Time Signature: 5/8
+Duration: 4 bars
+Tempo: 90 to 120
+Description: Pentatonic melody inspired by Indonesian gamelan
+Main Tonality: G Major
+Melody:
+mel1 V1 b1 G4 b2 B4 b3 D5
+mel2 V1 b1 E5 b2 D5 b3 B4
+mel3 V1 b1 G4 b2 A4 b3 B4
+mel4 V1 b1 D5 b2 B4 b3 G4
+
+Title: Celtic Jig
+Time Signature: 6/8
+Duration: 2 bars
+Tempo: 120 to 160
+Description: Traditional Irish dance rhythm
+Main Tonality: A Major
+Melody:
+mel1 V1 b1 A4 b1.33 B4 b1.67 C#5 b2 E5 b2.33 C#5 b2.67 A4
+mel2 V1 b1 F#5 b1.33 E5 b1.67 C#5 b2 A4 b2.33 B4 b2.67 C#5
+
+Title: Baroque Invention
+Time Signature: 3/4
+Duration: 2 bars
+Tempo: 100 to 120
+Description: Contrapuntal theme with sequential development
+Main Tonality: B Minor
+Melody:
+mel1 V1 b1 B4 b1.5 D5 b2 F#5 b2.5 A#5 b3 B5
+mel2 V1 b1 A5 b1.5 F#5 b2 D5 b2.5 B4 b3 F#4
+
+Title: Romantic Nocturne
+Time Signature: 12/8
+Duration: 1 bar
+Tempo: 60 to 80
+Description: Flowing melody with triplet accompaniment
+Main Tonality: Eb Major
+Melody:
+mel1 V1 b1 Eb5 b1.33 G5 b1.67 Bb5 b2 G5 b2.33 Eb5 b2.67 Bb4 b3 G4 b3.33 Bb4 b3.67 Eb5 b4 Bb4
+
+Title: Modern Asymmetric
+Time Signature: 9/8
+Duration: 2 bars
+Tempo: 100 to 130
+Description: Contemporary melody with irregular groupings
+Main Tonality: C Minor
+Melody:
+mel1 V1 b1 C5 b1.33 Eb5 b1.67 G5 b2 F5 b2.33 D5 b2.67 B4 b3 C5
+mel2 V1 b1 G4 b1.33 Ab4 b1.67 B4 b2 C5 b2.33 D5 b2.67 Eb5 b3 C5
+
+Title: Medieval Chant
+Time Signature: 3/4
+Duration: 4 bars
+Tempo: 70 to 90
+Description: Modal melody in Dorian mode
+Main Tonality: D Minor
+Melody:
+mel1 V1 b1 D4 b2 F4 b3 E4
+mel2 V1 b1 D4 b2 C4 b3 D4
+mel3 V1 b1 F4 b2 G4 b3 A4
+mel4 V1 b1 G4 b2 F4 b3 D4
+
+Title: Ragtime Syncopation
+Time Signature: 2/2
+Duration: 2 bars
+Tempo: 180 to 200
+Description: Syncopated melody with characteristic ragtime rhythm
+Main Tonality: C Major
+Melody:
+mel1 V1 b1 C5 b1.25 E5 b1.5 G5 b1.75 C6 b2 A5 b2.5 G5
+mel2 V1 b1 F5 b1.25 A5 b1.5 C6 b1.75 A5 b2 F5 b2.5 D5
+
+Title: Samba Pattern
+Time Signature: 2/4
+Duration: 2 bars
+Tempo: 120 to 140
+Description: Brazilian samba rhythm with syncopation
+Main Tonality: A Minor
+Melody:
+mel1 V1 b1 A4 b1.25 C5 b1.75 E5 b2 D5 b2.5 C5
+mel2 V1 b1 B4 b1.25 D5 b1.75 F5 b2 E5 b2.5 B4
+
+Title: Baroque Allemande
+Time Signature: 4/4
+Duration: 2 bars
+Tempo: 108 to 120
+Description: Elegant dance with upbeat character
+Main Tonality: G Major
+Melody:
+mel1 V1 b1 D5 b1.5 G5 b2 F#5 b2.5 G5 b3 A5 b3.5 B5 b4 G5
+mel2 V1 b1 F#5 b1.5 D5 b2 B4 b2.5 G4 b3 A4 b4 B4
+
+Title: Contemporary Minimalist
+Time Signature: 7/4
+Duration: 1 bar
+Tempo: 100 to 120
+Description: Repetitive pattern with additive process
+Main Tonality: E Minor
+Melody:
+mel1 V1 b1 E4 b2 G4 b3 B4 b4 D5 b5 C5 b6 B4 b7 E4
+
+Title: Tango Rhythm
+Time Signature: 4/4
+Duration: 2 bars
+Tempo: 120 to 130
+Description: Passionate tango melody with characteristic rhythm
+Main Tonality: A Minor
+Melody:
+mel1 V1 b1 A4 b1.5 C5 b2 E5 b3 D5 b3.5 C5 b4 B4
+mel2 V1 b1 A4 b2 E5 b2.5 F5 b3 E5 b4 A4
+
+Title: Indian Raga
+Time Signature: 16/4
+Duration: 1 bar
+Tempo: 60 to 80
+Description: Meditative melody based on Indian classical music
+Main Tonality: D Minor
+Melody:
+mel1 V1 b1 D5 b2 E5 b3 F5 b4 G5 b5 A5 b6 Bb5 b7 A5 b8 G5 b9 F5 b10 E5 b11 D5 b12 E5 b13 F5 b14 E5 b15 D5 b16 R
+
+Title: Balkan Dance
+Time Signature: 11/8
+Duration: 2 bars
+Tempo: 120 to 140
+Description: Complex Eastern European rhythm
+Main Tonality: E Minor
+Melody:
+mel1 V1 b1 E5 b1.33 F#5 b1.67 G5 b2 A5 b2.33 B5 b3 C6 b3.33 B5 b3.67 A5 b4 G5
+mel2 V1 b1 F#5 b1.33 G5 b1.67 A5 b2 B5 b2.33 C6 b3 B5 b3.33 A5 b3.67 G5 b4 E5
