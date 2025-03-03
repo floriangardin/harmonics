@@ -52,7 +52,7 @@ statement_line: measure_line
 
 // --- Variable declaration line
 variable_declaration_line: VARIABLE_NAME WS* "=" WS* variable_content NEWLINE
-variable_content: accompaniment_line_content
+variable_content: (accompaniment_line_content | melody_line_content | measure_line_content)
 VARIABLE_NAME: /[_a-zA-Z][_a-zA-Z0-9]*/
 VARIABLE_VALUE: REST_LINE
 VARIABLE_CALLING: "@" VARIABLE_NAME
@@ -65,7 +65,8 @@ EVENT_ARGUMENT: TEMPO_NUMBER | VELOCITY_VALUE
 VELOCITY_VALUE: "pppp" | "ppp" | "pp" | "p" | "mp" | "mf" | "f" | "ff" | "fff" | "ffff"
 
 // --- Measure / Harmonic Lines
-measure_line: MEASURE_INDICATOR (chord_beat_1)? (beat_chord | key_change)* PHRASE_BOUNDARY? NEWLINE
+measure_line: MEASURE_INDICATOR (measure_line_content|VARIABLE_CALLING) NEWLINE
+measure_line_content: (chord_beat_1)? (beat_chord | key_change)* PHRASE_BOUNDARY?
 chord_beat_1: (WS key)? WS chord
 beat_chord: WS BEAT_INDICATOR (WS key)? WS chord
 key_change: WS key
@@ -118,7 +119,8 @@ ALTERATION: ("+" | "-")+
 // ----------------------------
 // Melody Grammar
 // ----------------------------
-melody_line: MELODY_MEASURE_INDICATOR (WS+ VOICE_NAME)? (first_beat_note)? (beat_note)* NEWLINE
+melody_line: MELODY_MEASURE_INDICATOR (melody_line_content | VARIABLE_CALLING) NEWLINE
+melody_line_content: (WS+ VOICE_NAME)? (first_beat_note)? (beat_note)*
 MELODY_MEASURE_INDICATOR: "mel" MEASURE_NUMBER
 MELODY_BEAT_INDICATOR: ("b" | "t") DIGIT+ ("." DIGIT+)?
 first_beat_note: WS+ (MELODY_BEAT_INDICATOR WS+)? MELODY_NOTE (DELTA_OCTAVE)?
@@ -144,7 +146,7 @@ denominator: DIGIT+
 SIGNED_INT: ("+"|"-")? DIGIT+
 
 KEY: /[A-Ga-g](#{1,}|b{1,})?:/
-SPECIAL_CHORD: "Ger" | "It" | "Fr" | "N" | "Cad" | "NC"
+SPECIAL_CHORD: "Ger" | "It" | "Fr" | "N" | "Cad" | "NC" | "R" | "r"
 ROMAN_NUMERAL: "I" | "II" | "III" | "IV" | "V" | "VI" | "VII"
              | "i" | "ii" | "iii" | "iv" | "v" | "vi" | "vii"
 ACCIDENTAL: /#{1,}|b{1,}/

@@ -4,7 +4,7 @@ from music21.pitch import Pitch
 
 from .transformer import transform_document
 from .romanyh import generateBestHarmonization
-from .commons import to_mxl, to_midi
+from .commons import to_mxl, to_midi, to_audio
 from .models import Score
 
 CURRENT_FILEPATH = os.path.dirname(os.path.abspath(__file__))
@@ -62,4 +62,9 @@ class HarmonicsParser:
     def parse_to_midi(self, input_string, output_filename):
         score = self.parse_to_events(input_string)
         to_midi(output_filename, score)
+        return score
+    
+    def parse_to_audio(self, input_string, output_filename):
+        score = self.parse_to_events(input_string)
+        to_audio(output_filename, score)
         return score

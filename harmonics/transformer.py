@@ -164,6 +164,8 @@ def transform_special_chord(node: Tree) -> str:
     for child in node.children:
         if isinstance(child, Token) and child.type == "SPECIAL_CHORD":
             special = transform_token(child)
+            if special in ['r', 'R']:
+                special = "NC"
         elif isinstance(child, Tree) and child.data == "inversion":
             for subchild in child.children:
                 if isinstance(subchild, Token) and subchild.type == "INVERSION_STANDARD":
@@ -288,7 +290,24 @@ def transform_key_change(node: Tree) -> Key:
 # Measure line transformer
 # ------------------------------
 
-def transform_measure_line(node: Tree) -> Measure:
+def transform_measure_line_content(node: Tree, context: Dict[str, List[AccompanimentBeat]]) -> List[BeatItem]:
+    beat_items = []
+    for subchild in node.children:
+        if isinstance(subchild, Token) and subchild.type == "VARIABLE_CALLING":
+            variable_name = subchild.value[1:]
+            beat_items = context[variable_name]
+        elif subchild.data == "chord_beat_1":
+            beat_items.append(transform_beat_chord(subchild))
+        elif subchild.data == "beat_chord":
+            beat_items.append(transform_beat_chord(subchild))
+        elif subchild.data == "key_change":
+                beat_items.append(transform_key_change(subchild))
+        elif subchild.data == "PHRASE_BOUNDARY":
+            # For simplicity we join the token children
+            phrase_boundary = "".join(transform_token(c) for c in subchild.children if isinstance(c, Token))
+    return beat_items
+
+def transform_measure_line(node: Tree, context: Dict[str, List[AccompanimentBeat]]) -> Measure:
     # measure_line: MEASURE_INDICATOR (chord_beat_1)? (beat_chord | key_change)+ PHRASE_BOUNDARY? NEWLINE
     measure_number = 0
     beat_items: List[BeatItem] = []
@@ -296,16 +315,11 @@ def transform_measure_line(node: Tree) -> Measure:
     for child in node.children:
         if isinstance(child, Token) and child.type == "MEASURE_INDICATOR":
             measure_number = int(child.value[1:])
-        elif isinstance(child, Tree):
-            if child.data == "chord_beat_1":
-                beat_items.append(transform_beat_chord(child))
-            elif child.data == "beat_chord":
-                beat_items.append(transform_beat_chord(child))
-            elif child.data == "key_change":
-                beat_items.append(transform_key_change(child))
-            elif child.data == "PHRASE_BOUNDARY":
-                # For simplicity we join the token children
-                phrase_boundary = "".join(transform_token(c) for c in child.children if isinstance(c, Token))
+        elif isinstance(child, Token) and child.type == "VARIABLE_CALLING":
+            variable_name = child.value[1:]
+            beat_items = context[variable_name]
+        elif isinstance(child, Tree) and child.data == "measure_line_content":
+            beat_items = transform_measure_line_content(child, context)
     return Measure(
         measure_number=measure_number,
         beat_items=beat_items,
@@ -406,26 +420,21 @@ def transform_repeat_line(node: Tree) -> Repeat:
 # Melody line transformer
 # ------------------------------
 
-
-def transform_melody_line(node: Tree) -> Melody:
-    # melody_line: MELODY_MEASURE_INDICATOR (beat_note)* NEWLINE
+def transform_melody_line_content(node: Tree, context: Dict[str, List[AccompanimentBeat]]) -> List[BeatItem]:
     notes = []
-    bar_octave = 0
     voice_name = "V1"
+    is_silence = False
+    is_absolute_note = False
     for child in node.children:
-        is_absolute_note = False
-        is_silence = False
-        if isinstance(child, Token) and child.type == "MELODY_MEASURE_INDICATOR":
-            measure_number = int(child.value[len("mel"):])
-        elif isinstance(child, Token) and child.type == "VOICE_NAME":
-            voice_name = transform_token(child)
-        elif isinstance(child, Tree) and child.data in ["beat_note", "first_beat_note"]:
+        if isinstance(child, Tree) and child.data in ["beat_note", "first_beat_note"]:
             beat = 1
             octave = 0
             note = ""
             for token in child.children:
                 if isinstance(token, Token):
-                    if token.type == "MELODY_BEAT_INDICATOR":
+                    if token.type == "VOICE_NAME":
+                        voice_name = transform_token(token)
+                    elif token.type == "MELODY_BEAT_INDICATOR":
                         beat = float(token.value[1:]) # Remove 't' prefix
                     elif token.type == "MELODY_NOTE":
                         note = token.value.replace('/', '')
@@ -442,7 +451,22 @@ def transform_melody_line(node: Tree) -> Melody:
                 notes.append(AbsoluteMelodyNote(beat=beat, note=note))
             else:
                 notes.append(MelodyNote(beat=beat, note=note, octave=octave, voice_name=voice_name))
-            
+    return notes
+
+def transform_melody_line(node: Tree, context: Dict[str, List[AccompanimentBeat]]) -> Melody:
+    # melody_line: MELODY_MEASURE_INDICATOR (beat_note)* NEWLINE
+    notes = []
+    bar_octave = 0
+    voice_name = "V1"
+    for child in node.children:
+        if isinstance(child, Token) and child.type == "MELODY_MEASURE_INDICATOR":
+            measure_number = int(child.value[len("mel"):])
+        elif isinstance(child, Token) and child.type == "VARIABLE_CALLING":
+            variable_name = child.value[1:]
+            notes = context[variable_name]
+        elif isinstance(child, Tree) and child.data == "melody_line_content":
+            notes = transform_melody_line_content(child, context)
+                
     return Melody(measure_number=measure_number, notes=notes, voice_name=voice_name)
     
 # ------------------------------
@@ -450,6 +474,8 @@ def transform_melody_line(node: Tree) -> Melody:
 # ------------------------------
 def transform_accompaniment_line_content(node: Tree) -> List[AccompanimentBeat]:
     beats: List[AccompanimentBeat] = []
+    beat = 1
+
     for child in node.children:
         if isinstance(child, Token) and child.type == "BEAT_INDICATOR":
             beat = float(child.value[1:])
@@ -515,6 +541,7 @@ def transform_variable_declaration_line(node: Tree, context: Dict[str, List[Acco
     variable_name = ""
     variable_value = ""
     beats = []
+
     for child in node.children:
         if isinstance(child, Token) and child.type == "VARIABLE_NAME":
             variable_name = transform_token(child)
@@ -522,6 +549,10 @@ def transform_variable_declaration_line(node: Tree, context: Dict[str, List[Acco
             for subchild in child.children:
                 if isinstance(subchild, Tree) and subchild.data == "accompaniment_line_content":
                     beats += transform_accompaniment_line_content(subchild)
+                elif isinstance(subchild, Tree) and subchild.data == "melody_line_content":
+                    beats += transform_melody_line_content(subchild, context)
+                elif isinstance(subchild, Tree) and subchild.data == "measure_line_content":
+                    beats += transform_measure_line_content(subchild, context)
     context[variable_name] = beats
     return None
 
@@ -530,7 +561,7 @@ def transform_statement_line(node: Tree, context: Dict[str, List[AccompanimentBe
     # statement_line: measure_line | pedal_line | form_line | note_line | repeat_line | melody_line | accompaniment_line
     child = node.children[0]
     if child.data == "measure_line":
-        return transform_measure_line(child)
+        return transform_measure_line(child, context)
     elif child.data == "pedal_line":
         return transform_pedal_line(child)
     elif child.data == "form_line":
@@ -540,7 +571,7 @@ def transform_statement_line(node: Tree, context: Dict[str, List[AccompanimentBe
     elif child.data == "repeat_line":
         return transform_repeat_line(child)
     elif child.data == "melody_line":
-        return transform_melody_line(child)
+        return transform_melody_line(child, context)
     elif child.data == "accompaniment_line":
         return transform_accompaniment_line(child, context)
     elif child.data == "event_line":

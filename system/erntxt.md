@@ -89,7 +89,7 @@ Please note that for other time signatures one beat = one quarter note.
 ### Full EBNF Grammar
 
 // ----------------------------
-// Lark grammar for ERNTXT
+// Lark grammar for RomanText
 // ----------------------------
 ?start: document
 
@@ -102,14 +102,24 @@ line: metadata_line
 // ----------------------------
 metadata_line: composer_line
              | piece_line
+             | analyst_line
+             | proofreader_line
+             | movement_line
              | time_signature_line
+             | key_signature_line
+             | minor_mode_line
              | tempo_line
              | instrument_line
 
 composer_line: "Composer:" WS REST_LINE NEWLINE
 piece_line: "Piece:" WS REST_LINE NEWLINE
+analyst_line: "Analyst:" WS REST_LINE NEWLINE
+proofreader_line: "Proofreader:" WS REST_LINE NEWLINE
+movement_line: "Movement:" WS MEASURE_NUMBER NEWLINE
 time_signature_line: "Time Signature:" WS time_signature NEWLINE
 tempo_line: "Tempo:" WS* TEMPO_NUMBER NEWLINE  // Tempo number in QPM
+key_signature_line: "Key Signature:" WS SIGNED_INT NEWLINE
+minor_mode_line: "Minor Sixth / Minor Seventh:" WS MINOR_MODE_OPTION NEWLINE
 instrument_line: "Instrument:" WS VOICE_NAME WS* "=" WS* GM_NUMBER ("," WS* VOICE_NAME WS* "=" WS* GM_NUMBER)* NEWLINE
 
 VOICE_NAME: "V" DIGIT | "B" | "T" | "A" | "S"
@@ -127,6 +137,15 @@ statement_line: measure_line
               | melody_line
               | accompaniment_line
               | event_line
+              | variable_declaration_line
+
+
+// --- Variable declaration line
+variable_declaration_line: VARIABLE_NAME WS* "=" WS* variable_content NEWLINE
+variable_content: (accompaniment_line_content | melody_line_content | measure_line_content)
+VARIABLE_NAME: /[_a-zA-Z][_a-zA-Z0-9]*/
+VARIABLE_VALUE: REST_LINE
+VARIABLE_CALLING: "@" VARIABLE_NAME
 
 // --- Event Lines
 event_line: "e" MEASURE_NUMBER WS* event_content+ NEWLINE
@@ -136,7 +155,8 @@ EVENT_ARGUMENT: TEMPO_NUMBER | VELOCITY_VALUE
 VELOCITY_VALUE: "pppp" | "ppp" | "pp" | "p" | "mp" | "mf" | "f" | "ff" | "fff" | "ffff"
 
 // --- Measure / Harmonic Lines
-measure_line: MEASURE_INDICATOR (chord_beat_1)? (beat_chord | key_change)* PHRASE_BOUNDARY? NEWLINE
+measure_line: MEASURE_INDICATOR (measure_line_content|VARIABLE_CALLING) NEWLINE
+measure_line_content: (chord_beat_1)? (beat_chord | key_change)* PHRASE_BOUNDARY?
 chord_beat_1: (WS key)? WS chord
 beat_chord: WS BEAT_INDICATOR (WS key)? WS chord
 key_change: WS key
@@ -176,15 +196,21 @@ alteration_content: (( omit_alteration | add_alteration )? [ ACCIDENTAL ] DIGITS
 // ----------------------------
 // Accompaniment Grammar
 // ----------------------------
-accompaniment_line: ACCOMPANIMENT_INDICATOR WS+ (voice_list)? (BEAT_INDICATOR WS+ voice_list)* NEWLINE
+accompaniment_line: ACCOMPANIMENT_INDICATOR WS+ (accompaniment_line_content | VARIABLE_CALLING) NEWLINE
+accompaniment_line_content: (voice_list)? (BEAT_INDICATOR WS+ (voice_list | SILENCE))* 
 ACCOMPANIMENT_INDICATOR: "acc" DIGIT+
-voice_list: (VOICE)+
+voice_list: (ALTERATION? VOICE OCTAVE?)+
 VOICE: /[1-4]/
+// Set the octave one octave higher or lower (o2=2 octaves up, o-2=2 octaves down)
+OCTAVE: "o" SIGNED_INT
+// Set the note one semitone higher or lower (++=2 semitones up, --=2 semitones down)
+ALTERATION: ("+" | "-")+
 
 // ----------------------------
 // Melody Grammar
 // ----------------------------
-melody_line: MELODY_MEASURE_INDICATOR (WS+ VOICE_NAME)? (first_beat_note)? (beat_note)* NEWLINE
+melody_line: MELODY_MEASURE_INDICATOR (melody_line_content | VARIABLE_CALLING) NEWLINE
+melody_line_content: (WS+ VOICE_NAME)? (first_beat_note)? (beat_note)*
 MELODY_MEASURE_INDICATOR: "mel" MEASURE_NUMBER
 MELODY_BEAT_INDICATOR: ("b" | "t") DIGIT+ ("." DIGIT+)?
 first_beat_note: WS+ (MELODY_BEAT_INDICATOR WS+)? MELODY_NOTE (DELTA_OCTAVE)?
@@ -242,7 +268,7 @@ NEWLINE: WS* (CR? LF)+
 - Use sixteenth notes, eighth notes, quarter notes, half notes, whole notes, n-uplets, and syncopation for expressiveness.
 - Use passing and neighbor tones for expressiveness.
 - Use ornaments when appropriate.
-- Rests are very important to make the music breathe.
+- Rests are very important to make the music breathe. (Use `R` or `r` for rests)
 
 #### Harmony
 - Avoid overusing I-IV-V; incorporate secondary dominants, modal interchange, borrowed chords, inversions, and alterations.
@@ -257,6 +283,13 @@ NEWLINE: WS* (CR? LF)+
 - Control dynamics with crescendos and diminuendos rather than sudden changes.
 - Use tempo modifications for natural phrasing.
 - Create polyphonic textures with distinct rhythmic variations.
+
+
+#### Variables
+- Variables are declared with `@<name> = <value>`.
+- Variables can be used in harmonic lines, melody lines, and accompaniment lines.
+- Variables must be declared before they are used.
+- Variables can be used to declare (1 bar) accompaniments, melodies, and harmonies.
 
 ---
 
@@ -273,22 +306,26 @@ Tempo: 90
 Form: Nocturne
 Note: Section A - Mysterious opening
 
+arpeggiated_acc = b1 1 b2 2 b3 4 b4 3
+arpeggiated_acc_var1 = b1 1 b2 2 b3 3 b4 4
+block_chord_acc = b1 1234
+
 e1 b1 tempo(90) b1 velocity(f)
 m1 b1 e: i[add9] b3 III+ ||
 mel1 b1 B4 b2 E5 b2.5 F#5 b3 G5 b4 B5
-acc1 b1 1 b2 2 b3 4 b4 3
+acc1 @arpeggiated_acc
 
 m2 b1 VI b3 iiø7 b4 V7 ||
 mel2 b1 A5 b2 G5 b3 F#5 b4 D5
-acc2 b1 1 b2 2 b3 4 b4 3
+acc2 @arpeggiated_acc_var1
 
 m3 b1 i b3 III[add6] ||
 mel3 b1 E5 b2 G5 b3 B5 b4 r
-acc3 b1 1 b2 2 b3 4 b4 3
+acc3 @block_chord_acc
 
 m4 b1 VI b2 iv6 b3 V7 b4 i ||
 mel4 b1.5 C6 b2 B5 b3 A5 b4 G5
-acc4 b1 1 b2 2 b3 4 b4 3
+acc4 @arpeggiated_acc_var1
 
 Note: Section B - More chromatic
 
@@ -335,24 +372,27 @@ Note: Solemn opening with polyphonic texture
 Instrument: V1=49, V2=61, V3=53, V4=48, B=46, T=53, A=53, S=53
 Note: V1=Violin 1, V2=French horn 2, V3=Choirs (barytons) 3, V4=Timpani (third octave), B=Cello pizzicato, T=Choirs, A=Choirs, S=Choirs
 
+block_chord_acc = b1 1234
+first_melody = V1 b1 D5 b2 E5 b3 F5 b4 G5
+
 e1 b1 tempo(72) b1 velocity(f)
 m1 b1 d: i b3 V
-mel1 V1 b1 D5 b2 E5 b3 F5 b4 G5
+mel1 @first_melody
 mel1 V2 b1 A4 b3 C5
 mel1 V3 b1 F4 b2 G4 b3 A4 b4 B4
-acc1 b1 1234
+acc1 @block_chord_acc
 
 m2 b1 i[add9] b3 iv7
 mel2 V1 b1 A5 b2 G5 b3 F5 b4 E5
 mel2 V2 b1 F5 b3 D5
 mel2 V3 b1 D4 b2 E4 b3 F4 b4 G4
-acc2 b1 1234
+acc2 @block_chord_acc
 
 m3 b1 V7 b3 i
 mel3 V1 b1 D5 b3 Bb4 b4.5 A4
 mel3 V2 b1 A4 b2 G4 b3 F4 b4 E4
 mel3 V3 b1 F4 b2 E4 b3 D4 b4.5 C4
-acc3 b1 1234
+acc3 @block_chord_acc
 
 e4 b1 velocity(ff)
 m4 b1 iv b2 V b3 VI b4 V/V
@@ -360,7 +400,7 @@ mel4 V1 b1 G5 b3 Bb5 b4 E5
 mel4 V2 b1 R b4 C#5
 mel4 V3 b1 Bb4 b2 C5 b3 D5 b4 A4
 mel4 V4 b1 D4 b4 A3
-acc4 b1 1234
+acc4 @block_chord_acc
 
 e5 b1 start_crescendo(f) b4 end_crescendo(ff)
 m5 b1 V b2 i6 b3 iv b4 V7
@@ -368,14 +408,14 @@ mel5 V1 b1 A5 b2 F5 b3 G5 b4 A5
 mel5 V2 b1 E5 b2 D5 b3 E5 b4 E5
 mel5 V3 b1 C5 b2 A4 b3 Bb4 b4 C5
 mel5 V4 b1 R
-acc5 b1 1234
+acc5 @block_chord_acc
 
 m6 b1 i b2 V6/iv b3 iv b4 V7
 mel6 V1 b1 D5 b2 C5 b3 Bb4 b4 A4
 mel6 V2 b1 A4 b2 G4 b3 F4 b4 E4
 mel6 V3 b1 F4 b2 E4 b3 D4 b4 C#4
 mel6 V4 b1 D4 b2 D4 b3 D4 b4 A3
-acc6 b1 1234
+acc6 @block_chord_acc
 ```
 
 

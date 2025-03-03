@@ -406,7 +406,7 @@ class RomanTextDocument(BaseModel):
                     else:
                         if current_chord is None:
                             raise Exception('No chord found for measure {} at beat {}, while using an interval note'.format(current_bar_index, note.beat))
-                        current_chord_to_use = current_chord if current_chord.chord != "NC" else previous_current_chord
+                        current_chord_to_use = current_chord if current_chord.chord not in ["NC", "R", "r"] else previous_current_chord
 
                         pitch = getPitchFromIntervalFromMinimallyModifiedScale(current_chord_to_use.chord, current_chord_to_use.key, note.note, note.octave)
                     
