@@ -1,5 +1,6 @@
 import music21 as m21
 
+
 def to_mxl(filepath, score):
     # Create a new Music21 score
     score_template = m21.stream.Score()
@@ -27,7 +28,10 @@ def to_mxl(filepath, score):
 
     for note_items in score.chords:
         rn = m21.roman.RomanNumeral(note_items.chord, note_items.key)
-        b, t, a, s = [m21.note.Note(p, quarterLength=note_items.duration) for p in note_items.pitches]
+        b, t, a, s = [
+            m21.note.Note(p, quarterLength=note_items.duration)
+            for p in note_items.pitches
+        ]
         b.lyric = rn.lyric
         trebleStaff.insert(note_items.time, s)
         trebleStaff.insert(note_items.time, a)
@@ -39,7 +43,5 @@ def to_mxl(filepath, score):
     )
     score_template.insert(0, staffGroup)
 
-
-
     # Write the result as a MusicXML file to the given filepath.
-    score_template.write('musicxml', fp=filepath)
+    score_template.write("musicxml", fp=filepath)

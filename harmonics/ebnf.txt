@@ -30,10 +30,10 @@ time_signature_line: "Time Signature:" WS time_signature NEWLINE
 tempo_line: "Tempo:" WS* TEMPO_NUMBER NEWLINE  // Tempo number in QPM
 key_signature_line: "Key Signature:" WS SIGNED_INT NEWLINE
 minor_mode_line: "Minor Sixth / Minor Seventh:" WS MINOR_MODE_OPTION NEWLINE
-instrument_line: "Instrument:" WS VOICE_NAME WS* "=" WS* GM_NUMBER ("," WS* VOICE_NAME WS* "=" WS* GM_NUMBER)* NEWLINE
+instrument_line: "Instrument:" WS VOICE_NAME WS* "=" WS* GM_INSTRUMENT_NAME ("," WS* VOICE_NAME WS* "=" WS* GM_INSTRUMENT_NAME)* NEWLINE
 
 VOICE_NAME: "V" DIGIT | "B" | "T" | "A" | "S"
-GM_NUMBER: DIGIT+
+GM_INSTRUMENT_NAME: /[a-zA-Z_]+/
 TEMPO_NUMBER: DIGIT+
 
 // ----------------------------

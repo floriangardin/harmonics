@@ -1,5 +1,6 @@
 import pytest
-from harmonics.harmonics.parser import HarmonicsParser
+from harmonics.parser import HarmonicsParser
+
 
 def test_score_with_accompaniment():
     input_text = """
@@ -16,7 +17,7 @@ mel2 t1 D5 t2 F5 t3 A5
 """
     parser = HarmonicsParser()
     score = parser.parse_to_events(input_text)
-    
+
     # Check that chords, melody and accompaniment are parsed
     assert len(score.chords) > 0
     assert len(score.melody) > 0
@@ -29,9 +30,10 @@ mel2 t1 D5 t2 F5 t3 A5
     first_acc = score.accompaniment[0]
     second_acc = score.accompaniment[1]
     # In measure 1, we explicitly set voices [1,2]
-    assert first_acc.voices == [1, 2]
+    assert [el.voice for el in first_acc.voices] == [1, 2]
     # In measure 2, we explicitly set voices [3,4]
-    assert second_acc.voices == [3, 4]
+    assert [el.voice for el in second_acc.voices] == [3, 4]
+
 
 if __name__ == "__main__":
     pytest.main()

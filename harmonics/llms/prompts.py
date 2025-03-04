@@ -1,4 +1,3 @@
-
 import os
 
 SYSTEM_PROMPT = """
@@ -142,12 +141,16 @@ Assume 4/4.
 
 import os
 
-CFG_GRAMMAR_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "ebnf.txt")
+CFG_GRAMMAR_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "ebnf.txt"
+)
 
 with open(CFG_GRAMMAR_PATH, "r") as f:
     CFG_GRAMMAR = f.read()
 
-SYSTEM_PROMPT = SYSTEM_PROMPT.format(SAMPLE_INPUT=SAMPLE_INPUT, SAMPLE_INPUT_2=SAMPLE_INPUT_2, CFG_GRAMMAR=CFG_GRAMMAR)
+SYSTEM_PROMPT = SYSTEM_PROMPT.format(
+    SAMPLE_INPUT=SAMPLE_INPUT, SAMPLE_INPUT_2=SAMPLE_INPUT_2, CFG_GRAMMAR=CFG_GRAMMAR
+)
 
 
 SYSTEM_PROMPT_CORRECT = """
@@ -208,4 +211,6 @@ Some rules :
 - You can't use relative tonalities (for example no v: or V:, use the exact key name (g: or G: if you currently are in C:))
 """
 
-SYSTEM_PROMPT_CORRECT = SYSTEM_PROMPT_CORRECT.format(SAMPLE_INPUT=SAMPLE_INPUT, SAMPLE_INPUT_2=SAMPLE_INPUT_2, CFG_GRAMMAR=CFG_GRAMMAR)
+SYSTEM_PROMPT_CORRECT = SYSTEM_PROMPT_CORRECT.format(
+    SAMPLE_INPUT=SAMPLE_INPUT, SAMPLE_INPUT_2=SAMPLE_INPUT_2, CFG_GRAMMAR=CFG_GRAMMAR
+)

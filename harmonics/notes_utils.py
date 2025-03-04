@@ -1,41 +1,58 @@
 from music21 import key, scale, pitch, chord, defaults, roman
 import copy
 from .constants import BASE_OCTAVE
+
 # only some figures imply a root other than the bass (e.g. "54" does not)
 FIGURES_IMPLYING_ROOT: tuple[tuple[int, ...], ...] = (
     # triads
-    (6,), (6, 3), (6, 4),
+    (6,),
+    (6, 3),
+    (6, 4),
     # seventh chords
-    (6, 5, 3), (6, 5), (6, 4, 3), (4, 3), (6, 4, 2), (4, 2), (2,),
+    (6, 5, 3),
+    (6, 5),
+    (6, 4, 3),
+    (4, 3),
+    (6, 4, 2),
+    (4, 2),
+    (2,),
     # ninth chords
-    (7, 6, 5, 3), (6, 5, 4, 3), (6, 4, 3, 2), (7, 5, 3, 2),
+    (7, 6, 5, 3),
+    (6, 5, 4, 3),
+    (6, 4, 3, 2),
+    (7, 5, 3, 2),
     # eleventh chords
-    (9, 7, 6, 5, 3), (7, 6, 5, 4, 3), (9, 6, 5, 4, 3), (9, 7, 6, 4, 3), (7, 6, 5, 4, 2),
+    (9, 7, 6, 5, 3),
+    (7, 6, 5, 4, 3),
+    (9, 6, 5, 4, 3),
+    (9, 7, 6, 4, 3),
+    (7, 6, 5, 4, 2),
 )
 
 
 def matchInterval(interval):
-    interval = interval.replace('b', '-')
-    nb_flat = interval.count('-') * -1
-    nb_sharp = interval.count('#')
+    interval = interval.replace("b", "-")
+    nb_flat = interval.count("-") * -1
+    nb_sharp = interval.count("#")
     total_alteration = nb_flat + nb_sharp
-    text_accidental = ''
+    text_accidental = ""
     if total_alteration > 0:
-        text_accidental = '#' * total_alteration
+        text_accidental = "#" * total_alteration
     elif total_alteration < 0:
-        text_accidental = '-' * -total_alteration
-    interval_without_accidental = interval.replace('-', '')
-    interval_without_accidental = interval_without_accidental.replace('#', '')
+        text_accidental = "-" * -total_alteration
+    interval_without_accidental = interval.replace("-", "")
+    interval_without_accidental = interval_without_accidental.replace("#", "")
     stepNumber = int(interval_without_accidental)
     return text_accidental, stepNumber
 
+
 def getPitchFromInterval(figure, key, interval, octave):
-    '''
+    """
     Utility function to update the pitches to the new figure etc.
-    '''
+    """
     addAccidental, stepNumber = matchInterval(interval)
     rn = roman.RomanNumeral(figure, key)
-    useScale: key.Key|scale.ConcreteScale
+    useScale: key.Key | scale.ConcreteScale
     if rn.secondaryRomanNumeralKey is not None:
         useScale = rn.secondaryRomanNumeralKey
     elif rn.useImpliedScale and rn.impliedScale is not None:
@@ -45,24 +62,25 @@ def getPitchFromInterval(figure, key, interval, octave):
 
     # should be 7 but hey, octatonic scales, etc.
     # rn.scaleCardinality = len(useScale.pitches) - 1
-    if 'DiatonicScale' in useScale.classes:  # speed up simple case
+    if "DiatonicScale" in useScale.classes:  # speed up simple case
         rn.scaleCardinality = 7
     else:
         rn.scaleCardinality = useScale.getDegreeMaxUnique()
 
     bassScaleDegree = rn.bassScaleDegreeFromNotation(rn.figuresNotationObj)
-    bassPitch = useScale.pitchFromDegree(bassScaleDegree, direction=scale.Direction.ASCENDING)
+    bassPitch = useScale.pitchFromDegree(
+        bassScaleDegree, direction=scale.Direction.ASCENDING
+    )
     pitches: list[pitch.Pitch] = [bassPitch]
     lastPitch = bassPitch
     numberNotes = len(rn.figuresNotationObj.numbers)
 
     for j in range(numberNotes):
         i = numberNotes - j - 1
-        thisScaleDegree = (bassScaleDegree
-                            + rn.figuresNotationObj.numbers[i]
-                            - 1)
-        newPitch = useScale.pitchFromDegree(thisScaleDegree,
-                                            direction=scale.Direction.ASCENDING)
+        thisScaleDegree = bassScaleDegree + rn.figuresNotationObj.numbers[i] - 1
+        newPitch = useScale.pitchFromDegree(
+            thisScaleDegree, direction=scale.Direction.ASCENDING
+        )
         pitchName = rn.figuresNotationObj.modifiers[i].modifyPitchName(newPitch.name)
         newNewPitch = pitch.Pitch(pitchName)
         if newPitch.octave is not None:
@@ -74,8 +92,10 @@ def getPitchFromInterval(figure, key, interval, octave):
         pitches.append(newNewPitch)
         lastPitch = newNewPitch
 
-    if (rn.frontAlterationTransposeInterval
-            and rn.frontAlterationTransposeInterval.semitones != 0):
+    if (
+        rn.frontAlterationTransposeInterval
+        and rn.frontAlterationTransposeInterval.semitones != 0
+    ):
         chord_map = chord.tools.allChordSteps(chord.Chord(pitches))
         non_alter = (
             chord_map.get(7, None),
@@ -85,8 +105,12 @@ def getPitchFromInterval(figure, key, interval, octave):
         )
         for thisPitch in pitches:
             if thisPitch not in non_alter:
-                rn.frontAlterationTransposeInterval.transposePitch(thisPitch, inPlace=True)
-    rn.pitches = tuple(pitches)  # unnecessary tuple; mypy properties different typing bug
+                rn.frontAlterationTransposeInterval.transposePitch(
+                    thisPitch, inPlace=True
+                )
+    rn.pitches = tuple(
+        pitches
+    )  # unnecessary tuple; mypy properties different typing bug
 
     if rn.figuresNotationObj.numbers not in FIGURES_IMPLYING_ROOT:
         # Avoid deriving a nonsense root later
@@ -114,13 +138,14 @@ def getPitchFromInterval(figure, key, interval, octave):
                 newPitches.append(thisPitch)
         rn.pitches = tuple(newPitches)
 
-    if '-' in addAccidental:
-        alteration = addAccidental.count('-') * -1
+    if "-" in addAccidental:
+        alteration = addAccidental.count("-") * -1
     else:
-        alteration = addAccidental.count('#')
-    thisScaleDegree = (rn.scaleDegree + stepNumber - 1)
-    addedPitch = useScale.pitchFromDegree(thisScaleDegree,
-                                            direction=scale.Direction.ASCENDING)
+        alteration = addAccidental.count("#")
+    thisScaleDegree = rn.scaleDegree + stepNumber - 1
+    addedPitch = useScale.pitchFromDegree(
+        thisScaleDegree, direction=scale.Direction.ASCENDING
+    )
     if addedPitch.accidental is not None:
         addedPitch.accidental.alter += alteration
     else:
@@ -129,8 +154,10 @@ def getPitchFromInterval(figure, key, interval, octave):
     while addedPitch.ps < bassPitch.ps:
         addedPitch.octave += 1
 
-    if (addedPitch.ps == bassPitch.ps
-            and addedPitch.diatonicNoteNum < bassPitch.diatonicNoteNum):
+    if (
+        addedPitch.ps == bassPitch.ps
+        and addedPitch.diatonicNoteNum < bassPitch.diatonicNoteNum
+    ):
         # RN('IV[add#7]', 'C') would otherwise result
         # in E#4 as bass, not E#5 as highest note.
         addedPitch.octave += 1
@@ -148,24 +175,25 @@ def getPitchFromIntervalFromMinimallyModifiedScale(figure, key, interval, octave
     """
     text_accidental, step_number = matchInterval(interval)
     real_minimal_scale = getMinimallyModifiedScale(figure, key)
-    
-    scale_note = real_minimal_scale[(step_number-1) % len(real_minimal_scale)]
-    scale_note_octave = (step_number-1) // len(real_minimal_scale)
 
-    alteration = text_accidental.count('#') + text_accidental.count('-') * -1
-    scale_note_alteration = scale_note.count('#') + scale_note.count('-') * -1
+    scale_note = real_minimal_scale[(step_number - 1) % len(real_minimal_scale)]
+    scale_note_octave = (step_number - 1) // len(real_minimal_scale)
+
+    alteration = text_accidental.count("#") + text_accidental.count("-") * -1
+    scale_note_alteration = scale_note.count("#") + scale_note.count("-") * -1
     total_alteration = alteration + scale_note_alteration
     total_alteration_str = ""
     if total_alteration > 0:
-        total_alteration_str = '#' * total_alteration
+        total_alteration_str = "#" * total_alteration
     elif total_alteration < 0:
-        total_alteration_str = '-' * -total_alteration
+        total_alteration_str = "-" * -total_alteration
 
-    scale_note = scale_note.replace('#', '').replace('-', '')
+    scale_note = scale_note.replace("#", "").replace("-", "")
     scale_note = scale_note + total_alteration_str
     result = pitch.Pitch(scale_note, octave=scale_note_octave + BASE_OCTAVE)
     result.octave += octave
     return result.nameWithOctave
+
 
 def getMinimallyModifiedScale(rnStr, keyStr):
     """
@@ -173,18 +201,18 @@ def getMinimallyModifiedScale(rnStr, keyStr):
     return a list of 7 music21.pitch.Pitch objects that represent the
     diatonic scale (the mode of the key starting on the chord’s root)
     with any accidentals modified to “fit” the chord.
-    
+
     For example:
       getModifiedScale('iv','C') returns pitches corresponding to
       F, G, A♭, B, C, D, E
-      
+
       getModifiedScale('I[add#11]', 'D') returns
       D, E, F#, G#, A, B, C#
     """
     # Create the RomanNumeral chord object.
     rn = roman.RomanNumeral(rnStr, keyStr)
     # Get the key (music21.key.Key object)
-    k: key.Key|scale.ConcreteScale
+    k: key.Key | scale.ConcreteScale
     if rn.secondaryRomanNumeralKey is not None:
         k = rn.secondaryRomanNumeralKey
     elif rn.useImpliedScale and rn.impliedScale is not None:
@@ -205,7 +233,7 @@ def getMinimallyModifiedScale(rnStr, keyStr):
             break
     else:
         raise ValueError("Chord root not found in the diatonic scale of key " + keyStr)
-    
+
     # Now “patch” any scale degree that is altered in the chord.
     # (For example, in C–major the rotated scale is F, G, A, B, C, D, E.
     # But the chord “iv” (F minor) has tones F, A♭, C so we want the 3rd
@@ -221,14 +249,15 @@ def getMinimallyModifiedScale(rnStr, keyStr):
                 break
     return [n.name for n in modScale]
 
+
 # Try the examples:
-if __name__ == '__main__':
-    ms1 = getMinimallyModifiedScale('iv','C')
+if __name__ == "__main__":
+    ms1 = getMinimallyModifiedScale("iv", "C")
     print("Modified scale for RomanNumeral('iv','C'):")
     print([p.name for p in ms1])
     # Expected output: ['F', 'G', 'Ab', 'B', 'C', 'D', 'E']
 
-    ms2 = getMinimallyModifiedScale('I[add#11]', 'D')
+    ms2 = getMinimallyModifiedScale("I[add#11]", "D")
     print("\nModified scale for RomanNumeral('I[add#11]','D'):")
     print([p.name for p in ms2])
     # Expected output: ['D', 'E', 'F#', 'G#', 'A', 'B', 'C#']

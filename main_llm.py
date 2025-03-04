@@ -1,7 +1,8 @@
 import dotenv
+
 dotenv.load_dotenv()
 
-from harmonics import HarmonicsParser   
+from harmonics import HarmonicsParser
 
 text = r"""
 Composer: Ludwig van Beethoven
@@ -49,36 +50,38 @@ Note: A strong, resolute conclusion, reinforcing the home key with powerful domi
 """
 
 
-
 # parser = HarmonicsParser()
 # tree = parser.parse_to_midi(text, "test.mid")
 
 
 from harmonics.llms.generate import compose_rntxt
-prompt =  """
+
+prompt = """
 Create a sonata-allegro reminiscent of Debussy impressionist style.
 Post tonality, strong chord colors, no strong harmonic center and no clear dominant tonic relationship.
 Assume 4/4. Vary the harmonic rhythm, pace & mood during the piece.
 Use eight note duration chords sometimes.
 16 bars.
 """
-print('Composing ...')
+print("Composing ...")
 rntxt = compose_rntxt(prompt, model="gpt-4o")
 print(rntxt)
 
-print('Correcting ...')
+print("Correcting ...")
 from harmonics.llms.generate import correct_rntxt
+
 corrected_rntxt = correct_rntxt(rntxt, model="gpt-4o")
 print(corrected_rntxt)
 
-print('Parsing ...')
+print("Parsing ...")
 parser = HarmonicsParser()
 tree = parser.parse_to_midi(corrected_rntxt, "test.mid")
 
 # Generate unique uid
 import uuid
+
 uid = str(uuid.uuid4())
 
 # Save the rntxt
-with open(f'data/debussy_{uid[:5]}.rntxt', 'w') as f:
+with open(f"data/debussy_{uid[:5]}.rntxt", "w") as f:
     f.write(corrected_rntxt)

@@ -7,6 +7,7 @@ Copyright (c) 2020 Eric Zhang (until commit d4bd33b)
 
 from enum import IntEnum
 
+
 class PartEnum(IntEnum):
     SOPRANO = 3
     ALTO = 2

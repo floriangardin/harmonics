@@ -4,6 +4,7 @@ with BSD 3-Clause "New" or "Revised" License
 Copyright (c) 2020 Néstor Nápoles López (from commit 1cfe02c)
 Copyright (c) 2020 Eric Zhang (until commit d4bd33b)
 """
+
 import copy
 from functools import lru_cache
 
@@ -111,9 +112,7 @@ def getVerticalIntervalsFromPitches(pitches):
     """Cached method. Returns 6 vertical intervals: BT, BA, BS, TA, TS, AS."""
     cachedGetVerticalIntervalsFromPitches.append(pitches)
     return [
-        getInterval(pitches[i], pitches[j])
-        for i in range(3)
-        for j in range(i + 1, 4)
+        getInterval(pitches[i], pitches[j]) for i in range(3) for j in range(i + 1, 4)
     ]
 
 
@@ -133,9 +132,7 @@ def isTriad(pitches):
     return getChordFromPitches(pitches).isTriad()
 
 
-def _voice(
-    part, voicingSoFar, remainingNotes, closePosition=False, allowedUnisons=0
-):
+def _voice(part, voicingSoFar, remainingNotes, closePosition=False, allowedUnisons=0):
     if not remainingNotes:
         # Time to break the recursion
         pitches = tuple(voicingSoFar)
@@ -174,7 +171,7 @@ def _voice(
                     voicingSoFar + [pitchName],
                     newRemaining,
                     closePosition,
-                    allowedUnisons
+                    allowedUnisons,
                 )
 
 
@@ -202,6 +199,7 @@ def _voiceChord(pitches, closePosition=False, allowedUnisons=0):
         # TODO: Alternative doublings
     else:
         import itertools
+
         if len(pitchNames) >= 4:
             doublings = [list(l) for l in list(itertools.combinations(pitchNames, 4))]
             # Remove doublings where the root is not here
@@ -221,7 +219,9 @@ def _voiceChord(pitches, closePosition=False, allowedUnisons=0):
             doublings = [doubling]
         elif len(pitchNames) == 1:
             doublings = [[pitchNames[0] for i in range(4)]]
-            allowedUnisons = max(allowedUnisons, 2) # Otherwise it does not fit in octave range
+            allowedUnisons = max(
+                allowedUnisons, 2
+            )  # Otherwise it does not fit in octave range
         else:
             raise ValueError(f"Unexpected number of pitches: {len(pitchNames)}")
 
@@ -288,9 +288,7 @@ def progressionCost(key, pitches1, pitches2):
     cachedProgressionCost.append((key, pitches1, pitches2))
     chord1 = getChordFromPitches(pitches1)
     chord2 = getChordFromPitches(pitches2)
-    horizontalIntervals = [
-        getInterval(pitches1[i], pitches2[i]) for i in range(4)
-    ]
+    horizontalIntervals = [getInterval(pitches1[i], pitches2[i]) for i in range(4)]
     verticalIntervals1 = getVerticalIntervalsFromPitches(pitches1)
     verticalIntervals2 = getVerticalIntervalsFromPitches(pitches2)
 
@@ -369,10 +367,8 @@ def progressionCost(key, pitches1, pitches2):
     # Voice crossing
     for i in range(3):
         if (
-            horizontalIntervals[i].noteEnd
-            > horizontalIntervals[i + 1].noteStart
-            or horizontalIntervals[i + 1].noteEnd
-            < horizontalIntervals[i].noteStart
+            horizontalIntervals[i].noteEnd > horizontalIntervals[i + 1].noteStart
+            or horizontalIntervals[i + 1].noteEnd < horizontalIntervals[i].noteStart
         ):
             cost += applyRule(Rule.VOICE_CROSSING)
 
@@ -405,8 +401,7 @@ def progressionCost(key, pitches1, pitches2):
                 leadingToneIndex = chord1.pitchNames.index(leadingTone)
                 if (
                     horizontalIntervals[leadingToneIndex].directedName != "m2"
-                    and horizontalIntervals[leadingToneIndex].directedName
-                    != "M-3"
+                    and horizontalIntervals[leadingToneIndex].directedName != "M-3"
                 ):
                     cost += applyRule(Rule.LEADINGTONE_UNRESOLVED)
 
@@ -435,7 +430,9 @@ def chordCost(pitches):
     return cost
 
 
-def solveProgressionChords(chords, closePosition=False, firstVoicing=None, lastVoicing=None, allowedUnisons=0):
+def solveProgressionChords(
+    chords, closePosition=False, firstVoicing=None, lastVoicing=None, allowedUnisons=0
+):
     """Voices a chord progression in a specified key using DP.
 
     Follows eighteenth-century voice leading procedures, as guided by the cost
@@ -444,8 +441,11 @@ def solveProgressionChords(chords, closePosition=False, firstVoicing=None, lastV
     numerals in the chord progression.
     """
     romanNumerals = [m21.roman.RomanNumeral(chord.chord, chord.key) for chord in chords]
-    return solveProgression(romanNumerals, closePosition, firstVoicing, lastVoicing, allowedUnisons)
-    
+    return solveProgression(
+        romanNumerals, closePosition, firstVoicing, lastVoicing, allowedUnisons
+    )
+
+
 def solveProgression(
     romanNumerals,
     closePosition=False,
@@ -483,7 +483,7 @@ def solveProgression(
                     if ccost < best[0]:
                         best = (ccost, pv_pitches)
                 costTable[i][v] = (best[0] + chordCost(v), best[1])
-        
+
     return costTable
 
 
@@ -536,4 +536,3 @@ def generateHarmonization(costTable):
         yield (list(reversed(progression)), totalCost)
         # progressions[topNthAnswer] = (list(reversed(progression)), totalCost)
     return
-

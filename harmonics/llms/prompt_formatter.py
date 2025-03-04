@@ -29,6 +29,8 @@ with open(base_accompaniment_file, "r") as f:
 
 
 from harmonics.llms.instructions import INSTRUCTION
+
+
 class PromptFormatter:
     def __init__(self):
         self.data = {
@@ -43,15 +45,10 @@ class PromptFormatter:
         return template.render(**self.data)
 
 
-
-
-
-
-
-
-
 prompt_formatter = PromptFormatter()
 prompt = prompt_formatter.format_prompt(INSTRUCTION)
 
 
-from pdb import set_trace; set_trace()
+from pdb import set_trace
+
+set_trace()

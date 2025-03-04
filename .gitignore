@@ -23,3 +23,5 @@ test.mid
 .cursor
 *.mxl
 data/
+.coverage
+.vscode
