@@ -10,16 +10,21 @@ from music21 import roman, pitch
 def test_chord_pitch_from_interval():
     assert getPitchFromInterval("IV", "C", "b3", 0) == pitch.Pitch("Ab4").nameWithOctave
     assert (
-        getPitchFromInterval("IV[no5]", "C", "b5", 0) == pitch.Pitch("C-5").nameWithOctave
+        getPitchFromInterval("IV[no5]", "C", "b5", 0)
+        == pitch.Pitch("C-5").nameWithOctave
     )
     # When secondary roman numeral is not used, we use the base scale for intervals
     assert getPitchFromInterval("iv", "C", "3", 0) == pitch.Pitch("A4").nameWithOctave
     # When secondary roman numeral is used, we use the secondary scale for intervals
-    assert getPitchFromInterval("iv/i", "C", "3", 0) == pitch.Pitch("A-4").nameWithOctave
+    assert (
+        getPitchFromInterval("iv/i", "C", "3", 0) == pitch.Pitch("A-4").nameWithOctave
+    )
     # Again when secondary roman numeral is not used, we use the base scale for intervals
     assert getPitchFromInterval("iv", "c", "3", 0) == pitch.Pitch("A-4").nameWithOctave
     # So when using a flat interval on an already flattened note, we get a double flat
-    assert getPitchFromInterval("iv", "c", "b3", 0) == pitch.Pitch("A--4").nameWithOctave
+    assert (
+        getPitchFromInterval("iv", "c", "b3", 0) == pitch.Pitch("A--4").nameWithOctave
+    )
 
 
 def test_getPitchFromIntervalFromMinimallyModifiedScale():

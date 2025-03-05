@@ -4,10 +4,10 @@ A domain-specific language (DSL) for musical composition using Extended Roman Te
 
 ## About
 
-Harmonics is a powerful text-based music composition language designed for both humans and AI. It enables the creation of harmonic grids in Roman numeral notation and melodies with precise rhythmic notation. The language is carefully designed to be:
+Harmonics is a powerful text-based music composition language designed for collaboration between humans and AI. It enables the creation of advanced piece blueprints. The language is carefully designed to be:
 
 - 🎵 Easy for quickly sketching musical pieces
-- 🎹 Rich in expressive capabilities for detailed compositions
+- 🎹 Full featured programming language with variables, functions, and control flow
 - 🤖 Compatible with Large Language Models (LLMs) for "compositional assistance"
 - 🎼 Capable of outputting MIDI, MusicXML, and audio files
 

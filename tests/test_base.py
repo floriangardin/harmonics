@@ -34,11 +34,11 @@ mel1 @my_var_mel
 acc1 @my_var_acc
 """
 
+
 def test_variable():
     parser = HarmonicsParser()
     tree = parser.parse(text_with_variable)
     assert tree is not None
-
 
 
 text_with_events = r"""
@@ -48,6 +48,7 @@ e1 b1 tempo(110)
 m1 c: I
 m2 c: V
 """
+
 
 def test_events():
     parser = HarmonicsParser()
@@ -62,8 +63,8 @@ Instrument: V1=piano, V2=pizzicato_strings
 acc1 b1 1234
 """
 
+
 def test_instruments():
     parser = HarmonicsParser()
     tree = parser.parse(text_with_instruments)
     assert tree is not None
-

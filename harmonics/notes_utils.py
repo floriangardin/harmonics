@@ -195,12 +195,36 @@ def getPitchFromIntervalFromMinimallyModifiedScale(figure, key, interval, octave
     return result.nameWithOctave
 
 
+def getActiveTechniquesForNote(time, voice_name, techniques):
+    """
+    Get all active techniques for a note at a specific time and voice.
+
+    Args:
+        time (float): The time position of the note in quarter notes
+        voice_name (str): The voice name (e.g., "V1", "V2")
+        techniques (List[TechniqueItem]): List of all technique items
+
+    Returns:
+        List[str]: List of active technique names
+    """
+    active_techniques = []
+
+    for technique in techniques:
+        if (
+            technique.voice_name == voice_name
+            and technique.time_start <= time <= technique.time_end
+        ):
+            active_techniques.append(technique.technique)
+
+    return active_techniques
+
+
 def getMinimallyModifiedScale(rnStr, keyStr):
     """
     Given a roman numeral chord symbol (rnStr) in the key keyStr,
     return a list of 7 music21.pitch.Pitch objects that represent the
-    diatonic scale (the mode of the key starting on the chord’s root)
-    with any accidentals modified to “fit” the chord.
+    diatonic scale (the mode of the key starting on the chord's root)
+    with any accidentals modified to "fit" the chord.
 
     For example:
       getModifiedScale('iv','C') returns pitches corresponding to
@@ -224,9 +248,9 @@ def getMinimallyModifiedScale(rnStr, keyStr):
     # (For a major key, pitchFromDegree(1..7) gives the seven scale degrees.)
     diatonic = [k.pitchFromDegree(i) for i in range(1, 8)]
 
-    # “Rotate” the scale so that the chord’s root becomes the first note.
+    # "Rotate" the scale so that the chord's root becomes the first note.
     chordRoot = rn.root()  # a music21.pitch.Pitch object
-    # Find the note in the diatonic scale with the same letter (step) as the chord’s root.
+    # Find the note in the diatonic scale with the same letter (step) as the chord's root.
     for i, p in enumerate(diatonic):
         if p.step == chordRoot.step:
             modeScale = diatonic[i:] + diatonic[:i]
@@ -234,9 +258,9 @@ def getMinimallyModifiedScale(rnStr, keyStr):
     else:
         raise ValueError("Chord root not found in the diatonic scale of key " + keyStr)
 
-    # Now “patch” any scale degree that is altered in the chord.
+    # Now "patch" any scale degree that is altered in the chord.
     # (For example, in C–major the rotated scale is F, G, A, B, C, D, E.
-    # But the chord “iv” (F minor) has tones F, A♭, C so we want the 3rd
+    # But the chord "iv" (F minor) has tones F, A♭, C so we want the 3rd
     # degree (letter A) to be A♭.)
     modScale = list(modeScale)  # copy the list
     for chordPitch in rn.pitches:

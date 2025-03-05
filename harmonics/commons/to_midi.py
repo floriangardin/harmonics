@@ -1,8 +1,6 @@
 from symusic import Score, Track, Note, Tempo, TimeSignature
 import music21 as m21
-
-
-# ... existing code ...
+from .utils_techniques import apply_techniques_after, apply_techniques_before
 
 
 def _create_velocity_mappings():
@@ -201,7 +199,7 @@ def events_to_midi(
     # Group events by MIDI program
     program_events = {}
     for event in note_events:
-        time, pitch, duration, midi_program, velocity = event
+        time, pitch, duration, midi_program, velocity, techniques = event
         if midi_program not in program_events:
             program_events[midi_program] = []
         program_events[midi_program].append(event)
@@ -213,10 +211,12 @@ def events_to_midi(
         # Sort events by start time
         prog_events.sort(key=lambda x: x[0])
         for event in prog_events:
-            time, pitch, duration, _, velocity = event
 
-            if velocity is None:
-                velocity = get_current_velocity(time)
+            if event[4] is None:
+                event[4] = get_current_velocity(time)
+
+            event = apply_techniques_after(event[5], event)
+            time, pitch, duration, _, velocity, techniques = event
 
             # Convert time and duration from event units to ticks
             note_start_time = int((time / quarter_value) * target_tpq)
@@ -225,7 +225,7 @@ def events_to_midi(
             # Create a Symusic Note object
             sym_note = Note(
                 pitch=pitch,
-                velocity=velocity,
+                velocity=int(velocity),
                 time=note_start_time,
                 duration=note_duration,
             )
@@ -238,18 +238,7 @@ def events_to_midi(
 
 def to_midi(filepath, score):
     # Default MIDI programs if not specified
-    DEFAULT_CHORD_CHANNEL = 1
     DEFAULT_MELODY_CHANNEL = 1
-
-    # Create a mapping for voice types to their default MIDI programs
-    default_voice_programs = {
-        "B": DEFAULT_CHORD_CHANNEL,  # Bass voice
-        "T": DEFAULT_CHORD_CHANNEL,  # Tenor voice
-        "A": DEFAULT_CHORD_CHANNEL,  # Alto voice
-        "S": DEFAULT_CHORD_CHANNEL,  # Soprano voice
-        "V": DEFAULT_MELODY_CHANNEL,  # Default for melody voices
-    }
-
     # Create a time-based mapping of voice assignments from instrument items
     voice_program_map = {}
     for instrument in score.instruments:
@@ -260,46 +249,41 @@ def to_midi(filepath, score):
         voice_program_map[voice_key] = int(instrument.gm_number)
 
     note_events = []
-    if len(score.accompaniment) == 0:
-        for s in score.chords:
-            for idx, pitch in enumerate(s.pitches):
-                # Map voice index to BTAS
-                voice_type = ["B", "T", "A", "S"][idx] if idx < 4 else "S"
-                program = voice_program_map.get(
-                    voice_type, default_voice_programs[voice_type]
-                )
-                note_events.append(
-                    [s.time, m21.pitch.Pitch(pitch).midi, s.duration, program, None]
-                )
-    else:
-        for accompaniment_beat in score.accompaniment:
-            current_chord = score.chords[accompaniment_beat.chord_index]
-            for voice_obj in accompaniment_beat.voices:
-                voice = voice_obj.voice
-                octave = voice_obj.octave
-                total_alteration = voice_obj.alteration
-                voice_type = ["B", "T", "A", "S"][voice - 1] if voice <= 4 else "S"
-                program = voice_program_map.get(
-                    voice_type, default_voice_programs[voice_type]
-                )
-                note_events.append(
-                    [
-                        accompaniment_beat.time,
-                        m21.pitch.Pitch(current_chord.pitches[voice - 1]).midi
-                        + (octave) * 12
-                        + total_alteration,
-                        accompaniment_beat.duration,
-                        program,
-                        None,
-                    ]
-                )
+
+    for accompaniment_beat in score.accompaniment:
+        current_chord = score.chords[accompaniment_beat.chord_index]
+        global_techniques = accompaniment_beat.techniques
+        for voice_obj in accompaniment_beat.voices:
+            voice = voice_obj.voice
+            octave = voice_obj.octave
+            total_alteration = voice_obj.alteration
+            program = voice_program_map[accompaniment_beat.voice_name]
+            note_event = [
+                accompaniment_beat.time,
+                m21.pitch.Pitch(current_chord.pitches[voice - 1]).midi
+                + (octave) * 12
+                + total_alteration,
+                accompaniment_beat.duration,
+                program,
+                None,
+                global_techniques,
+            ]
+            note_event = apply_techniques_before(global_techniques, note_event)
+            note_events.append(note_event)
 
     for s in score.melody:
         if not s.is_silence:
             program = voice_program_map.get(s.voice_name, DEFAULT_MELODY_CHANNEL)
-            note_events.append(
-                [s.time, m21.pitch.Pitch(s.pitch).midi, s.duration, program, None]
-            )
+            note_event = [
+                s.time,
+                m21.pitch.Pitch(s.pitch).midi,
+                s.duration,
+                program,
+                None,
+                s.techniques,
+            ]
+            note_event = apply_techniques_before(s.techniques, note_event)
+            note_events.append(note_event)
 
     events_to_midi(
         note_events,

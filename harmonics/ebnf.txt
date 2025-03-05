@@ -32,7 +32,7 @@ key_signature_line: "Key Signature:" WS SIGNED_INT NEWLINE
 minor_mode_line: "Minor Sixth / Minor Seventh:" WS MINOR_MODE_OPTION NEWLINE
 instrument_line: "Instrument:" WS VOICE_NAME WS* "=" WS* GM_INSTRUMENT_NAME ("," WS* VOICE_NAME WS* "=" WS* GM_INSTRUMENT_NAME)* NEWLINE
 
-VOICE_NAME: "V" DIGIT | "B" | "T" | "A" | "S"
+VOICE_NAME: "V" DIGIT+
 GM_INSTRUMENT_NAME: /[a-zA-Z_]+/
 TEMPO_NUMBER: DIGIT+
 
@@ -48,7 +48,16 @@ statement_line: measure_line
               | accompaniment_line
               | event_line
               | variable_declaration_line
+              | technique_line
 
+
+// --- Technique line
+technique_line: "tech" WS (voice_list_for_technique | single_voice_for_technique) WS+ measure_range_with_beats WS* ":" WS* technique_list NEWLINE
+voice_list_for_technique: "[" WS* VOICE_NAME ("," WS* VOICE_NAME)* WS* "]"
+single_voice_for_technique: VOICE_NAME
+measure_range_with_beats: "(" MEASURE_INDICATOR WS+ BEAT_INDICATOR WS+ "-" WS MEASURE_INDICATOR WS+ BEAT_INDICATOR ")"
+technique_list: TECHNIQUE_NAME ("," WS* TECHNIQUE_NAME)*
+TECHNIQUE_NAME: /[a-zA-Z_][a-zA-Z0-9_]*/
 
 // --- Variable declaration line
 variable_declaration_line: VARIABLE_NAME WS* "=" WS* variable_content NEWLINE
@@ -106,7 +115,7 @@ alteration_content: (( omit_alteration | add_alteration )? [ ACCIDENTAL ] DIGITS
 // ----------------------------
 // Accompaniment Grammar
 // ----------------------------
-accompaniment_line: ACCOMPANIMENT_INDICATOR WS+ (accompaniment_line_content | VARIABLE_CALLING) NEWLINE
+accompaniment_line: ACCOMPANIMENT_INDICATOR WS+ (VOICE_NAME)? (accompaniment_line_content | VARIABLE_CALLING) NEWLINE
 accompaniment_line_content: (voice_list)? (BEAT_INDICATOR WS+ (voice_list | SILENCE))* 
 ACCOMPANIMENT_INDICATOR: "acc" DIGIT+
 voice_list: (ALTERATION? VOICE OCTAVE?)+
@@ -119,8 +128,8 @@ ALTERATION: ("+" | "-")+
 // ----------------------------
 // Melody Grammar
 // ----------------------------
-melody_line: MELODY_MEASURE_INDICATOR (melody_line_content | VARIABLE_CALLING) NEWLINE
-melody_line_content: (WS+ VOICE_NAME)? (first_beat_note)? (beat_note)*
+melody_line: MELODY_MEASURE_INDICATOR (WS+ VOICE_NAME)? (melody_line_content | VARIABLE_CALLING) NEWLINE
+melody_line_content: (first_beat_note)? (beat_note)*
 MELODY_MEASURE_INDICATOR: "mel" MEASURE_NUMBER
 MELODY_BEAT_INDICATOR: ("b" | "t") DIGIT+ ("." DIGIT+)?
 first_beat_note: WS+ (MELODY_BEAT_INDICATOR WS+)? MELODY_NOTE (DELTA_OCTAVE)?

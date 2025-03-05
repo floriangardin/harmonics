@@ -72,9 +72,12 @@ Please note that for other time signatures one beat = one quarter note.
 ### Accompaniment Rules (acc<index>)
 - Defines voice participation per beat.
 - Uses SATB notation (`1 = Bass, 2 = Tenor, 3 = Alto, 4 = Soprano`).
+- You precise the instrument used for the accompaniment (V1, V2, ..., V8).
+- You can use several instruments per bar for the accompaniment (recommended for symphonic music)
 - Example:
   ```
-  acc1 b1 1 b2 234 b3 1 b4 234
+  acc1 V1 b1 1 b2 234 b3 1 b4 234
+  acc1 V2 b1 234 b4.75 234
   ```
 
 ---
@@ -89,6 +92,24 @@ Please note that for other time signatures one beat = one quarter note.
   e4 b1 end_crescendo(ff)
   ```
 All event functions have arguments.
+
+#### Techniques Rules
+
+- Modifies how instrument plays on a range of measures. Stop at the end beat (not included).
+- Techniques are declared with `tech <voice_list> <measure_range> : <technique_list>`.
+- For example : `tech [V1, V2] (m1 b1 - m8 b1) : staccato,accent`
+- Or : `tech V1 (m1 b1 - m8 b1) : marcato`
+- When not specified, no technic are applied (legato playing).
+
+Here is the list of global techniques :
+- staccato
+- accent
+- marcato
+- legato
+- glissando
+- arpeggio
+- staccatissimo
+- tremolo
 
 ---
 
@@ -127,8 +148,7 @@ key_signature_line: "Key Signature:" WS SIGNED_INT NEWLINE
 minor_mode_line: "Minor Sixth / Minor Seventh:" WS MINOR_MODE_OPTION NEWLINE
 instrument_line: "Instrument:" WS VOICE_NAME WS* "=" WS* GM_INSTRUMENT_NAME ("," WS* VOICE_NAME WS* "=" WS* GM_INSTRUMENT_NAME)* NEWLINE
 
-VOICE_NAME: "V" DIGIT | "B" | "T" | "A" | "S"
-
+VOICE_NAME: "V" DIGIT+
 GM_INSTRUMENT_NAME: /[a-zA-Z_]+/
 TEMPO_NUMBER: DIGIT+
 
@@ -144,7 +164,16 @@ statement_line: measure_line
               | accompaniment_line
               | event_line
               | variable_declaration_line
+              | technique_line
 
+
+// --- Technique line
+technique_line: "tech" WS (voice_list_for_technique | single_voice_for_technique) WS+ measure_range_with_beats WS* ":" WS* technique_list NEWLINE
+voice_list_for_technique: "[" WS* VOICE_NAME ("," WS* VOICE_NAME)* WS* "]"
+single_voice_for_technique: VOICE_NAME
+measure_range_with_beats: "(" MEASURE_INDICATOR WS+ BEAT_INDICATOR WS+ "-" WS MEASURE_INDICATOR WS+ BEAT_INDICATOR ")"
+technique_list: TECHNIQUE_NAME ("," WS* TECHNIQUE_NAME)*
+TECHNIQUE_NAME: /[a-zA-Z_][a-zA-Z0-9_]*/
 
 // --- Variable declaration line
 variable_declaration_line: VARIABLE_NAME WS* "=" WS* variable_content NEWLINE
@@ -153,7 +182,7 @@ VARIABLE_NAME: /[_a-zA-Z][_a-zA-Z0-9]*/
 VARIABLE_VALUE: REST_LINE
 VARIABLE_CALLING: "@" VARIABLE_NAME
 
-// --- Event Lines (Arguments are COMPULSORY)
+// --- Event Lines
 event_line: "e" MEASURE_NUMBER WS* event_content+ NEWLINE
 event_content: BEAT_INDICATOR WS* EVENT_FUNCTION_NAME + "(" + EVENT_ARGUMENT + ")"
 EVENT_FUNCTION_NAME: "tempo" | "velocity" | "start_crescendo" | "end_crescendo" | "start_diminuendo" | "end_diminuendo" | "start_accelerando" | "end_accelerando" | "start_ritardando" | "end_ritardando"
@@ -202,7 +231,7 @@ alteration_content: (( omit_alteration | add_alteration )? [ ACCIDENTAL ] DIGITS
 // ----------------------------
 // Accompaniment Grammar
 // ----------------------------
-accompaniment_line: ACCOMPANIMENT_INDICATOR WS+ (accompaniment_line_content | VARIABLE_CALLING) NEWLINE
+accompaniment_line: ACCOMPANIMENT_INDICATOR WS+ (VOICE_NAME)? (accompaniment_line_content | VARIABLE_CALLING) NEWLINE
 accompaniment_line_content: (voice_list)? (BEAT_INDICATOR WS+ (voice_list | SILENCE))* 
 ACCOMPANIMENT_INDICATOR: "acc" DIGIT+
 voice_list: (ALTERATION? VOICE OCTAVE?)+
@@ -215,9 +244,8 @@ ALTERATION: ("+" | "-")+
 // ----------------------------
 // Melody Grammar
 // ----------------------------
-melody_line: MELODY_MEASURE_INDICATOR (melody_line_content | VARIABLE_CALLING) NEWLINE
-melody_line_content: (WS+ VOICE_NAME_MELODY)? (first_beat_note)? (beat_note)*
-VOICE_NAME_MELODY: "V" DIGIT
+melody_line: MELODY_MEASURE_INDICATOR (WS+ VOICE_NAME)? (melody_line_content | VARIABLE_CALLING) NEWLINE
+melody_line_content: (first_beat_note)? (beat_note)*
 MELODY_MEASURE_INDICATOR: "mel" MEASURE_NUMBER
 MELODY_BEAT_INDICATOR: ("b" | "t") DIGIT+ ("." DIGIT+)?
 first_beat_note: WS+ (MELODY_BEAT_INDICATOR WS+)? MELODY_NOTE (DELTA_OCTAVE)?
@@ -242,8 +270,8 @@ numerator: DIGIT+
 denominator: DIGIT+
 SIGNED_INT: ("+"|"-")? DIGIT+
 
-KEY: /@A-Ga-g?:/
-SPECIAL_CHORD: "Ger" | "It" | "Fr" | "N" | "Cad" | "NC"
+KEY: /[A-Ga-g](#{1,}|b{1,})?:/
+SPECIAL_CHORD: "Ger" | "It" | "Fr" | "N" | "Cad" | "NC" | "R" | "r"
 ROMAN_NUMERAL: "I" | "II" | "III" | "IV" | "V" | "VI" | "VII"
              | "i" | "ii" | "iii" | "iv" | "v" | "vi" | "vii"
 ACCIDENTAL: /#{1,}|b{1,}/
@@ -271,10 +299,14 @@ NEWLINE: WS* (CR? LF)+
 #### Melody
 - Balance stepwise motion and leaps in melody.
 - Avoid repetitive rhythms for more than 2 bars.
+- Use accompaniment voices as instruments, don't hesitate to use several instruments for an accompaniment.
 - Use sixteenth notes, eighth notes, quarter notes, half notes, whole notes, n-uplets, and syncopation for expressiveness.
+- Sometimes use thirty second notes for trills.
 - Use passing and neighbor tones for expressiveness.
 - Use ornaments when appropriate.
 - Rests are very important to make the music breathe. (Use `R` or `r` for rests)
+- Prefer using several accompaniments line rather than several melodic lines except if you want to achieve something specific.
+- Use one melodic line for the **real** melody (Usually V1). Use complex accompaniment to support it.
 
 #### Harmony
 - Avoid overusing I-IV-V; incorporate secondary dominants, modal interchange, borrowed chords, inversions, and alterations.
@@ -284,11 +316,19 @@ NEWLINE: WS* (CR? LF)+
 #### Accompaniment
 - Vary rhythm and texture adapted to the style of the piece.
 - Vary between arpeggios and blocked chords.
+- Use different accompaniments for different instruments, don't hesitate to use multiple accompaniments lines for each bars.
 
 #### Musical Expression
 - Control dynamics with crescendos and diminuendos rather than sudden changes.
 - Use tempo modifications for natural phrasing.
 - Create polyphonic textures with distinct rhythmic variations.
+
+#### Techniques
+- Use technics to give more expressiveness to the music.
+- Use different technics for different instruments to add contrast.
+
+
+
 
 #### Repetitions
 
@@ -315,25 +355,31 @@ Form: Rondo (A-B-A-C-A-D-A)
 Note: A classical rondo in E minor with sixteenth note passages and Alberti bass variations
 
 // Harpsichord, instruments are one indexed (piano=1)
-Instrument: V1=harpsichord
+Instrument: V1=harpsichord, V2=string_ensemble, V3=cello
+
 
 alberti_bass = b1 1 b1.25 3 b1.5 4 b1.75 3 b2 1 b2.25 3 b2.5 4 b2.75 3 b3 1 b3.25 3 b3.5 4 b3.75 3 b4 1 b4.25 3 b4.5 4 b4.75 3
+cello_bass = b1 1 b3 1
 alberti_var1 = b1 1 b1.25 3 b1.5 4 b1.75 3 b2 1 b2.25 3 b2.5 4 b2.75 3 b3 1 b3.5 4 b4 1 b4.5 4
 alberti_var2 = b1 1 b1.5 4 b2 1 b2.5 4 b3 1 b3.25 3 b3.5 4 b3.75 3 b4 1 b4.25 3 b4.5 4 b4.75 3
 broken_chords = b1 1 b1.5 3 b2 4 b2.5 3 b3 1 b3.5 3 b4 4 b4.5 3
 block_chords = b1 134 b2 134 b3 134 b4 134
 
+tech [V1] (m1 b1 - m3 b1) : staccatissimo
+tech [V2, V3] (m3 b1 - m5 b1) : legato
 e1 b1 tempo(120) b1 velocity(mf)
 
 Note: Section A - Main Theme
 
 m1 b1 e: i b3 V7 ||
 mel1 V1 b1 E5 b1.25 F#5 b1.5 G5 b1.75 F#5 b2 E5 b2.25 F#5 b2.5 G5 b2.75 A5 b3 B5 b3.25 A5 b3.5 G5 b3.75 F#5 b4 E5 b4.5 B4
-acc1 @alberti_bass
+acc1 V2 @alberti_bass
+acc1 V3 @cello_bass
 
 m2 b1 i b3 V ||
 mel2 V1 b1 E5 b1.25 G5 b1.5 B5 b1.75 G5 b2 E5 b2.25 G5 b2.5 B5 b2.75 G5 b3 F#5 b3.25 A5 b3.5 B5 b3.75 A5 b4 F#5 b4.5 D5
-acc2 @alberti_var1
+acc2 V2 @alberti_var1
+acc2 V3 @cello_bass
 ```
 
 **Example 2: Standard score**
@@ -347,40 +393,43 @@ Tempo: 90
 Form: Nocturne
 Note: Section A - Mysterious opening
 
+tech [V1] (m1 b1 - m5 b1) : legato
+tech [V1] (m5 b1 - m8 b1) : staccato
+
 arpeggiated_acc = b1 1 b2 2 b3 4 b4 3
 arpeggiated_acc_var1 = b1 1 b2 2 b3 3 b4 4
 block_chord_acc = b1 1234
 
 e1 b1 tempo(90) b1 velocity(f)
 m1 b1 e: i[add9] b3 III+ ||
-mel1 b1 B4 b2 E5 b2.5 F#5 b3 G5 b4 B5
-acc1 @arpeggiated_acc
+mel1 V1 b1 B4 b2 E5 b2.5 F#5 b3 G5 b4 B5
+acc1 V1 @arpeggiated_acc
 
 m2 b1 VI b3 iiø7 b4 V7 ||
-mel2 b1 A5 b2 G5 b3 F#5 b4 D5
-acc2 @arpeggiated_acc_var1
+mel2 V1 b1 A5 b2 G5 b3 F#5 b4 D5
+acc2 V1 @arpeggiated_acc_var1
 
 m3 b1 i b3 III[add6] ||
-mel3 b1 E5 b2 G5 b3 B5 b4 r
-acc3 @block_chord_acc
+mel3 V1 b1 E5 b2 G5 b3 B5 b4 R
+acc3 V1 @block_chord_acc
 
 m4 b1 VI b2 iv6 b3 V7 b4 i ||
-mel4 b1.5 C6 b2 B5 b3 A5 b4 G5
-acc4 @arpeggiated_acc_var1
+mel4 V1 b1.5 C6 b2 B5 b3 A5 b4 G5
+acc4 V1 @arpeggiated_acc_var1
 
 Note: Section B - More chromatic
 
 m5 b1 bII b3 Fr6/V ||
-mel5 b1 F5 b2 Ab5 b3 B5 b4 D6
-acc5 b1 1 b2 2 b3 4 b4 3
+mel5 V1 b1 F5 b2 Ab5 b3 B5 b4 D6
+acc5 V1 1 b2 2 b3 4 b4 3
 
 m6 b1 V7 b3 i ||
-mel6 b1 B5 b2 A5 b3 G5 b4 E5
-acc6 b1 1 b2 2 b3 1 b4 3 b4.5 4
+mel6 V1 b1 B5 b2 A5 b3 G5 b4 E5
+acc6 V1 1 b2 2 b3 1 b4 3 b4.5 4
 
 m7 b1 iv b2 III b3 VI b4 iiø7 ||
-mel7 b1 A5 b1.5 G5 b2 F#5 b3 C6 b4 F#5
-acc7 b1 1 b2 2 b3 4 b4 3
+mel7 V1 b1 A5 b1.5 G5 b2 F#5 b3 C6 b4 F#5
+acc7 V1 1 b2 2 b3 4 b4 3
 ```
 
 **Example 2: Simple Chorale with two voices**
@@ -393,8 +442,8 @@ Tempo: 72
 Form: Rondo (A-B-A-C-A)
 Note: A Chopin-style nocturne in E minor with lyrical melodies and varied arpeggiated accompaniments
 
-// We use GM piano everywhere
-Instrument: V1=piano
+// We use GM piano but we separate accompaniment and melody voices (different staff)
+Instrument: V1=piano, V2=piano
 
 Note: Defining different arpeggiated accompaniment patterns
 arpeggio_basic = b1 1 b1.5 3 b1.75 4 b2 3 b2.5 1 b3 3 b3.5 4 b3.75 3 b4 1 b4.5 3 b4.75 4
@@ -409,24 +458,24 @@ Note: Section A - Main Theme (bars 1-8)
 
 m1 b1 e: i b3 V7 ||
 mel1 V1 b1 B4 b2 E5 b2.5 F#5 b3 G5 b3.25 A5 b3.5 B5 b4 G5
-acc1 @arpeggio_basic
+acc1 V2 @arpeggio_basic
 
 m2 b1 i b3 VI b4 iiø7 ||
 mel2 V1 b1 E5 b1.5 F#5 b2 G5 b2.5 F#5 b3 C6 b3.5 B5 b4 A5
-acc2 @arpeggio_basic
+acc2 V2 @arpeggio_basic
 
 m3 b1 V b3 i6 ||
 mel3 V1 b1 B5 b1.5 A5 b2 F#5 b2.5 D#5 b3 G5 b3.5 F#5 b4 E5
-acc3 @arpeggio_var1
+acc3 V2 @arpeggio_var1
 
 m4 b1 iv b3 V7 b4 i ||
 mel4 V1 b1 A5 b1.5 G5 b2 F#5 b2.5 E5 b3 B5 b3.5 D5 b4 E5
-acc4 @arpeggio_var2
+acc4 V2 @arpeggio_var2
 
 e5 b1 start_crescendo(p) b4 end_crescendo(ff)
 m5 b1 III b3 VI ||
 mel5 V1 b1 G5 b1.5 B5 b2 D6 b2.5 B5 b3 C6 b3.5 B5 b4 A5
-acc5 @block_chords
+acc5 V2 @block_chords
 ```
 
 **Example 3 : Full featured score with several voices**
@@ -439,36 +488,32 @@ Tempo: 72
 Form: Requiem - Dies Irae
 Note: Solemn opening with polyphonic texture
 
-Instrument: V1=violin, V2=french_horn, V3=choir_oohs, V4=timpani
+Instrument: V1=violin, V2=french_horn, V3=choir_oohs, V4=timpani, V5=contrabass
 Note: V1=Violin 1, V2=French horn 2, V3=Choirs (barytons) 3, V4=Timpani (third octave)
 
-block_chord_acc = b1 1234
-first_melody = V1 b1 D5 b2 E5 b3 F5 b4 G5
+block_chord_acc = b1 234
+first_melody = b1 D5 b2 A5 b3 F5 b3.5 F#5 b4 G5
 
 e1 b1 tempo(72) b1 velocity(f)
 m1 b1 d: i b3 V
-mel1 @first_melody
-mel1 V2 b1 A4 b3 C5
-mel1 V3 b1 F4 b2 G4 b3 A4 b4 B4
-acc1 @block_chord_acc
+mel1 V1 @first_melody
+acc1 V3 @block_chord_acc
+acc1 V5 b1 1 b3 1 b4 2o-1
 
 m2 b1 i[add9] b3 iv7
 mel2 V1 b1 A5 b2 G5 b3 F5 b4 E5
-mel2 V2 b1 F5 b3 D5
-mel2 V3 b1 D4 b2 E4 b3 F4 b4 G4
-acc2 @block_chord_acc
+acc2 V3 @block_chord_acc
+acc2 V5 b1 1 b3 1 b4 2o-1
 
 m3 b1 V7 b3 i
 mel3 V1 b1 D5 b3 Bb4 b4.5 A4
-mel3 V2 b1 A4 b2 G4 b3 F4 b4 E4
-mel3 V3 b1 F4 b2 E4 b3 D4 b4.5 C4
-acc3 @block_chord_acc
+acc3 V3 @block_chord_acc
+acc3 V5 b1 1 b3 1 b4 2o-1
 
 e4 b1 velocity(ff)
 m4 b1 iv b2 V b3 VI b4 V/V
 mel4 V1 b1 G5 b3 Bb5 b4 E5
-mel4 V2 b1 R b4 C#5
-mel4 V3 b1 Bb4 b2 C5 b3 D5 b4 A4
-mel4 V4 b1 D4 b4 A3
-acc4 @block_chord_acc
+acc4 V3 @block_chord_acc
+acc4 V4 b1 1
+acc4 V5 b1 1 b3 1 b4 2o-1
 ```

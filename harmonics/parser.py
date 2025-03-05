@@ -5,7 +5,7 @@ from music21.pitch import Pitch
 from .transformer import transform_document
 from .romanyh import generateBestHarmonization
 from .commons import to_mxl, to_midi, to_audio
-from .models import Score
+from .score import Score
 
 CURRENT_FILEPATH = os.path.dirname(os.path.abspath(__file__))
 GRAMMAR_FILEPATH = os.path.join(CURRENT_FILEPATH, "ebnf.txt")
