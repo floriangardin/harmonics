@@ -33,7 +33,7 @@ minor_mode_line: "Minor Sixth / Minor Seventh:" WS MINOR_MODE_OPTION NEWLINE
 instrument_line: "Instrument:" WS VOICE_NAME WS* "=" WS* GM_INSTRUMENT_NAME ("," WS* VOICE_NAME WS* "=" WS* GM_INSTRUMENT_NAME)* NEWLINE
 
 VOICE_NAME: "V" DIGIT+
-GM_INSTRUMENT_NAME: /[a-zA-Z_]+/
+GM_INSTRUMENT_NAME: /[a-zA-Z_1-9]+/
 TEMPO_NUMBER: DIGIT+
 
 // ----------------------------
