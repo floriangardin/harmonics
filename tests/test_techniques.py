@@ -1,7 +1,7 @@
 import harmonics.models as models
 from harmonics.score import RomanTextDocument, Score, TimeSignatureItem
 from typing import List, Tuple
-
+from harmonics.commons.utils_techniques import resolve_techniques
 
 def test_techniques():
     # Create a simple document with time signatures and techniques
@@ -198,3 +198,8 @@ def test_get_techniques_for_note():
     # Test a note outside any technique range
     active_techniques = doc.get_techniques_for_note(5.0, "V1", techniques)
     assert len(active_techniques) == 0
+
+def test_resolve_techniques():
+    techniques = ["staccato", "legato", "p", "f", "accent"]
+    resolved_techniques = resolve_techniques(techniques)
+    assert resolved_techniques == ["legato", "f", "accent"]

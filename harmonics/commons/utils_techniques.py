@@ -39,8 +39,46 @@ AFTER_TECHNIQUE_MAP = {
     "accent": get_accent,
 }
 
+GROUPS = {
+    "articulation": ["staccato", "staccatissimo", "marcato", "pizzicato", "legato"],
+    "accents": ["accent"],
+    "dynamics": ["pppp", "ppp", "pp", "p", "mp", "mf", "f", "ff", "fff"],
+}
+# Create a reverse mapping from technique to group
+TECHNIQUE_GROUPS = {}
+for group_name, techniques in GROUPS.items():
+    for technique in techniques:
+        TECHNIQUE_GROUPS[technique] = group_name
+
+
+
+def resolve_techniques(techniques):
+    """
+    If several techniques of the same group are provided, only use the last one.
+    """
+    resolved_techniques = []
+    # Group techniques by their group
+    grouped_techniques = {}
+    
+    # First, collect all techniques by their group
+    for technique in techniques:
+        if technique in TECHNIQUE_GROUPS:
+            group = TECHNIQUE_GROUPS[technique]
+            # For each group, keep only the last technique
+            grouped_techniques[group] = technique
+        else:
+            # If technique doesn't belong to a group, always include it
+            resolved_techniques.append(technique)
+    
+    # Add the last technique from each group to the resolved list
+    for group, technique in grouped_techniques.items():
+        resolved_techniques.append(technique)
+    
+    return resolved_techniques
 
 def apply_techniques_before(techniques, note_event):
+    tech = list(techniques)
+    techniques = resolve_techniques(techniques)
     for technique in techniques:
         if technique in BEFORE_TECHNIQUE_MAP:
             note_event = BEFORE_TECHNIQUE_MAP[technique](note_event)
@@ -48,6 +86,7 @@ def apply_techniques_before(techniques, note_event):
 
 
 def apply_techniques_after(techniques, note_event):
+    techniques = resolve_techniques(techniques)
     for technique in techniques:
         if technique in AFTER_TECHNIQUE_MAP:
             note_event = AFTER_TECHNIQUE_MAP[technique](note_event)
