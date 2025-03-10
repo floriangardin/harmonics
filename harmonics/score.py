@@ -1,6 +1,7 @@
+from functools import lru_cache
 from typing import List, Optional, Union, Tuple, Any, Dict, Set
 
-from pydantic import BaseModel
+from .models import BaseModel
 from .notes_utils import getPitchFromIntervalFromMinimallyModifiedScale
 import harmonics.models as models
 import harmonics.exceptions as exceptions
@@ -43,16 +44,6 @@ class TimeSignatureItem(BaseModel):
     time_signature: Tuple[int, int]
 
 
-# This is a new model for rendering accompaniment events.
-class AccompanimentItem(BaseModel):
-    time: float
-    duration: float
-    voices: List[models.AccompanimentVoice]
-    chord_index: Optional[int] = None
-    voice_name: Optional[str] = "V1"
-    techniques: Optional[List[str]] = None  # Add techniques field
-
-
 class InstrumentItem(BaseModel):
     time: float
     voice_name: str
@@ -62,8 +53,7 @@ class InstrumentItem(BaseModel):
 
 class Score(BaseModel):
     chords: List[ChordItem]
-    melody: List[NoteItem]
-    accompaniment: List[AccompanimentItem] = []  # <-- NEW: Field added to Score
+    notes: List[NoteItem]
     time_signatures: List[TimeSignatureItem] = []
     tempos: List[TempoItem] = []
     events: List[models.EventItem] = []
@@ -76,12 +66,7 @@ def bar_duration_in_quarters(time_signature: Tuple[int, int]) -> int:
 
 
 def beat_to_quarter(beat: float, time_signature: Tuple[int, int]) -> float:
-    from harmonics.constants import BEAT_TO_QUARTER_NOTES
-
-    if time_signature in BEAT_TO_QUARTER_NOTES:
-        return BEAT_TO_QUARTER_NOTES[time_signature] * (beat - 1)
-    else:
-        return beat - 1
+    return (beat - 1) * 4/time_signature[1]
 
 
 def get_current_chord_from_time(time: float, chords: List[NoteItem]) -> Optional[str]:
@@ -107,7 +92,7 @@ def get_measure_map(lines: List[models.Line]) -> Dict[int, models.Line]:
     # First pass collect max measure number
     max_measure = 0
     for line in lines:
-        if isinstance(line, (models.Accompaniment, models.Melody, models.Events)):
+        if isinstance(line, (models.Melody, models.Events)):
             max_measure = max(max_measure, line.measure_number)
 
     # First pass: collect all time signatures
@@ -118,12 +103,12 @@ def get_measure_map(lines: List[models.Line]) -> Dict[int, models.Line]:
     measure_numbers = [
         l.measure_number
         for l in lines
-        if isinstance(l, (models.Accompaniment, models.Melody, models.Events))
+        if isinstance(l, (models.Melody, models.Events))
     ]
     are_measures_sorted = measure_numbers == sorted(measure_numbers)
 
     for line in lines:
-        if isinstance(line, (models.Accompaniment, models.Melody, models.Events)):
+        if isinstance(line, (models.Melody, models.Events)):
             previous_measure_number = line.measure_number
         elif isinstance(line, models.TimeSignature):
             if line.measure_number is None:
@@ -166,6 +151,86 @@ def get_measure_map(lines: List[models.Line]) -> Dict[int, models.Line]:
 
     return measure_map
 
+@lru_cache(maxsize=10)
+def get_data(self):
+    chords = []
+    bar_start_time = 0  # In quarter (not in beat !)
+    current_bar_index = 1  # Start at bar 1
+    current_time_signature = (4, 4)
+    next_current_time_signature = (4, 4)
+    current_key = None
+    time_signatures = []
+    tempos = []
+    instruments = []
+
+    for line in self.lines:
+        if isinstance(line, models.Measure):
+            delta_bar = line.measure_number - current_bar_index
+            current_bar_index = line.measure_number
+            bar_start_time += delta_bar * bar_duration_in_quarters(
+                current_time_signature
+            )
+            for beat_item in line.beat_items:
+                beat_start_time = beat_to_quarter(
+                    beat_item.beat, next_current_time_signature
+                )
+                duration = 0
+                if beat_item.key is not None:
+                    current_key = beat_item.key
+                chords.append(
+                    ChordItem(
+                        time=beat_start_time + bar_start_time,
+                        duration=duration,
+                        chord=beat_item.chord,
+                        time_signature=current_time_signature,
+                        key=current_key,
+                    )
+                )
+            current_time_signature = next_current_time_signature
+        elif isinstance(line, models.TimeSignature):
+            next_current_time_signature = (line.numerator, line.denominator)
+            time_signatures.append(
+                TimeSignatureItem(
+                    time=bar_start_time, time_signature=next_current_time_signature
+                )
+            )
+        elif isinstance(line, models.Instruments):
+            for instrument in line.instruments:
+                voice_index = 1
+                if instrument.voice_name.startswith("V"):
+                    voice_index = int(instrument.voice_name[1:])
+                    voice_cat = "V"
+                else:
+                    voice_cat = instrument.voice_name
+                instruments.append(
+                    InstrumentItem(
+                        time=bar_start_time,
+                        voice_name=voice_cat,
+                        voice_index=voice_index,
+                        gm_number=instrument.gm_number,
+                    )
+                )
+        elif isinstance(line, models.Tempo):
+            tempos.append(
+                TempoItem(
+                    time=bar_start_time,
+                    measure_number=current_bar_index,
+                    beat=1,
+                    tempo=line.tempo,
+                )
+            )
+    # Fill the durations (using delta between next time)
+    if len(chords) > 0:
+        for i in range(len(chords) - 1):
+            chords[i].duration = chords[i + 1].time - chords[i].time
+        chords[-1].duration = (
+            bar_start_time
+            + bar_duration_in_quarters(current_time_signature)
+            - chords[-1].time
+        )
+
+    self.get_progression(chords)
+    return chords, time_signatures, tempos, instruments
 
 class RomanTextDocument(BaseModel):
     lines: List[models.Line]
@@ -174,91 +239,35 @@ class RomanTextDocument(BaseModel):
     def time_signatures(self) -> List[TimeSignatureItem]:
         pass
 
+    def get_progression(self, chords: List[ChordItem]) -> List[str]:
+        from music21.pitch import Pitch
+        from harmonics.romanyh import generateBestHarmonization
+        if len(chords) > 0:
+            print('Generating progression')
+            progression = generateBestHarmonization(
+                chords,
+                closePosition=False,
+                firstVoicing=None,
+                lastVoicing=None,
+                allowedUnisons=0,
+            )
+        else:
+            progression = []
+
+        for chord, pitches in zip(chords, progression):
+            pitches = [Pitch(p).nameWithOctave for p in pitches]
+            chord.pitches = pitches
+
     @property
     def data(self) -> Tuple[List[ChordItem], List[TimeSignatureItem], List[TempoItem]]:
-        results = []
-        bar_start_time = 0  # In quarter (not in beat !)
-        current_bar_index = 1  # Start at bar 1
-        current_time_signature = (4, 4)
-        next_current_time_signature = (4, 4)
-        current_key = None
-        time_signatures = []
-        tempos = []
-        instruments = []
-
-        for line in self.lines:
-            if isinstance(line, models.Measure):
-                delta_bar = line.measure_number - current_bar_index
-                current_bar_index = line.measure_number
-                bar_start_time += delta_bar * bar_duration_in_quarters(
-                    current_time_signature
-                )
-                for beat_item in line.beat_items:
-                    beat_start_time = beat_to_quarter(
-                        beat_item.beat, next_current_time_signature
-                    )
-                    duration = 0
-                    if beat_item.key is not None:
-                        current_key = beat_item.key
-                    results.append(
-                        ChordItem(
-                            time=beat_start_time + bar_start_time,
-                            duration=duration,
-                            chord=beat_item.chord,
-                            time_signature=current_time_signature,
-                            key=current_key,
-                        )
-                    )
-                current_time_signature = next_current_time_signature
-            elif isinstance(line, models.TimeSignature):
-                next_current_time_signature = (line.numerator, line.denominator)
-                time_signatures.append(
-                    TimeSignatureItem(
-                        time=bar_start_time, time_signature=next_current_time_signature
-                    )
-                )
-            elif isinstance(line, models.Instruments):
-                for instrument in line.instruments:
-                    voice_index = 1
-                    if instrument.voice_name.startswith("V"):
-                        voice_index = int(instrument.voice_name[1:])
-                        voice_cat = "V"
-                    else:
-                        voice_cat = instrument.voice_name
-                    instruments.append(
-                        InstrumentItem(
-                            time=bar_start_time,
-                            voice_name=voice_cat,
-                            voice_index=voice_index,
-                            gm_number=instrument.gm_number,
-                        )
-                    )
-            elif isinstance(line, models.Tempo):
-                tempos.append(
-                    TempoItem(
-                        time=bar_start_time,
-                        measure_number=current_bar_index,
-                        beat=1,
-                        tempo=line.tempo,
-                    )
-                )
-        # Fill the durations (using delta between next time)
-        if len(results) > 0:
-            for i in range(len(results) - 1):
-                results[i].duration = results[i + 1].time - results[i].time
-            results[-1].duration = (
-                bar_start_time
-                + bar_duration_in_quarters(current_time_signature)
-                - results[-1].time
-            )
-        return results, time_signatures, tempos, instruments
+        return get_data(self)
 
     @property
     def chords(self) -> List[ChordItem]:
         return self.data[0]
 
     @property
-    def melody(self) -> List[NoteItem]:
+    def notes(self) -> List[NoteItem]:
         results = []
         chords = self.chords
         current_chord = None
@@ -277,7 +286,7 @@ class RomanTextDocument(BaseModel):
                     time = beat_start_time + bar_start_time
                     previous_current_chord = current_chord
                     current_chord = get_current_chord_from_time(time, chords)
-
+                    voices = None
                     is_silence = False
                     if isinstance(note, models.Silence):
                         pitch = None
@@ -286,26 +295,10 @@ class RomanTextDocument(BaseModel):
                         pitch = note.note
                     elif isinstance(note, models.ChordMelodyNote):
                         pitch = [n.note for n in note.notes]
-                    else:
-                        if current_chord is None:
-                            raise Exception(
-                                "No chord found for measure {} at beat {}, while using an interval note".format(
-                                    current_bar_index, note.beat
-                                )
-                            )
-                        current_chord_to_use = (
-                            current_chord
-                            if current_chord.chord not in ["NC", "R", "r"]
-                            else previous_current_chord
-                        )
-
-                        pitch = getPitchFromIntervalFromMinimallyModifiedScale(
-                            current_chord_to_use.chord,
-                            current_chord_to_use.key,
-                            note.note,
-                            note.octave,
-                        )
-
+                    elif isinstance(note, models.AccompanimentBeat):
+                        voices = note.voices
+                        pitch = [current_chord.pitches[v.voice - 1] for v in voices]
+                        
                     if current_chord is None:
                         current_chord = ChordItem(
                             time=beat_start_time + bar_start_time,
@@ -322,6 +315,7 @@ class RomanTextDocument(BaseModel):
                             key=current_chord.key,
                             time_signature=current_time_signature,
                             pitch=pitch,
+                            voices=voices,
                             is_silence=is_silence,
                             voice_name=line.voice_name,
                             techniques=self.get_techniques_for_note(
@@ -368,63 +362,6 @@ class RomanTextDocument(BaseModel):
                             event_value=event.event_value,
                         )
                     )
-        return results
-
-    @property
-    def accompaniment(self) -> List[AccompanimentItem]:
-        chords = self.chords
-        all_results = self._accompaniment(chords, self.lines)
-        # Sort the results by time
-        all_results.sort(key=lambda x: x.time)
-        techniques = self.techniques
-        for item in all_results:
-            item.techniques = self.get_techniques_for_note(
-                item.time, item.voice_name, techniques
-            )
-
-        return all_results
-
-    def _accompaniment(self, chords, lines) -> List[AccompanimentItem]:
-        results = []
-        bar_start_time = 0  # In quarter (not in beat !)
-        measure_map = get_measure_map(lines)
-        for line in lines:
-            if isinstance(line, models.Accompaniment):
-                bar_start_time, bar_end_time, current_time_signature = measure_map[
-                    line.measure_number
-                ]
-                bar_notes = []
-                for beat in line.beats:
-                    beat_start_time = beat_to_quarter(beat.beat, current_time_signature)
-                    duration = 0
-                    time = beat_start_time + bar_start_time
-                    current_chord_index = get_current_chord_index_from_time(
-                        time, chords
-                    )
-                    bar_notes.append(
-                        AccompanimentItem(
-                            time=beat_start_time + bar_start_time,
-                            duration=duration,
-                            voices=beat.voices,
-                            chord_index=current_chord_index,
-                            voice_name=line.voice_name,
-                            techniques=self.get_techniques_for_note(
-                                time, line.voice_name, self.techniques
-                            ),
-                        )
-                    )
-                if len(bar_notes) > 0:
-                    for i in range(len(bar_notes) - 1):
-                        bar_notes[i].duration = (
-                            bar_notes[i + 1].time - bar_notes[i].time
-                        )
-                    bar_notes[-1].duration = (
-                        bar_start_time
-                        + bar_duration_in_quarters(current_time_signature)
-                        - bar_notes[-1].time
-                    )
-                    results.extend(bar_notes)
-
         return results
 
     def get_bar_info(

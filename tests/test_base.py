@@ -28,10 +28,10 @@ Time Signature: 4/4
 Note: test
 my_var = c: I b3 V
 my_var_mel = b1 C5
-my_var_acc = b1 1 2 3 4
+my_var_acc = b1 1234
 m1 @my_var
-mel1 @my_var_mel
-acc1 @my_var_acc
+m1 T1 @my_var_mel
+m1 T2 @my_var_acc
 """
 
 
@@ -59,8 +59,8 @@ def test_events():
 text_with_instruments = r"""
 Time Signature: 4/4
 Note: test
-Instrument: V1=piano, V2=pizzicato_strings
-acc1 b1 1234
+Instrument: T1=piano, T2=pizzicato
+m1 T1 b1 1234
 """
 
 

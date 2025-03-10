@@ -1,6 +1,6 @@
 import pytest
 from harmonics.score import get_measure_map, bar_duration_in_quarters
-from harmonics.models import TimeSignature, Melody, Accompaniment, Events, MelodyNote
+from harmonics.models import TimeSignature, Melody, Events, MelodyNote
 from harmonics.exceptions import (
     TimeSignatureAlreadyDeclared,
     TimeSignatureNotDeclared,
@@ -80,11 +80,11 @@ def test_get_measure_map_complex_time_signatures():
 
 
 def test_get_measure_map_with_different_line_types():
-    """Test get_measure_map with different line types (Melody, Accompaniment, Events)."""
+    """Test get_measure_map with different line types (Melody, Events)."""
     lines = [
         TimeSignature(numerator=4, denominator=4),
         Melody(measure_number=1, notes=[], voice_name="V1"),
-        Accompaniment(measure_number=2, beats=[], voice_name="V1"),
+        Melody(measure_number=2, notes=[], voice_name="V1"),
         Events(measure_number=3, events=[]),
         TimeSignature(numerator=3, denominator=4),
         Melody(measure_number=4, notes=[], voice_name="V1"),

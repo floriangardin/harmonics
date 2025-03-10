@@ -103,6 +103,7 @@ def _initialize_score(time_signatures=None, tempos=None, target_tpq=480):
     else:
         symusic_score.tempos.append(Tempo(time=0, qpm=120))
 
+
     return symusic_score
 
 
@@ -231,7 +232,6 @@ def events_to_midi(
             )
             sym_track.notes.append(sym_note)
         symusic_score.tracks.append(sym_track)
-
     # Dump the MIDI to the specified output file
     symusic_score.dump_midi(output_file)
 
@@ -242,37 +242,14 @@ def to_midi(filepath, score):
     # Create a time-based mapping of voice assignments from instrument items
     voice_program_map = {}
     for instrument in score.instruments:
-        if instrument.voice_name == "V":
-            voice_key = f"V{instrument.voice_index}"
+        if instrument.voice_name == "T":
+            voice_key = f"T{instrument.voice_index}"
         else:
             voice_key = instrument.voice_name
         voice_program_map[voice_key] = int(instrument.gm_number)
 
     note_events = []
-
-    for accompaniment_beat in score.accompaniment:
-        current_chord = score.chords[accompaniment_beat.chord_index]
-        global_techniques = accompaniment_beat.techniques
-        for voice_obj in accompaniment_beat.voices:
-            voice = voice_obj.voice
-            octave = voice_obj.octave
-            total_alteration = voice_obj.alteration
-            program = voice_program_map[accompaniment_beat.voice_name]
-            note_event = [
-                accompaniment_beat.time,
-                m21.pitch.Pitch(current_chord.pitches[voice - 1]).midi
-                + (octave) * 12
-                + total_alteration,
-                accompaniment_beat.duration,
-                program,
-                None,
-                global_techniques,
-            ]
-            note_event = apply_techniques_before(global_techniques, note_event)
-            note_events.append(note_event)
-
-    note_events = []
-    for s in score.melody:
+    for s in score.notes:
         if not s.is_silence:
             program = voice_program_map.get(s.voice_name, DEFAULT_MELODY_CHANNEL)
             if isinstance(s.pitch, str):
@@ -284,7 +261,7 @@ def to_midi(filepath, score):
                     None,
                     s.techniques,
                 ]
-                note_event = apply_techniques_before(s.techniques, note_event)
+                #note_event = apply_techniques_before(s.techniques, note_event)
                 note_events.append(note_event)
             else:
                 for pitch in s.pitch:
@@ -296,8 +273,9 @@ def to_midi(filepath, score):
                         None,
                         s.techniques,
                     ]
-                    note_event = apply_techniques_before(s.techniques, note_event)
+                    #note_event = apply_techniques_before(s.techniques, note_event)
                     note_events.append(note_event)
+
 
     events_to_midi(
         note_events,

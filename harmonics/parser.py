@@ -4,7 +4,6 @@ from lark import Lark
 from music21.pitch import Pitch
 
 from .transformer import transform_document
-from .romanyh import generateBestHarmonization
 from .commons import to_mxl, to_midi, to_audio
 from .score import Score
 
@@ -87,27 +86,11 @@ class HarmonicsParser:
     def parse_to_events(self, input_string):
         document = self.parse(input_string)
         chords, time_signatures, tempos, instruments = document.data
-        if len(chords) > 0:
-            progression = generateBestHarmonization(
-                chords,
-                closePosition=False,
-                firstVoicing=None,
-                lastVoicing=None,
-                allowedUnisons=0,
-            )
-        else:
-            progression = []
-
-        for chord, pitches in zip(chords, progression):
-            pitches = [Pitch(p).nameWithOctave for p in pitches]
-            chord.pitches = pitches
-
-        melody = document.melody
+        notes = document.notes
         events = document.events
         score = Score(
             chords=chords,
-            melody=melody,
-            accompaniment=document.accompaniment,
+            notes=notes,
             time_signatures=time_signatures,
             tempos=tempos,
             events=events,

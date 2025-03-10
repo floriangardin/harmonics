@@ -1,11 +1,16 @@
 from typing import List, Optional, Union, Tuple, Any, Dict, Set
 
-from pydantic import BaseModel
+from pydantic import BaseModel as RawBaseModel
 from .notes_utils import getPitchFromIntervalFromMinimallyModifiedScale
 
 # ==============================
 # Melody Lines
 # ==============================
+
+class BaseModel(RawBaseModel):
+
+    def __hash__(self):  # make hashable BaseModel subclass
+        return hash(self.json())
 
 
 class MelodyNote(BaseModel):
@@ -13,6 +18,7 @@ class MelodyNote(BaseModel):
 
 class AbsoluteMelodyNote(MelodyNote):
     note: str
+
 
 class ChordMelodyNote(MelodyNote):
     notes: List[MelodyNote]
@@ -26,6 +32,14 @@ class Instrument(BaseModel):
     voice_name: str
     gm_number: int
 
+
+class AccompanimentVoice(BaseModel):
+    voice: int
+    octave: Optional[int] = 0
+    alteration: Optional[int] = 0
+
+class AccompanimentBeat(MelodyNote):
+    voices: List[AccompanimentVoice]
 
 class Melody(BaseModel):
     measure_number: int
@@ -229,26 +243,6 @@ class Comment(BaseModel):
 # ------------------------------
 
 
-class AccompanimentVoice(BaseModel):
-    voice: int
-    octave: Optional[int] = 0
-    alteration: Optional[int] = 0
-
-
-class AccompanimentBeat(BaseModel):
-    beat: float
-    voices: List[AccompanimentVoice]
-
-
-class AccompanimentBeatSilence(BaseModel):
-    beat: float
-    voices: List[AccompanimentVoice] = []
-
-
-class Accompaniment(BaseModel):
-    measure_number: int
-    beats: List[AccompanimentBeat]
-    voice_name: Optional[str] = "V1"
 
 
 class VariableDeclaration(BaseModel):
@@ -268,7 +262,6 @@ StatementLine = Union[
     Form,
     Comment,
     Melody,
-    Accompaniment,  # <-- NEW: Added accompaniment as a statement line
     Events,
     VariableDeclaration,
     Technique,
