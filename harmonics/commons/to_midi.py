@@ -271,19 +271,33 @@ def to_midi(filepath, score):
             note_event = apply_techniques_before(global_techniques, note_event)
             note_events.append(note_event)
 
+    note_events = []
     for s in score.melody:
         if not s.is_silence:
             program = voice_program_map.get(s.voice_name, DEFAULT_MELODY_CHANNEL)
-            note_event = [
-                s.time,
-                m21.pitch.Pitch(s.pitch).midi,
-                s.duration,
-                program,
-                None,
-                s.techniques,
-            ]
-            note_event = apply_techniques_before(s.techniques, note_event)
-            note_events.append(note_event)
+            if isinstance(s.pitch, str):
+                note_event = [
+                    s.time,
+                    m21.pitch.Pitch(s.pitch).midi,
+                    s.duration,
+                    program,
+                    None,
+                    s.techniques,
+                ]
+                note_event = apply_techniques_before(s.techniques, note_event)
+                note_events.append(note_event)
+            else:
+                for pitch in s.pitch:
+                    note_event = [
+                        s.time,
+                        m21.pitch.Pitch(pitch).midi,
+                        s.duration,
+                        program,
+                        None,
+                        s.techniques,
+                    ]
+                    note_event = apply_techniques_before(s.techniques, note_event)
+                    note_events.append(note_event)
 
     events_to_midi(
         note_events,

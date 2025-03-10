@@ -25,7 +25,7 @@ class NoteItem(BaseModel):
     chord: Optional[str] = None
     key: Optional[str] = None
     time_signature: Optional[Tuple[int, int]] = None
-    pitch: Optional[str] = None
+    pitch: Union[Optional[str], List[str]] = None
     is_silence: bool = False
     voice_name: Optional[str] = None
     techniques: Optional[List[str]] = None  # Add techniques field
@@ -284,6 +284,8 @@ class RomanTextDocument(BaseModel):
                         is_silence = True
                     elif isinstance(note, models.AbsoluteMelodyNote):
                         pitch = note.note
+                    elif isinstance(note, models.ChordMelodyNote):
+                        pitch = [n.note for n in note.notes]
                     else:
                         if current_chord is None:
                             raise Exception(

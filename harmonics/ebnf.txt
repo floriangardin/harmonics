@@ -1,47 +1,26 @@
-// ----------------------------
-// Lark grammar for RomanText
-// ----------------------------
 ?start: document
 
 document: (NEWLINE)* line*
 line: metadata_line
      | statement_line
 
-// ----------------------------
-// Metadata Rules
-// ----------------------------
 metadata_line: composer_line
              | piece_line
-             | analyst_line
-             | proofreader_line
-             | movement_line
              | time_signature_line
-             | key_signature_line
-             | minor_mode_line
              | tempo_line
              | instrument_line
 
 composer_line: "Composer:" WS REST_LINE NEWLINE
 piece_line: "Piece:" WS REST_LINE NEWLINE
-analyst_line: "Analyst:" WS REST_LINE NEWLINE
-proofreader_line: "Proofreader:" WS REST_LINE NEWLINE
-movement_line: "Movement:" WS MEASURE_NUMBER NEWLINE
 time_signature_line: "Time Signature:" WS time_signature NEWLINE
 tempo_line: "Tempo:" WS* TEMPO_NUMBER NEWLINE  // Tempo number in QPM
-key_signature_line: "Key Signature:" WS SIGNED_INT NEWLINE
-minor_mode_line: "Minor Sixth / Minor Seventh:" WS MINOR_MODE_OPTION NEWLINE
 instrument_line: "Instrument:" WS VOICE_NAME WS* "=" WS* GM_INSTRUMENT_NAME ("," WS* VOICE_NAME WS* "=" WS* GM_INSTRUMENT_NAME)* NEWLINE
 
 VOICE_NAME: "V" DIGIT+
 GM_INSTRUMENT_NAME: /[a-zA-Z_1-9]+/
 TEMPO_NUMBER: DIGIT+
 
-// ----------------------------
-// Statement Rules
-// ----------------------------
 statement_line: measure_line
-              | pedal_line
-              | form_line
               | note_line
               | repeat_line
               | melody_line
@@ -87,13 +66,7 @@ measure_range: MEASURE_INDICATOR ("-" MEASURE_INDICATOR)+
 note: NOTELETTER ACCIDENTAL?
 NOTELETTER: /[A-Ga-g]/
 
-// --- Pedal Lines
-pedal_line: "Pedal:" WS note WS pedal_entries NEWLINE
-pedal_entries: pedal_entry (WS pedal_entry)* WS?
-pedal_entry: MEASURE_INDICATOR WS BEAT_INDICATOR
-
 // --- Form and Note Lines
-form_line: "Form:" WS REST_LINE NEWLINE
 note_line: "Note:" WS REST_LINE NEWLINE
 
 // ----------------------------
@@ -125,18 +98,16 @@ OCTAVE: "o" SIGNED_INT
 // Set the note one semitone higher or lower (++=2 semitones up, --=2 semitones down)
 ALTERATION: ("+" | "-")+
 
-// ----------------------------
-// Melody Grammar
-// ----------------------------
+// --------------------------------------------------------------------
+// Melody Grammar (can use several notes per beat to create chords)
+// --------------------------------------------------------------------
 melody_line: MELODY_MEASURE_INDICATOR (WS+ VOICE_NAME)? (melody_line_content | VARIABLE_CALLING) NEWLINE
 melody_line_content: (first_beat_note)? (beat_note)*
 MELODY_MEASURE_INDICATOR: "mel" MEASURE_NUMBER
 MELODY_BEAT_INDICATOR: ("b" | "t") DIGIT+ ("." DIGIT+)?
-first_beat_note: WS+ (MELODY_BEAT_INDICATOR WS+)? MELODY_NOTE (DELTA_OCTAVE)?
-beat_note: WS+ MELODY_BEAT_INDICATOR WS (MELODY_NOTE (DELTA_OCTAVE)? | ABSOLUTE_NOTE | SILENCE)
+first_beat_note: WS+ (MELODY_BEAT_INDICATOR WS+)? (ABSOLUTE_NOTE+ | SILENCE)
+beat_note: WS+ MELODY_BEAT_INDICATOR WS (ABSOLUTE_NOTE+ | SILENCE)
 SILENCE: "r" | "R"
-MELODY_NOTE: "/" (ACCIDENTAL)? DIGIT+
-DELTA_OCTAVE: "o" SIGNED_INT
 ABSOLUTE_NOTE: NOTELETTER_CAPITALIZED (ACCIDENTAL)? (ABSOLUTE_OCTAVE)?
 NOTELETTER_CAPITALIZED: /[A-G]/
 ABSOLUTE_OCTAVE: DIGIT+
@@ -163,8 +134,6 @@ ACCIDENTAL: /#{1,}|b{1,}/
 inversion: INVERSION_STANDARD | inversion_free
 INVERSION_STANDARD: "6" | "64" | "6/3" | "6/4" | "7" | "6/5" | "65" | "4/3" | "43" | "2" | "42" | "4/2" | "9" | "11" | "13"
 inversion_free: ACCIDENTAL? DIGIT+
-
-MINOR_MODE_OPTION: "quality" | "cautionary" | "sharp" | "flat"
 
 DIGIT: /[0-9]/
 DIGITS: DIGIT+

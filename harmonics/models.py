@@ -10,19 +10,17 @@ from .notes_utils import getPitchFromIntervalFromMinimallyModifiedScale
 
 class MelodyNote(BaseModel):
     beat: float
-    note: str
-    octave: int = 0
 
+class AbsoluteMelodyNote(MelodyNote):
+    note: str
+
+class ChordMelodyNote(MelodyNote):
+    notes: List[MelodyNote]
 
 class Silence(MelodyNote):
     beat: float
     note: str = "R"
     octave: int = 0
-
-
-class AbsoluteMelodyNote(MelodyNote):
-    pass
-
 
 class Instrument(BaseModel):
     voice_name: str

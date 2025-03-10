@@ -27,7 +27,7 @@ text_with_variable = r"""
 Time Signature: 4/4
 Note: test
 my_var = c: I b3 V
-my_var_mel = V1 b1 C5
+my_var_mel = b1 C5
 my_var_acc = b1 1 2 3 4
 m1 @my_var
 mel1 @my_var_mel

@@ -44,6 +44,7 @@ from harmonics.models import (
     AccompanimentBeatSilence,
     BeatAndPitchClasses,
     PitchClassesAndRomanNumeral,
+    ChordMelodyNote
 )
 from .score import RomanTextDocument
 
@@ -482,19 +483,17 @@ def transform_melody_line_content(
     is_absolute_note = False
     for child in node.children:
         is_silence = False
-        is_absolute_note = False
         if isinstance(child, Tree) and child.data in ["beat_note", "first_beat_note"]:
             beat = 1
             octave = 0
-            note = ""
+            all_notes = []
             for token in child.children:
                 if isinstance(token, Token):
                     if token.type == "MELODY_BEAT_INDICATOR":
                         beat = float(token.value[1:])  # Remove 't' prefix
-                    elif token.type == "MELODY_NOTE":
-                        note = token.value.replace("/", "")
                     elif token.type == "ABSOLUTE_NOTE":
                         note = token.value.replace("/", "")
+                        all_notes.append(AbsoluteMelodyNote(beat=beat, note=note))
                         is_absolute_note = True
                     elif token.type == "SILENCE":
                         is_silence = True
@@ -503,7 +502,10 @@ def transform_melody_line_content(
             if is_silence:
                 notes.append(Silence(beat=beat))
             elif is_absolute_note:
-                notes.append(AbsoluteMelodyNote(beat=beat, note=note))
+                if len(all_notes) == 1:
+                    notes.append(all_notes[0])
+                else:
+                    notes.append(ChordMelodyNote(beat=beat, notes=all_notes))
             else:
                 notes.append(MelodyNote(beat=beat, note=note, octave=octave))
     return notes
