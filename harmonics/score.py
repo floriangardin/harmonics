@@ -5,60 +5,12 @@ from .models import BaseModel
 from .notes_utils import getPitchFromIntervalFromMinimallyModifiedScale
 import harmonics.models as models
 import harmonics.exceptions as exceptions
+import harmonics.commons.utils_techniques as utils_techniques
 
+from harmonics.score_models import NoteItem, ChordItem, TimeSignatureItem, TempoItem, InstrumentItem
 # ==================================
 # Top-level Document & Parsed Items
 # ==================================
-
-
-class ChordItem(BaseModel):
-    time: float
-    duration: float
-    chord: Optional[str] = None
-    key: Optional[str] = None
-    time_signature: Optional[Tuple[int, int]] = None
-    pitches: Optional[List[str]] = None
-
-
-class NoteItem(BaseModel):
-    time: float
-    duration: float
-    chord: Optional[str] = None
-    key: Optional[str] = None
-    time_signature: Optional[Tuple[int, int]] = None
-    pitch: Union[Optional[str], List[str]] = None
-    is_silence: bool = False
-    voice_name: Optional[str] = None
-    techniques: Optional[List[str]] = None  # Add techniques field
-
-
-class TempoItem(BaseModel):
-    time: float
-    tempo: int
-    measure_number: Optional[int] = None
-    beat: Optional[float] = None
-
-
-class TimeSignatureItem(BaseModel):
-    time: float
-    time_signature: Tuple[int, int]
-
-
-class InstrumentItem(BaseModel):
-    time: float
-    voice_name: str
-    voice_index: Optional[int] = None
-    gm_number: int
-
-
-class Score(BaseModel):
-    chords: List[ChordItem]
-    notes: List[NoteItem]
-    time_signatures: List[TimeSignatureItem] = []
-    tempos: List[TempoItem] = []
-    events: List[models.EventItem] = []
-    instruments: List[InstrumentItem] = []
-    techniques: List[models.TechniqueItem] = []  # Add techniques to Score
 
 
 def bar_duration_in_quarters(time_signature: Tuple[int, int]) -> int:
@@ -232,7 +184,7 @@ def get_data(self):
     self.get_progression(chords)
     return chords, time_signatures, tempos, instruments
 
-class RomanTextDocument(BaseModel):
+class ScoreDocument(BaseModel):
     lines: List[models.Line]
 
     @property
@@ -243,7 +195,6 @@ class RomanTextDocument(BaseModel):
         from music21.pitch import Pitch
         from harmonics.romanyh import generateBestHarmonization
         if len(chords) > 0:
-            print('Generating progression')
             progression = generateBestHarmonization(
                 chords,
                 closePosition=False,
@@ -288,9 +239,13 @@ class RomanTextDocument(BaseModel):
                     current_chord = get_current_chord_from_time(time, chords)
                     voices = None
                     is_silence = False
+                    is_continuation = False
                     if isinstance(note, models.Silence):
                         pitch = None
                         is_silence = True
+                    elif isinstance(note, models.Continuation):
+                        pitch = None
+                        is_continuation = True
                     elif isinstance(note, models.AbsoluteMelodyNote):
                         pitch = note.note
                     elif isinstance(note, models.ChordMelodyNote):
@@ -307,6 +262,10 @@ class RomanTextDocument(BaseModel):
                             time_signature=current_time_signature,
                             key=None,
                         )
+                    techniques = self.get_techniques_for_note(
+                        time, line.voice_name, self.techniques
+                    ) + note.techniques
+                    techniques = utils_techniques.resolve_techniques(techniques)
                     bar_notes.append(
                         NoteItem(
                             time=beat_start_time + bar_start_time,
@@ -317,10 +276,11 @@ class RomanTextDocument(BaseModel):
                             pitch=pitch,
                             voices=voices,
                             is_silence=is_silence,
+                            is_continuation=is_continuation,
                             voice_name=line.voice_name,
-                            techniques=self.get_techniques_for_note(
-                                time, line.voice_name, self.techniques
-                            ),
+                            techniques=techniques,
+                            measure_number=line.measure_number,
+                            beat=note.beat,
                         )
                     )
                 if len(bar_notes) > 0:

@@ -82,9 +82,11 @@ ALTERATION: ("+" | "-")+
 
 melody_line: MEASURE_INDICATOR (WS+ TRACK_NAME)? (melody_line_content | VARIABLE_CALLING) NEWLINE
 melody_line_content: (first_beat_note)? (beat_note)*
-first_beat_note: WS+ (BEAT_INDICATOR WS+)? (ABSOLUTE_NOTE+ | SILENCE | voice_list)
-beat_note: WS+ BEAT_INDICATOR WS (ABSOLUTE_NOTE+ | SILENCE | voice_list)
+first_beat_note: WS+ (BEAT_INDICATOR WS+)? (ABSOLUTE_NOTE+ | SILENCE | CONTINUATION | voice_list) note_techniques?
+beat_note: WS+ BEAT_INDICATOR WS (ABSOLUTE_NOTE+ | SILENCE | CONTINUATION | voice_list) note_techniques?
+note_techniques: "[" WS* TECHNIQUE_NAME ("," WS* TECHNIQUE_NAME)* WS* "]"
 SILENCE: "r" | "R"
+CONTINUATION: "L" | "l"
 ABSOLUTE_NOTE: NOTELETTER_CAPITALIZED (ACCIDENTAL)? (ABSOLUTE_OCTAVE)?
 NOTELETTER_CAPITALIZED: /[A-G]/
 ABSOLUTE_OCTAVE: DIGIT+
@@ -121,8 +123,8 @@ CR: /\r/
 LF: /\n/
 NEWLINE: WS* (CR? LF)+
 
-%ignore WS
 %ignore NEWLINE
 %ignore CR
 %ignore LF
 %ignore PHRASE_BOUNDARY
+%ignore WS

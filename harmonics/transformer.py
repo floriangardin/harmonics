@@ -39,8 +39,9 @@ from harmonics.models import (
     AccompanimentVoice,
     Technique,
     TechniqueRange,
+    Continuation
 )
-from .score import RomanTextDocument
+from .score import ScoreDocument
 
 
 def transform_token(token: Token) -> str:
@@ -471,6 +472,7 @@ def transform_repeat_line(node: Tree) -> Repeat:
 def transform_beat_note(node: Tree, notes: List[MelodyNote]) -> BeatItem:
     beat = 1
     all_notes = []
+    techniques = []
     for token in node.children:
         if isinstance(token, Token):
             if token.type == "BEAT_INDICATOR":
@@ -480,22 +482,36 @@ def transform_beat_note(node: Tree, notes: List[MelodyNote]) -> BeatItem:
                 all_notes.append(AbsoluteMelodyNote(beat=beat, note=note))
             elif token.type == "SILENCE":
                 return [Silence(beat=beat)]
+            elif token.type == "CONTINUATION":
+                return [Continuation(beat=beat)]
         elif isinstance(token, Tree) and token.data == "voice_list":
             return [transform_voice_list(token, beat)]
-    notes = []
+        elif isinstance(token, Tree) and token.data == "note_techniques":
+            techniques += transform_note_techniques(token)
+    
     if len(all_notes) == 1:
+        for note in all_notes:
+            note.techniques = techniques
         return all_notes
     else:
-        return [ChordMelodyNote(beat=beat, notes=all_notes)]
+        return [ChordMelodyNote(beat=beat, notes=all_notes, techniques=techniques)]
+
+
+def transform_note_techniques(node: Tree) -> List[Technique]:
+    techniques = []
+    for child in node.children:
+        if isinstance(child, Token) and child.type == "TECHNIQUE_NAME":
+            techniques.append(child.value)
+    return techniques
 
 def transform_melody_line_content(
     node: Tree, context: Dict[str, List[AccompanimentBeat]]
 ) -> List[BeatItem]:
     notes = []
     for child in node.children:
+        
         if isinstance(child, Tree) and child.data in ["beat_note", "first_beat_note"]:
             notes += transform_beat_note(child, notes)
-
     return notes
 
 
@@ -812,7 +828,7 @@ def parse_key_signature(key_signature: str) -> tuple[Optional[str], Optional[str
 # ------------------------------
 
 
-def transform_document(tree: Tree) -> RomanTextDocument:
+def transform_document(tree: Tree) -> ScoreDocument:
     lines = []
     context = {}
     for child in tree.children:
@@ -827,5 +843,5 @@ def transform_document(tree: Tree) -> RomanTextDocument:
                     if result is not None:
                         lines.append(result)
 
-    document = RomanTextDocument(lines=lines)
+    document = ScoreDocument(lines=lines)
     return document

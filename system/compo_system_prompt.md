@@ -292,18 +292,18 @@ tech [T2] (m1 b1 - m4 b4) : staccato
 
 // A Section (measures 1-4)
 
-m1 a: V        
+m1 b1 a: V        
 m1 T1 b2 B4 b2.25 A4 b2.5 G#4 b2.75 A4
 
-m2 i
+m2 b1 i
 m2 T1 b1 C5 b1.5 R b2 D5 b2.25 C5 b2.5 B4 b2.75 C5
 m2 T2 b1 A3 b1.5 C4 E4 b2 C4 E4 b2.5 C4 E4
 
-m3 i
+m3 b1 i
 m3 T1 b1 E5 b1.5 R b2 F5 b2.25 E5 b2.5 D#5 b2.75 E5
 m3 T2 b1 A3 b1.5 C4 E4 b2 C4 E4 b2.5 C4 E4
 
-m4 i
+m4 b1 i
 m4 T1 b1 B5 b1.25 A5 b1.5 G#5 b1.75 A5 b2 B5 b2.25 A5 b2.5 G#5 b2.75 A5
 m4 T2 b1 A3 b1.5 C4 E4 b2 A3 b2.5 C4 E4
 ```

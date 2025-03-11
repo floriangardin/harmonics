@@ -15,10 +15,11 @@ class BaseModel(RawBaseModel):
 
 class MelodyNote(BaseModel):
     beat: float
+    techniques: List[str] = []
 
 class AbsoluteMelodyNote(MelodyNote):
     note: str
-
+    
 
 class ChordMelodyNote(MelodyNote):
     notes: List[MelodyNote]
@@ -26,6 +27,11 @@ class ChordMelodyNote(MelodyNote):
 class Silence(MelodyNote):
     beat: float
     note: str = "R"
+    octave: int = 0
+
+class Continuation(MelodyNote):
+    beat: float
+    note: str = "L"
     octave: int = 0
 
 class Instrument(BaseModel):

@@ -1,5 +1,5 @@
 import harmonics.models as models
-from harmonics.score import RomanTextDocument, Score, TimeSignatureItem
+from harmonics.score import ScoreDocument
 from typing import List, Tuple
 from harmonics.commons.utils_techniques import resolve_techniques
 
@@ -24,7 +24,7 @@ def test_techniques():
         models.Melody(measure_number=1, notes=[], voice_name="V1"),
     ]
 
-    doc = RomanTextDocument(lines=lines)
+    doc = ScoreDocument(lines=lines)
     techniques = doc.techniques
 
     # Test that the correct number of technique items are created
@@ -70,7 +70,7 @@ def test_techniques_with_different_time_signatures():
         models.Melody(measure_number=2, notes=[], voice_name="V1"),
     ]
 
-    doc = RomanTextDocument(lines=lines)
+    doc = ScoreDocument(lines=lines)
     techniques = doc.techniques
 
     # Check that the technique spans correctly across different time signatures
@@ -100,7 +100,7 @@ def test_techniques_with_multiple_techniques_same_range():
         models.Melody(measure_number=1, notes=[], voice_name="V1"),
     ]
 
-    doc = RomanTextDocument(lines=lines)
+    doc = ScoreDocument(lines=lines)
     techniques = doc.techniques
 
     # Check that all three techniques are created for the same voice and range
@@ -136,7 +136,7 @@ def test_techniques_with_measure_beyond_declared_measures():
         models.Melody(measure_number=1, notes=[], voice_name="V1"),
     ]
 
-    doc = RomanTextDocument(lines=lines)
+    doc = ScoreDocument(lines=lines)
     techniques = doc.techniques
 
     # Check that the technique extends correctly
@@ -172,7 +172,7 @@ def test_get_techniques_for_note():
         models.Melody(measure_number=1, notes=[], voice_name="V1"),
     ]
 
-    doc = RomanTextDocument(lines=lines)
+    doc = ScoreDocument(lines=lines)
     techniques = doc.techniques
 
     # Test a note at measure 1, beat 1 (only staccato applies)

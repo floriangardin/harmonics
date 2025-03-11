@@ -1,4 +1,7 @@
-jinja2
+music21
+lark
+pydantic
+symusic
 openai
 anthropic
-music21
+python-dotenv

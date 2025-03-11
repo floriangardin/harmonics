@@ -5,12 +5,17 @@ from music21.pitch import Pitch
 
 from .transformer import transform_document
 from .commons import to_mxl, to_midi, to_audio
-from .score import Score
+from harmonics.score_models import Score
 
 CURRENT_FILEPATH = os.path.dirname(os.path.abspath(__file__))
-GRAMMAR_FILEPATH = os.path.join(CURRENT_FILEPATH, "ebnf.txt")
+GRAMMAR_FILEPATH = os.path.join(CURRENT_FILEPATH, "grammar.ebnf")
 
+from lark import Lark, Token, Transformer, Discard
 
+class SpaceTransformer(Transformer):
+    def WS(self, tok: Token):
+        return Discard
+    
 class HarmonicsParser:
     def __init__(self):
         self.grammar_file = GRAMMAR_FILEPATH
@@ -80,6 +85,7 @@ class HarmonicsParser:
 
     def parse(self, input_string):
         tree = self.parser.parse(self.prepare_input(input_string))
+        tree = SpaceTransformer().transform(tree)
         document = transform_document(tree)
         return document
 

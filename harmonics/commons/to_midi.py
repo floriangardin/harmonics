@@ -235,7 +235,37 @@ def events_to_midi(
     # Dump the MIDI to the specified output file
     symusic_score.dump_midi(output_file)
 
+def solve_continuation(notes):
+    """
+    Refactor note items to handle continuations.
+    
+    This function processes a list of NoteItem objects, extending the duration of notes
+    when they are followed by continuation marks. Continuation notes themselves are not
+    included in the result.
+    
+    Args:
+        notes: A list of NoteItem objects from the score
+        
+    Returns:
+        A list of NoteItem objects with continuations resolved
+    """
+    last_note_of_voice = {}  # Tracks the last note for each voice
+    result = []
+    
+    for note in notes:
+        if note.is_continuation:
+            # If this is a continuation, extend the duration of the last note in this voice
+            if note.voice_name in last_note_of_voice:
+                last_note = last_note_of_voice[note.voice_name]
+                last_note.duration += note.duration
+            # Don't add the continuation note to the result
+        else:
+            # Add regular notes to the result
+            result.append(note)
+            # Update the last note for this voice
+            last_note_of_voice[note.voice_name] = note
 
+    return result
 def to_midi(filepath, score):
     # Default MIDI programs if not specified
     DEFAULT_MELODY_CHANNEL = 1
@@ -249,7 +279,8 @@ def to_midi(filepath, score):
         voice_program_map[voice_key] = int(instrument.gm_number)
 
     note_events = []
-    for s in score.notes:
+    notes = solve_continuation(score.notes)
+    for s in notes:
         if not s.is_silence:
             program = voice_program_map.get(s.voice_name, DEFAULT_MELODY_CHANNEL)
             if isinstance(s.pitch, str):
@@ -261,7 +292,7 @@ def to_midi(filepath, score):
                     None,
                     s.techniques,
                 ]
-                #note_event = apply_techniques_before(s.techniques, note_event)
+                note_event = apply_techniques_before(s.techniques, note_event)
                 note_events.append(note_event)
             else:
                 for pitch in s.pitch:
@@ -273,7 +304,7 @@ def to_midi(filepath, score):
                         None,
                         s.techniques,
                     ]
-                    #note_event = apply_techniques_before(s.techniques, note_event)
+                    note_event = apply_techniques_before(s.techniques, note_event)
                     note_events.append(note_event)
 
 

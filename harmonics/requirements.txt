@@ -1,6 +1,0 @@
-music21
-lark
-pydantic
-symusic
-openai
-python-dotenv
