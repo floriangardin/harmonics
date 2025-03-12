@@ -33,7 +33,13 @@ def to_ern(filepath, score):
     # Generate harmony, melody and accompaniment lines
     for measure_number in sorted(measure_data.keys()):
         measure = measure_data[measure_number]
-
+        # Add time signature changes if there are any for this measure
+        if "time_signature" in measure:
+            time_sig = measure["time_signature"]
+            if time_sig:
+                lines.append(
+                    f"(m{measure_number}) Time Signature: {time_sig[0]}/{time_sig[1]}"
+                )
         # Add harmony line if exists
         if "chords" in measure and measure["chords"]:
             lines.extend(_generate_harmony_line(measure_number, measure["chords"]))
@@ -49,14 +55,6 @@ def to_ern(filepath, score):
 
             for voice_name, notes in melody_by_voice.items():
                 lines.extend(_generate_melody_line(measure_number, voice_name, notes))
-
-        # Add time signature changes if there are any for this measure
-        if "time_signature" in measure:
-            time_sig = measure["time_signature"]
-            if time_sig:
-                lines.append(
-                    f"(m{measure_number}) Time Signature: {time_sig[0]}/{time_sig[1]}"
-                )
 
         # Add a blank line between measures for readability
         lines.append("")
@@ -94,7 +92,7 @@ def _generate_metadata(score):
         instruments_line = "Instrument: "
         instruments = []
         for instrument in score.instruments:
-            instruments.append(f"{instrument.voice_name}={instrument.gm_number}")
+            instruments.append(f"{instrument.voice_name}={instrument.name}")
         instruments_line += ", ".join(instruments)
         lines.append(instruments_line)
 
@@ -109,19 +107,27 @@ def _generate_technique_lines(score):
     tech_by_voice = {}
     for tech in score.techniques:
         voice_name = tech.voice_name
-        key = (tech.time_start, tech.time_end, voice_name)
+        key = (
+            tech.measure_number_start,
+            tech.beat_start,
+            tech.measure_number_end,
+            tech.beat_end,
+            voice_name,
+        )
         if key not in tech_by_voice:
             tech_by_voice[key] = []
         tech_by_voice[key].append(tech.technique)
 
     # Convert to tech lines
-    for (time_start, time_end, voice_name), techniques in tech_by_voice.items():
-        # Find the measure and beat for start and end
-        start_measure, start_beat = _find_measure_beat(score, time_start)
-        end_measure, end_beat = _find_measure_beat(score, time_end)
-
+    for (
+        start_measure,
+        start_beat,
+        end_measure,
+        end_beat,
+        voice_name,
+    ), techniques in tech_by_voice.items():
         if start_measure and end_measure and start_beat and end_beat:
-            tech_line = f"tech {voice_name} (m{start_measure} b{start_beat} - m{end_measure} b{end_beat}) : {','.join(techniques)}"
+            tech_line = f"tech {voice_name} (m{start_measure} {_beat_to_ern(start_beat)} - m{end_measure} {_beat_to_ern(end_beat)}) : {','.join(techniques)}"
             lines.append(tech_line)
 
     return lines
@@ -142,7 +148,9 @@ def _generate_event_lines(score):
     for measure, events in sorted(events_by_measure.items()):
         event_line = f"e{measure}"
         for event in sorted(events, key=lambda e: e.beat):
-            event_line += f" b{event.beat} {event.event_type}({event.event_value})"
+            event_line += (
+                f" {_beat_to_ern(event.beat)} {event.event_type}({event.event_value})"
+            )
         lines.append(event_line)
 
     return lines
@@ -174,12 +182,11 @@ def _organize_by_measure(score):
 
     # Process time signatures
     for ts in score.time_signatures:
-        measure, _ = _find_measure_beat(score, ts.time)
-        if measure and measure not in measure_data:
-            measure_data[measure] = {}
+        if ts.measure_number not in measure_data:
+            measure_data[ts.measure_number] = {}
 
-        if measure:
-            measure_data[measure]["time_signature"] = ts.time_signature
+        if ts.measure_number:
+            measure_data[ts.measure_number]["time_signature"] = ts.time_signature
 
     return measure_data
 
@@ -194,10 +201,10 @@ def _generate_harmony_line(measure_number, chords):
     sorted_chords = sorted(chords, key=lambda c: c.beat)
 
     for chord in sorted_chords:
-        if chord.key and chord.chord:
-            harmony_line += f" b{chord.beat} {chord.key} {chord.chord}"
+        if chord.key and chord.new_key:
+            harmony_line += f" {_beat_to_ern(chord.beat)} {chord.key}: {chord.chord}"
         elif chord.chord:
-            harmony_line += f" b{chord.beat} {chord.chord}"
+            harmony_line += f" {_beat_to_ern(chord.beat)} {chord.chord}"
 
     # Add phrase boundary if needed
     # (Would require additional flag in the chord model to specify this)
@@ -206,6 +213,13 @@ def _generate_harmony_line(measure_number, chords):
     lines.append(harmony_line)
 
     return lines
+
+
+def _beat_to_ern(beat):
+    if beat == int(beat):
+        return f"b{int(beat)}"
+    else:
+        return f"b{beat}"
 
 
 def _generate_melody_line(measure_number, voice_name, notes):
@@ -227,35 +241,14 @@ def _generate_melody_line(measure_number, voice_name, notes):
         elif isinstance(note.pitch, list):
             # Handle chord
             pitches = " ".join(note.pitch)
-            melody_line += f" b{note.beat} {pitches}"
+            melody_line += f" {_beat_to_ern(note.beat)} {pitches}"
         elif note.pitch:
-            melody_line += f" b{note.beat} {note.pitch}"
+            melody_line += f" {_beat_to_ern(note.beat)} {note.pitch}"
+
+        # Add techniques
+        if note.techniques:
+            melody_line += f" [{','.join(note.techniques)}]"
 
     lines.append(melody_line)
 
     return lines
-
-
-def _find_measure_beat(score, time):
-    """Find the measure number and beat for a given time."""
-    # This is a placeholder implementation. In a real implementation,
-    # you would need to calculate the measure and beat based on time,
-    # using the time signatures in the score.
-
-    # For notes and chords, we already have measure_number and beat
-    for item in score.notes:
-        if (
-            abs(item.time - time) < 0.001
-            and item.measure_number is not None
-            and item.beat is not None
-        ):
-            return item.measure_number, item.beat
-
-    for item in score.chords:
-        if abs(item.time - time) < 0.001:
-            return item.measure_number, item.beat
-
-    # If no exact match found, we'd need to calculate it
-    # This would require knowledge of time signatures and beats per measure
-    # For now, just return None
-    return None, None

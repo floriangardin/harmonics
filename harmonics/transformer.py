@@ -608,6 +608,7 @@ def transform_instrument_line(node: Tree) -> Instruments:
                 Instrument(
                     voice_name=voice_name,
                     gm_number=INSTRUMENTS_DICT[gm_instrument_name][0] + 1,
+                    name=gm_instrument_name,
                 )
             )
     return Instruments(instruments=instruments)

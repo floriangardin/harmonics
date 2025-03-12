@@ -3,6 +3,7 @@ from fractions import Fraction
 import re
 from typing import Dict, List, Optional, Set
 from copy import deepcopy
+from harmonics.commons import utils_techniques
 
 
 def to_mxl(filepath, score):
@@ -39,6 +40,7 @@ def to_mxl(filepath, score):
         m21_instrument.midiProgram = (
             instrument.gm_number - 1
         )  # music21 uses 0-127, GM uses 1-128
+        m21_instrument.instrumentName = instrument.name.capitalize().replace("_", " ")
         part.insert(0, m21_instrument)
 
         # Store part in dictionary
@@ -82,21 +84,6 @@ def to_mxl(filepath, score):
                 ]
                 if idx == 0:
                     first_instrument_measures[measure_num] = measure
-                # Add time signature if it changes at this measure
-                while current_ts_idx < len(time_sigs) and any(
-                    note.measure_number == measure_num
-                    and note.beat == 1.0
-                    and note.time == time_sigs[current_ts_idx].time
-                    for note in score.notes
-                    if note.measure_number is not None
-                ):
-                    ts = time_sigs[current_ts_idx]
-                    current_ts = ts.time_signature
-                    m21_ts = m21.meter.TimeSignature(f"{current_ts[0]}/{current_ts[1]}")
-                    measure.insert(0, m21_ts)
-                    current_ts_idx += 1
-                    if current_ts_idx >= len(time_sigs):
-                        break
 
                 # Add tempo marking if it changes at this measure
                 while (
@@ -162,20 +149,23 @@ def to_mxl(filepath, score):
                             # Add continuation notes
 
                     # Add techniques/articulations
-                    if note.techniques:
-                        for technique in note.techniques:
+                    techniques = note.global_techniques + note.techniques
+                    # Resolve techniques
+                    techniques = utils_techniques.resolve_techniques(techniques)
+                    if techniques:
+                        for technique in techniques:
                             technique, technique_type = _create_technique(technique)
                             if technique:
                                 if technique_type == "articulations":
                                     m21_note.articulations.append(technique)
                                 elif technique_type == "dynamics":
-                                    measure.insert(note.beat - 1.0, technique)
+                                    measure.insert(_get_offset(note.beat), technique)
                                 elif technique_type == "expressions":
                                     m21_note.expressions.append(technique)
 
                     # Insert note at the correct offset within the measure
                     # Calculate offset based on beat position
-                    offset = note.beat - 1.0  # beats are 1-indexed
+                    offset = _get_offset(note.beat)
                     measure.insert(offset, m21_note)
 
                 # Add measure to part
@@ -203,7 +193,7 @@ def to_mxl(filepath, score):
                 # Create a tempo mark
                 tempo_mark = m21.tempo.MetronomeMark(number=event.event_value)
                 # Calculate offset based on beat position
-                offset = event.beat - 1.0  # beats are 1-indexed
+                offset = _get_offset(event.beat)
                 # Insert tempo mark at the correct offset within the measure
                 measure.insert(offset, tempo_mark)
 
@@ -240,7 +230,11 @@ def _write_comment(measure, beat, key=None, chord=None):
     comment.style.fontStyle = "italic"
     comment.style.fontSize = 8
     comment.placement = "above"
-    measure.insert(beat - 1.0, comment)
+    measure.insert(_get_offset(beat), comment)
+
+
+def _get_offset(beat):
+    return beat - 1.0
 
 
 def _to_fraction(duration):

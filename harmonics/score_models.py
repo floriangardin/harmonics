@@ -9,6 +9,7 @@ class ChordItem(BaseModel):
     duration: float
     chord: Optional[str] = None
     key: Optional[str] = None
+    new_key: Optional[bool] = False
     time_signature: Optional[Tuple[int, int]] = None
     pitches: Optional[List[str]] = None
 
@@ -24,6 +25,7 @@ class NoteItem(BaseModel):
     is_continuation: bool = False
     voice_name: Optional[str] = None
     techniques: Optional[List[str]] = None  # Add techniques field
+    global_techniques: Optional[List[str]] = None
     measure_number: Optional[int] = None
     beat: Optional[float] = None
 
@@ -45,6 +47,7 @@ class InstrumentItem(BaseModel):
     voice_name: str
     voice_index: Optional[int] = None
     gm_number: int
+    name: str
 
 
 class EventItem(BaseModel):
@@ -58,6 +61,10 @@ class EventItem(BaseModel):
 class TechniqueItem(BaseModel):
     time_start: float
     time_end: float
+    measure_number_start: int
+    beat_start: float
+    measure_number_end: int
+    beat_end: float
     voice_name: str
     technique: str
 

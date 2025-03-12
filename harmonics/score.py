@@ -157,6 +157,7 @@ def get_data(self) -> ScoreData:
                         chord=beat_item.chord,
                         time_signature=current_time_signature,
                         key=current_key,
+                        new_key=beat_item.key is not None,
                     )
                 )
             current_time_signature = next_current_time_signature
@@ -191,6 +192,7 @@ def get_data(self) -> ScoreData:
                         voice_name=voice_cat,
                         voice_index=voice_index,
                         gm_number=instrument.gm_number,
+                        name=instrument.name,
                     )
                 )
         elif isinstance(line, models.Tempo):
@@ -302,13 +304,9 @@ class ScoreDocument(BaseModel):
                             time_signature=current_time_signature,
                             key=None,
                         )
-                    techniques = (
-                        self.get_techniques_for_note(
-                            time, line.voice_name, self.techniques
-                        )
-                        + note.techniques
+                    global_techniques = self.get_techniques_for_note(
+                        time, line.voice_name, self.techniques
                     )
-                    techniques = utils_techniques.resolve_techniques(techniques)
                     bar_notes.append(
                         NoteItem(
                             time=beat_start_time + bar_start_time,
@@ -321,7 +319,8 @@ class ScoreDocument(BaseModel):
                             is_silence=is_silence,
                             is_continuation=is_continuation,
                             voice_name=line.voice_name,
-                            techniques=techniques,
+                            techniques=note.techniques,
+                            global_techniques=global_techniques,
                             measure_number=line.measure_number,
                             beat=note.beat,
                         )
@@ -406,6 +405,10 @@ class ScoreDocument(BaseModel):
                             TechniqueItem(
                                 time_start=start_time,
                                 time_end=end_time,
+                                measure_number_start=line.technique_range.start_measure,
+                                beat_start=line.technique_range.start_beat,
+                                measure_number_end=line.technique_range.end_measure,
+                                beat_end=line.technique_range.end_beat,
                                 voice_name=voice_name,
                                 technique=technique,
                             )

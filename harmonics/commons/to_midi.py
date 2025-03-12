@@ -29,7 +29,9 @@ def to_midi(filepath, score):
                     None,
                     s.techniques,
                 ]
-                note_event = apply_techniques_before(s.techniques, note_event)
+                note_event = apply_techniques_before(
+                    s.global_techniques + s.techniques, note_event
+                )
                 note_events.append(note_event)
             else:
                 for pitch in s.pitch:
@@ -41,7 +43,9 @@ def to_midi(filepath, score):
                         None,
                         s.techniques,
                     ]
-                    note_event = apply_techniques_before(s.techniques, note_event)
+                    note_event = apply_techniques_before(
+                        s.global_techniques + s.techniques, note_event
+                    )
                     note_events.append(note_event)
 
     events_to_midi(

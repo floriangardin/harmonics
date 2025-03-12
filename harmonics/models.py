@@ -41,6 +41,7 @@ class Continuation(MelodyNote):
 
 class Instrument(BaseModel):
     voice_name: str
+    name: str
     gm_number: int
 
 
