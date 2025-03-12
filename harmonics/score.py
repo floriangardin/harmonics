@@ -7,7 +7,16 @@ import harmonics.models as models
 import harmonics.exceptions as exceptions
 import harmonics.commons.utils_techniques as utils_techniques
 
-from harmonics.score_models import NoteItem, ChordItem, TimeSignatureItem, TempoItem, InstrumentItem
+from harmonics.score_models import (
+    NoteItem,
+    ChordItem,
+    TimeSignatureItem,
+    TempoItem,
+    InstrumentItem,
+    EventItem,
+    TechniqueItem,
+)
+
 # ==================================
 # Top-level Document & Parsed Items
 # ==================================
@@ -18,7 +27,7 @@ def bar_duration_in_quarters(time_signature: Tuple[int, int]) -> int:
 
 
 def beat_to_quarter(beat: float, time_signature: Tuple[int, int]) -> float:
-    return (beat - 1) * 4/time_signature[1]
+    return (beat - 1) * 4 / time_signature[1]
 
 
 def get_current_chord_from_time(time: float, chords: List[NoteItem]) -> Optional[str]:
@@ -53,9 +62,7 @@ def get_measure_map(lines: List[models.Line]) -> Dict[int, models.Line]:
 
     # Are measures sorted
     measure_numbers = [
-        l.measure_number
-        for l in lines
-        if isinstance(l, (models.Melody, models.Events))
+        l.measure_number for l in lines if isinstance(l, (models.Melody, models.Events))
     ]
     are_measures_sorted = measure_numbers == sorted(measure_numbers)
 
@@ -103,8 +110,18 @@ def get_measure_map(lines: List[models.Line]) -> Dict[int, models.Line]:
 
     return measure_map
 
+
+class ScoreData(BaseModel):
+    chords: List[ChordItem]
+    time_signatures: List[TimeSignatureItem]
+    tempos: List[TempoItem]
+    instruments: List[InstrumentItem]
+    title: str
+    composer: str
+
+
 @lru_cache(maxsize=10)
-def get_data(self):
+def get_data(self) -> ScoreData:
     chords = []
     bar_start_time = 0  # In quarter (not in beat !)
     current_bar_index = 1  # Start at bar 1
@@ -114,6 +131,8 @@ def get_data(self):
     time_signatures = []
     tempos = []
     instruments = []
+    title = ""
+    composer = ""
 
     for line in self.lines:
         if isinstance(line, models.Measure):
@@ -132,6 +151,8 @@ def get_data(self):
                 chords.append(
                     ChordItem(
                         time=beat_start_time + bar_start_time,
+                        measure_number=line.measure_number,
+                        beat=beat_item.beat,
                         duration=duration,
                         chord=beat_item.chord,
                         time_signature=current_time_signature,
@@ -139,11 +160,21 @@ def get_data(self):
                     )
                 )
             current_time_signature = next_current_time_signature
+        elif isinstance(line, models.Title):
+            title = line.title
+        elif isinstance(line, models.Composer):
+            composer = line.composer
         elif isinstance(line, models.TimeSignature):
             next_current_time_signature = (line.numerator, line.denominator)
             time_signatures.append(
                 TimeSignatureItem(
-                    time=bar_start_time, time_signature=next_current_time_signature
+                    time=bar_start_time,
+                    time_signature=next_current_time_signature,
+                    measure_number=(
+                        current_bar_index
+                        if line.measure_number is None
+                        else line.measure_number
+                    ),
                 )
             )
         elif isinstance(line, models.Instruments):
@@ -182,7 +213,15 @@ def get_data(self):
         )
 
     self.get_progression(chords)
-    return chords, time_signatures, tempos, instruments
+    return ScoreData(
+        chords=chords,
+        time_signatures=time_signatures,
+        tempos=tempos,
+        instruments=instruments,
+        title=title,
+        composer=composer,
+    )
+
 
 class ScoreDocument(BaseModel):
     lines: List[models.Line]
@@ -194,6 +233,7 @@ class ScoreDocument(BaseModel):
     def get_progression(self, chords: List[ChordItem]) -> List[str]:
         from music21.pitch import Pitch
         from harmonics.romanyh import generateBestHarmonization
+
         if len(chords) > 0:
             progression = generateBestHarmonization(
                 chords,
@@ -210,12 +250,12 @@ class ScoreDocument(BaseModel):
             chord.pitches = pitches
 
     @property
-    def data(self) -> Tuple[List[ChordItem], List[TimeSignatureItem], List[TempoItem]]:
+    def data(self) -> ScoreData:
         return get_data(self)
 
     @property
     def chords(self) -> List[ChordItem]:
-        return self.data[0]
+        return self.data.chords
 
     @property
     def notes(self) -> List[NoteItem]:
@@ -253,7 +293,7 @@ class ScoreDocument(BaseModel):
                     elif isinstance(note, models.AccompanimentBeat):
                         voices = note.voices
                         pitch = [current_chord.pitches[v.voice - 1] for v in voices]
-                        
+
                     if current_chord is None:
                         current_chord = ChordItem(
                             time=beat_start_time + bar_start_time,
@@ -262,9 +302,12 @@ class ScoreDocument(BaseModel):
                             time_signature=current_time_signature,
                             key=None,
                         )
-                    techniques = self.get_techniques_for_note(
-                        time, line.voice_name, self.techniques
-                    ) + note.techniques
+                    techniques = (
+                        self.get_techniques_for_note(
+                            time, line.voice_name, self.techniques
+                        )
+                        + note.techniques
+                    )
                     techniques = utils_techniques.resolve_techniques(techniques)
                     bar_notes.append(
                         NoteItem(
@@ -298,7 +341,7 @@ class ScoreDocument(BaseModel):
         return results
 
     @property
-    def events(self) -> List[models.EventItem]:
+    def events(self) -> List[EventItem]:
         results = []
         bar_start_time = 0  # In quarter (not in beat !)
         measure_map = get_measure_map(self.lines)
@@ -314,7 +357,7 @@ class ScoreDocument(BaseModel):
                     )
                     time = beat_start_time + bar_start_time
                     results.append(
-                        models.EventItem(
+                        EventItem(
                             time=time,
                             measure_number=event.measure_number,
                             beat=event.beat,
@@ -339,7 +382,7 @@ class ScoreDocument(BaseModel):
         return start_bar_time, end_bar_time, time_signature
 
     @property
-    def techniques(self) -> List[models.TechniqueItem]:
+    def techniques(self) -> List[TechniqueItem]:
         results = []
         measure_map = get_measure_map(self.lines)
         for i, line in enumerate(self.lines):
@@ -360,7 +403,7 @@ class ScoreDocument(BaseModel):
                 for voice_name in line.voice_names:
                     for technique in line.techniques:
                         results.append(
-                            models.TechniqueItem(
+                            TechniqueItem(
                                 time_start=start_time,
                                 time_end=end_time,
                                 voice_name=voice_name,
@@ -370,7 +413,7 @@ class ScoreDocument(BaseModel):
         return results
 
     def get_techniques_for_note(
-        self, time: float, voice_name: str, techniques: List[models.TechniqueItem]
+        self, time: float, voice_name: str, techniques: List[TechniqueItem]
     ) -> List[str]:
         """Get all techniques that apply to a note at a specific time for a specific voice"""
         active_techniques = []

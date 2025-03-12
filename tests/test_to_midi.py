@@ -1,6 +1,7 @@
 from harmonics.commons.to_midi import solve_continuation
 from harmonics.score_models import NoteItem
 
+
 def test_solve_continuation():
 
     notes = [

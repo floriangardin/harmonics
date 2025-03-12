@@ -1,10 +1,11 @@
-
 from typing import List, Optional, Union, Tuple, Any, Dict, Set
 from .models import BaseModel
-import harmonics.models as models
+
 
 class ChordItem(BaseModel):
     time: float
+    beat: float
+    measure_number: int
     duration: float
     chord: Optional[str] = None
     key: Optional[str] = None
@@ -46,11 +47,39 @@ class InstrumentItem(BaseModel):
     gm_number: int
 
 
+class EventItem(BaseModel):
+    time: float
+    measure_number: int
+    beat: float
+    event_type: str
+    event_value: Any
+
+
+class TechniqueItem(BaseModel):
+    time_start: float
+    time_end: float
+    voice_name: str
+    technique: str
+
+
+class TimeSignatureItem(BaseModel):
+    time: float
+    measure_number: int
+    time_signature: Tuple[int, int]
+
+
+class MetadataItem(BaseModel):
+    title: str
+    composer: str
+
+
 class Score(BaseModel):
     chords: List[ChordItem]
     notes: List[NoteItem]
     time_signatures: List[TimeSignatureItem] = []
     tempos: List[TempoItem] = []
-    events: List[models.EventItem] = []
+    events: List[EventItem] = []
     instruments: List[InstrumentItem] = []
-    techniques: List[models.TechniqueItem] = []  # Add techniques to Score
+    techniques: List[TechniqueItem] = []  # Add techniques to Score
+    title: str
+    composer: str

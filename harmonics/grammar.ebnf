@@ -5,14 +5,14 @@ line: metadata_line
      | statement_line
 
 metadata_line: composer_line
-             | piece_line
+             | title_line
              | time_signature_line
              | tempo_line
              | instrument_line
 
 composer_line: "Composer:" WS REST_LINE NEWLINE
-piece_line: "Piece:" WS REST_LINE NEWLINE
-time_signature_line: "Time Signature:" WS time_signature NEWLINE
+title_line: "Piece:" WS REST_LINE NEWLINE
+time_signature_line: ( "(" WS*  "m" MEASURE_NUMBER WS* ")" WS*)? "Time Signature" WS* ":" WS* time_signature NEWLINE
 tempo_line: "Tempo:" WS* TEMPO_NUMBER NEWLINE  // Tempo number in QPM
 instrument_line: "Instrument:" WS TRACK_NAME WS* "=" WS* GM_INSTRUMENT_NAME ("," WS* TRACK_NAME WS* "=" WS* GM_INSTRUMENT_NAME)* NEWLINE
 

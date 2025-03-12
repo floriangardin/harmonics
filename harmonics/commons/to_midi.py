@@ -3,6 +3,56 @@ import music21 as m21
 from .utils_techniques import apply_techniques_after, apply_techniques_before
 
 
+def to_midi(filepath, score):
+    # Default MIDI programs if not specified
+    DEFAULT_MELODY_CHANNEL = 1
+    # Create a time-based mapping of voice assignments from instrument items
+    voice_program_map = {}
+    for instrument in score.instruments:
+        if instrument.voice_name == "T":
+            voice_key = f"T{instrument.voice_index}"
+        else:
+            voice_key = instrument.voice_name
+        voice_program_map[voice_key] = int(instrument.gm_number)
+
+    note_events = []
+    notes = solve_continuation(score.notes)
+    for s in notes:
+        if not s.is_silence:
+            program = voice_program_map.get(s.voice_name, DEFAULT_MELODY_CHANNEL)
+            if isinstance(s.pitch, str):
+                note_event = [
+                    s.time,
+                    m21.pitch.Pitch(s.pitch).midi,
+                    s.duration,
+                    program,
+                    None,
+                    s.techniques,
+                ]
+                note_event = apply_techniques_before(s.techniques, note_event)
+                note_events.append(note_event)
+            else:
+                for pitch in s.pitch:
+                    note_event = [
+                        s.time,
+                        m21.pitch.Pitch(pitch).midi,
+                        s.duration,
+                        program,
+                        None,
+                        s.techniques,
+                    ]
+                    note_event = apply_techniques_before(s.techniques, note_event)
+                    note_events.append(note_event)
+
+    events_to_midi(
+        note_events,
+        filepath,
+        tempos=score.tempos,
+        time_signatures=score.time_signatures,
+        events=score.events,
+    )
+
+
 def _create_velocity_mappings():
     """Returns a dictionary mapping dynamic markings to MIDI velocity values."""
     return {
@@ -102,7 +152,6 @@ def _initialize_score(time_signatures=None, tempos=None, target_tpq=480):
             symusic_score.tempos.append(sym_tempo)
     else:
         symusic_score.tempos.append(Tempo(time=0, qpm=120))
-
 
     return symusic_score
 
@@ -235,23 +284,24 @@ def events_to_midi(
     # Dump the MIDI to the specified output file
     symusic_score.dump_midi(output_file)
 
+
 def solve_continuation(notes):
     """
     Refactor note items to handle continuations.
-    
+
     This function processes a list of NoteItem objects, extending the duration of notes
     when they are followed by continuation marks. Continuation notes themselves are not
     included in the result.
-    
+
     Args:
         notes: A list of NoteItem objects from the score
-        
+
     Returns:
         A list of NoteItem objects with continuations resolved
     """
     last_note_of_voice = {}  # Tracks the last note for each voice
     result = []
-    
+
     for note in notes:
         if note.is_continuation:
             # If this is a continuation, extend the duration of the last note in this voice
@@ -266,52 +316,3 @@ def solve_continuation(notes):
             last_note_of_voice[note.voice_name] = note
 
     return result
-def to_midi(filepath, score):
-    # Default MIDI programs if not specified
-    DEFAULT_MELODY_CHANNEL = 1
-    # Create a time-based mapping of voice assignments from instrument items
-    voice_program_map = {}
-    for instrument in score.instruments:
-        if instrument.voice_name == "T":
-            voice_key = f"T{instrument.voice_index}"
-        else:
-            voice_key = instrument.voice_name
-        voice_program_map[voice_key] = int(instrument.gm_number)
-
-    note_events = []
-    notes = solve_continuation(score.notes)
-    for s in notes:
-        if not s.is_silence:
-            program = voice_program_map.get(s.voice_name, DEFAULT_MELODY_CHANNEL)
-            if isinstance(s.pitch, str):
-                note_event = [
-                    s.time,
-                    m21.pitch.Pitch(s.pitch).midi,
-                    s.duration,
-                    program,
-                    None,
-                    s.techniques,
-                ]
-                note_event = apply_techniques_before(s.techniques, note_event)
-                note_events.append(note_event)
-            else:
-                for pitch in s.pitch:
-                    note_event = [
-                        s.time,
-                        m21.pitch.Pitch(pitch).midi,
-                        s.duration,
-                        program,
-                        None,
-                        s.techniques,
-                    ]
-                    note_event = apply_techniques_before(s.techniques, note_event)
-                    note_events.append(note_event)
-
-
-    events_to_midi(
-        note_events,
-        filepath,
-        tempos=score.tempos,
-        time_signatures=score.time_signatures,
-        events=score.events,
-    )

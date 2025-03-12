@@ -7,6 +7,7 @@ from .notes_utils import getPitchFromIntervalFromMinimallyModifiedScale
 # Melody Lines
 # ==============================
 
+
 class BaseModel(RawBaseModel):
 
     def __hash__(self):  # make hashable BaseModel subclass
@@ -17,22 +18,26 @@ class MelodyNote(BaseModel):
     beat: float
     techniques: List[str] = []
 
+
 class AbsoluteMelodyNote(MelodyNote):
     note: str
-    
+
 
 class ChordMelodyNote(MelodyNote):
     notes: List[MelodyNote]
+
 
 class Silence(MelodyNote):
     beat: float
     note: str = "R"
     octave: int = 0
 
+
 class Continuation(MelodyNote):
     beat: float
     note: str = "L"
     octave: int = 0
+
 
 class Instrument(BaseModel):
     voice_name: str
@@ -44,8 +49,10 @@ class AccompanimentVoice(BaseModel):
     octave: Optional[int] = 0
     alteration: Optional[int] = 0
 
+
 class AccompanimentBeat(MelodyNote):
     voices: List[AccompanimentVoice]
+
 
 class Melody(BaseModel):
     measure_number: int
@@ -62,8 +69,8 @@ class Composer(BaseModel):
     composer: str
 
 
-class Piece(BaseModel):
-    piece: str
+class Title(BaseModel):
+    title: str
 
 
 class Analyst(BaseModel):
@@ -108,14 +115,6 @@ class Events(BaseModel):
     measure_number: int
 
 
-class EventItem(BaseModel):
-    time: float
-    measure_number: int
-    beat: float
-    event_type: str
-    event_value: Any
-
-
 class Instruments(BaseModel):
     instruments: List[Instrument]
 
@@ -134,22 +133,10 @@ class Technique(BaseModel):
     techniques: List[str]
 
 
-class TechniqueItem(BaseModel):
-    time_start: float
-    time_end: float
-    voice_name: str
-    technique: str
-
-
-class TimeSignatureItem(BaseModel):
-    measure_number: int
-    time_signature: Tuple[int, int]
-
-
 # A metadata line is one of the above types.
 MetadataLine = Union[
     Composer,
-    Piece,
+    Title,
     Analyst,
     Proofreader,
     Movement,
@@ -247,8 +234,6 @@ class Comment(BaseModel):
 # ------------------------------
 # Accompaniment Models
 # ------------------------------
-
-
 
 
 class VariableDeclaration(BaseModel):

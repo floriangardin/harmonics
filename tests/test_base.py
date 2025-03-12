@@ -95,6 +95,7 @@ m1 T1 b1 C5
 m2 T1 b1 C#5
 """
 
+
 def test_techniques():
     parser = HarmonicsParser()
     tree = parser.parse(text_with_techniques)

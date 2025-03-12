@@ -43,13 +43,19 @@ if __name__ == "__main__":
     # print(melody)
 
     output_type = output_file.split(".")[-1]
-    if output_type == "mid":
-        parser.parse_to_midi(text, output_file)
-    elif output_type == "mxl":
-        parser.parse_to_mxl(text, output_file)
-    elif output_type == "mp3":
-        parser.parse_to_audio(text, output_file)
-    else:
-        raise ValueError(f"Invalid output type: {output_type}")
+    input_type = file.split(".")[-1]
+    if input_type in ["mxl", "musicxml"]:
+        if output_type == "ern":
+            parser.parse_to_ern(text, output_file)
+
+    elif input_type in ["ern", "erntxt", "har"]:
+        if output_type == "mid":
+            parser.parse_to_midi(text, output_file)
+        elif output_type == "mxl":
+            parser.parse_to_mxl(text, output_file)
+        elif output_type == "mp3":
+            parser.parse_to_audio(text, output_file)
+        else:
+            raise ValueError(f"Invalid output type: {output_type}")
     #   tree = parser.parse_to_mxl(text, "test.mxl")
     # print(tree)

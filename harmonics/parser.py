@@ -12,10 +12,12 @@ GRAMMAR_FILEPATH = os.path.join(CURRENT_FILEPATH, "grammar.ebnf")
 
 from lark import Lark, Token, Transformer, Discard
 
+
 class SpaceTransformer(Transformer):
     def WS(self, tok: Token):
         return Discard
-    
+
+
 class HarmonicsParser:
     def __init__(self):
         self.grammar_file = GRAMMAR_FILEPATH
@@ -33,53 +35,55 @@ class HarmonicsParser:
         input_string = input_string.replace("`", "").replace("%", "ø").replace("º", "o")
         input_string = input_string.replace("//", "Note:")
         input_string = input_string.replace("Fr+", "Fr")
-        
+
         # Optimize whitespace for parsing performance
-        # 1. Normalize all whitespace in measure lines to single spaces, 
+        # 1. Normalize all whitespace in measure lines to single spaces,
         #    except between beat indicators and their content
-        lines = input_string.split('\n')
+        lines = input_string.split("\n")
         optimized_lines = []
-        
+
         for line in lines:
             # Skip empty lines
             if not line.strip():
                 optimized_lines.append(line)
                 continue
-                
+
             # If it's a measure line or melody line or accompaniment line, optimize whitespace
-            if re.match(r'^(m|mel|acc)\d+', line.strip()):
+            if re.match(r"^(m|mel|acc)\d+", line.strip()):
                 # First preserve the prefix (m1, mel1 V1, etc.)
-                prefix_match = re.match(r'^([^b]*?)(?=b\d+|\Z)', line)
+                prefix_match = re.match(r"^([^b]*?)(?=b\d+|\Z)", line)
                 if prefix_match:
                     prefix = prefix_match.group(1).strip()
-                    
+
                     # Check if the line contains variable calling
-                    if '@' in line and not re.search(r'b\d+(?:\.\d+)?', line):
+                    if "@" in line and not re.search(r"b\d+(?:\.\d+)?", line):
                         # Handle variable calling lines differently - keep as is
                         optimized_lines.append(line.strip())
                         continue
-                    
+
                     # Extract all beats and their content
-                    beat_matches = re.finditer(r'b(\d+(?:\.\d+)?)\s+(.*?)(?=\s+b\d+|\Z)', line)
+                    beat_matches = re.finditer(
+                        r"b(\d+(?:\.\d+)?)\s+(.*?)(?=\s+b\d+|\Z)", line
+                    )
                     beats = []
-                    
+
                     for match in beat_matches:
                         beat_num = match.group(1)
                         content = match.group(2).strip()
                         beats.append(f"b{beat_num} {content}")
-                    
+
                     # Reconstruct the line with optimized whitespace
                     optimized_line = prefix + " " + " ".join(beats)
                     optimized_lines.append(optimized_line)
                 else:
                     # Fallback - just normalize spaces
-                    optimized_lines.append(' '.join(line.split()))
+                    optimized_lines.append(" ".join(line.split()))
             else:
                 # For other lines, just keep as is
                 optimized_lines.append(line)
-                
-        input_string = '\n'.join(optimized_lines)
-        
+
+        input_string = "\n".join(optimized_lines)
+
         # Add a newline at the end for the parser
         return input_string + "\n"
 
@@ -91,22 +95,33 @@ class HarmonicsParser:
 
     def parse_to_events(self, input_string):
         document = self.parse(input_string)
-        chords, time_signatures, tempos, instruments = document.data
+        data = document.data
         notes = document.notes
         events = document.events
         score = Score(
-            chords=chords,
+            chords=data.chords,
             notes=notes,
-            time_signatures=time_signatures,
-            tempos=tempos,
+            time_signatures=data.time_signatures,
+            tempos=data.tempos,
             events=events,
-            instruments=instruments,
+            instruments=data.instruments,
+            composer=data.composer,
+            title=data.title,
         )
+        return score
+
+    def _to_json(self, score, filepath):
+        D = score.model_dump()
+        import json
+
+        with open(filepath, "w") as f:
+            json.dump(D, f, indent=4)
         return score
 
     def parse_to_mxl(self, input_string, output_filename):
         score = self.parse_to_events(input_string)
         to_mxl(output_filename, score)
+        self._to_json(score, "tests/data/items.json")
         return score
 
     def parse_to_midi(self, input_string, output_filename):

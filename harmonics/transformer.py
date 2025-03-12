@@ -4,7 +4,7 @@ from harmonics.constants import INSTRUMENTS_DICT
 
 from harmonics.models import (
     Composer,
-    Piece,
+    Title,
     Analyst,
     Proofreader,
     Movement,
@@ -39,7 +39,7 @@ from harmonics.models import (
     AccompanimentVoice,
     Technique,
     TechniqueRange,
-    Continuation
+    Continuation,
 )
 from .score import ScoreDocument
 
@@ -65,13 +65,13 @@ def transform_metadata_line(node: Tree) -> MetadataLine:
                 value = transform_token(token).strip()
                 break
         return Composer(composer=value)
-    elif child.data == "piece_line":
+    elif child.data == "title_line":
         value = ""
         for token in child.children:
             if isinstance(token, Token) and token.type == "REST_LINE":
                 value = transform_token(token).strip()
                 break
-        return Piece(piece=value)
+        return Title(title=value)
     elif child.data == "analyst_line":
         value = ""
         for token in child.children:
@@ -94,10 +94,15 @@ def transform_metadata_line(node: Tree) -> MetadataLine:
     elif child.data == "time_signature_line":
         numerator = 4
         denominator = 4
+        measure_number = None
 
         for token in child.children:
-            if isinstance(token, Tree) and token.data == "time_signature":
+            if isinstance(token, Token) and token.type == "MEASURE_NUMBER":
+                measure_number = int(token.value)
+            elif isinstance(token, Tree) and token.data == "time_signature":
+
                 for subchild in token.children:
+
                     if isinstance(subchild, Tree) and subchild.data == "numerator":
                         digits = ""
                         for subsubchild in subchild.children:
@@ -116,7 +121,9 @@ def transform_metadata_line(node: Tree) -> MetadataLine:
                             ):
                                 digits += subsubchild.value
                         denominator = int(digits)
-        return TimeSignature(numerator=numerator, denominator=denominator)
+        return TimeSignature(
+            numerator=numerator, denominator=denominator, measure_number=measure_number
+        )
     elif child.data == "key_signature_line":
         for token in child.children:
             if isinstance(token, Token) and token.type == "SIGNED_INT":
@@ -469,6 +476,7 @@ def transform_repeat_line(node: Tree) -> Repeat:
 # Melody line transformer
 # ------------------------------
 
+
 def transform_beat_note(node: Tree, notes: List[MelodyNote]) -> BeatItem:
     beat = 1
     all_notes = []
@@ -488,7 +496,7 @@ def transform_beat_note(node: Tree, notes: List[MelodyNote]) -> BeatItem:
             return [transform_voice_list(token, beat)]
         elif isinstance(token, Tree) and token.data == "note_techniques":
             techniques += transform_note_techniques(token)
-    
+
     if len(all_notes) == 1:
         for note in all_notes:
             note.techniques = techniques
@@ -504,12 +512,13 @@ def transform_note_techniques(node: Tree) -> List[Technique]:
             techniques.append(child.value)
     return techniques
 
+
 def transform_melody_line_content(
     node: Tree, context: Dict[str, List[AccompanimentBeat]]
 ) -> List[BeatItem]:
     notes = []
     for child in node.children:
-        
+
         if isinstance(child, Tree) and child.data in ["beat_note", "first_beat_note"]:
             notes += transform_beat_note(child, notes)
     return notes
@@ -540,6 +549,7 @@ def transform_melody_line(
 # Statement line transformer
 # ------------------------------
 
+
 def transform_voice_list(node: Tree, beat) -> List[AccompanimentVoice]:
     voices: List[AccompanimentVoice] = []
     total_alteration = 0
@@ -555,10 +565,9 @@ def transform_voice_list(node: Tree, beat) -> List[AccompanimentVoice]:
             octave = int(subchild.value[1:])
             voices[-1].octave = octave
         elif isinstance(subchild, Token) and subchild.type == "ALTERATION":
-            total_alteration = subchild.value.count("+") - subchild.value.count(
-                "-"
-            )
+            total_alteration = subchild.value.count("+") - subchild.value.count("-")
     return AccompanimentBeat(beat=beat, voices=voices)
+
 
 def transform_accompaniment_line_content(
     node: Tree, context: Dict[str, str]

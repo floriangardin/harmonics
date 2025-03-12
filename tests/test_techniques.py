@@ -3,6 +3,7 @@ from harmonics.score import ScoreDocument
 from typing import List, Tuple
 from harmonics.commons.utils_techniques import resolve_techniques
 
+
 def test_techniques():
     # Create a simple document with time signatures and techniques
     lines = [
@@ -198,6 +199,7 @@ def test_get_techniques_for_note():
     # Test a note outside any technique range
     active_techniques = doc.get_techniques_for_note(5.0, "V1", techniques)
     assert len(active_techniques) == 0
+
 
 def test_resolve_techniques():
     techniques = ["staccato", "legato", "p", "f", "accent"]
