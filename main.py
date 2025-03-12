@@ -31,9 +31,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     file = args.file
 
-    with open(file, "r") as f:
-        text = f.read()
-
     output_file = args.output
     parser = HarmonicsParser()
 
@@ -46,9 +43,11 @@ if __name__ == "__main__":
     input_type = file.split(".")[-1]
     if input_type in ["mxl", "musicxml"]:
         if output_type == "ern":
-            parser.parse_to_ern(text, output_file)
+            parser.parse_to_ern(file, output_file)
 
     elif input_type in ["ern", "erntxt", "har"]:
+        with open(file, "r") as f:
+            text = f.read()
         if output_type == "mid":
             parser.parse_to_midi(text, output_file)
         elif output_type == "mxl":

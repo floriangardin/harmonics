@@ -1,3 +1,6 @@
+from .utils_beat import beat_to_ern
+
+
 def to_ern(filepath, score):
     """
     Convert a score to an ern TXT file.
@@ -21,11 +24,15 @@ def to_ern(filepath, score):
     # Add technique lines
     lines.extend(_generate_technique_lines(score))
 
+    lines.append("")
+
     # Add variable definitions if any
     # (Not implemented as Score model doesn't seem to store variables)
 
     # Add event lines
     lines.extend(_generate_event_lines(score))
+
+    lines.append("")
 
     # Process measures
     measure_data = _organize_by_measure(score)
@@ -36,7 +43,7 @@ def to_ern(filepath, score):
         # Add time signature changes if there are any for this measure
         if "time_signature" in measure:
             time_sig = measure["time_signature"]
-            if time_sig:
+            if time_sig and measure_number > 1:
                 lines.append(
                     f"(m{measure_number}) Time Signature: {time_sig[0]}/{time_sig[1]}"
                 )
@@ -127,7 +134,7 @@ def _generate_technique_lines(score):
         voice_name,
     ), techniques in tech_by_voice.items():
         if start_measure and end_measure and start_beat and end_beat:
-            tech_line = f"tech {voice_name} (m{start_measure} {_beat_to_ern(start_beat)} - m{end_measure} {_beat_to_ern(end_beat)}) : {','.join(techniques)}"
+            tech_line = f"tech {voice_name} (m{start_measure} {beat_to_ern(start_beat)} - m{end_measure} {beat_to_ern(end_beat)}) : {','.join(techniques)}"
             lines.append(tech_line)
 
     return lines
@@ -149,7 +156,7 @@ def _generate_event_lines(score):
         event_line = f"e{measure}"
         for event in sorted(events, key=lambda e: e.beat):
             event_line += (
-                f" {_beat_to_ern(event.beat)} {event.event_type}({event.event_value})"
+                f" {beat_to_ern(event.beat)} {event.event_type}({event.event_value})"
             )
         lines.append(event_line)
 
@@ -202,9 +209,9 @@ def _generate_harmony_line(measure_number, chords):
 
     for chord in sorted_chords:
         if chord.key and chord.new_key:
-            harmony_line += f" {_beat_to_ern(chord.beat)} {chord.key}: {chord.chord}"
+            harmony_line += f" {beat_to_ern(chord.beat)} {chord.key}: {chord.chord}"
         elif chord.chord:
-            harmony_line += f" {_beat_to_ern(chord.beat)} {chord.chord}"
+            harmony_line += f" {beat_to_ern(chord.beat)} {chord.chord}"
 
     # Add phrase boundary if needed
     # (Would require additional flag in the chord model to specify this)
@@ -213,13 +220,6 @@ def _generate_harmony_line(measure_number, chords):
     lines.append(harmony_line)
 
     return lines
-
-
-def _beat_to_ern(beat):
-    if beat == int(beat):
-        return f"b{int(beat)}"
-    else:
-        return f"b{beat}"
 
 
 def _generate_melody_line(measure_number, voice_name, notes):
@@ -231,19 +231,23 @@ def _generate_melody_line(measure_number, voice_name, notes):
     # Sort notes by beat
     sorted_notes = sorted(notes, key=lambda n: n.beat if n.beat is not None else 0)
 
+    # If only silence don't add the melody line
+    if all(note.is_silence for note in notes):
+        return lines
+
     for note in sorted_notes:
         # Skip continuation notes as they're part of the previous note's duration
         if note.is_continuation:
-            continue
+            melody_line += f" {beat_to_ern(note.beat)} L"
 
-        if note.is_silence:
-            melody_line += f" b{note.beat} R"
+        elif note.is_silence:
+            melody_line += f" {beat_to_ern(note.beat)} R"
         elif isinstance(note.pitch, list):
             # Handle chord
             pitches = " ".join(note.pitch)
-            melody_line += f" {_beat_to_ern(note.beat)} {pitches}"
+            melody_line += f" {beat_to_ern(note.beat)} {pitches}"
         elif note.pitch:
-            melody_line += f" {_beat_to_ern(note.beat)} {note.pitch}"
+            melody_line += f" {beat_to_ern(note.beat)} {note.pitch}"
 
         # Add techniques
         if note.techniques:

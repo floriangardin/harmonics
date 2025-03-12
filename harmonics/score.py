@@ -303,7 +303,10 @@ class ScoreDocument(BaseModel):
                             chord="NC",
                             time_signature=current_time_signature,
                             key=None,
+                            beat=note.beat,
+                            measure_number=line.measure_number,
                         )
+
                     global_techniques = self.get_techniques_for_note(
                         time, line.voice_name, self.techniques
                     )

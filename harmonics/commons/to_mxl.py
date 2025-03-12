@@ -61,6 +61,15 @@ def to_mxl(filepath, score):
 
         # Create measures for each part
         idx = -1
+        current_ts = None
+        measure_durations = {}
+        for measure_num in range(1, max_measure + 1):
+            for ts in score.time_signatures:
+                if ts.measure_number == measure_num:
+                    current_ts = ts.time_signature
+                    break
+            measure_durations[measure_num] = 4 * current_ts[0] / current_ts[1]
+
         for voice_name, part in parts.items():
             idx += 1
             # Get time signatures for this part
@@ -76,6 +85,7 @@ def to_mxl(filepath, score):
             last_chord = None
             last_key = None
 
+            ref_note = {}
             # Create measures
             for measure_num in range(1, max_measure + 1):
                 measure = m21.stream.Measure(number=measure_num)
@@ -106,7 +116,11 @@ def to_mxl(filepath, score):
                     and note.measure_number == measure_num
                 ]
 
-                ref_note = {}
+                if len(measure_notes) == 0:
+                    m21_note = m21.note.Rest()
+                    m21_note.quarterLength = measure_durations[measure_num]
+                    measure.append(m21_note)
+
                 for note in sorted(measure_notes, key=lambda n: n.time):
                     # Convert duration to fraction
                     duration = _to_fraction(note.duration)
@@ -117,12 +131,12 @@ def to_mxl(filepath, score):
                         m21_note.quarterLength = duration
                     elif note.is_continuation:
                         # Skip continuation notes as they're handled with ties
-
                         m21_note = deepcopy(ref_note.get(note.voice_name, None))
                         m21_note.tie = m21.tie.Tie("stop")
                         m21_note.articulations = []
                         if m21_note is None:
                             continue
+
                     else:
                         # Handle single pitch or chord
                         if isinstance(note.pitch, list):

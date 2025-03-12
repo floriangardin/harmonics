@@ -11,7 +11,7 @@ from .notes_utils import getPitchFromIntervalFromMinimallyModifiedScale
 class BaseModel(RawBaseModel):
 
     def __hash__(self):  # make hashable BaseModel subclass
-        return hash(self.json())
+        return hash(self.model_dump_json())
 
 
 class MelodyNote(BaseModel):
