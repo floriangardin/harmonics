@@ -15,6 +15,7 @@ from harmonics.score_models import (
     InstrumentItem,
     EventItem,
     TechniqueItem,
+    ClefItem,
 )
 
 # ==================================
@@ -118,6 +119,7 @@ class ScoreData(BaseModel):
     instruments: List[InstrumentItem]
     title: str
     composer: str
+    clefs: List[ClefItem]
 
 
 @lru_cache(maxsize=10)
@@ -131,6 +133,7 @@ def get_data(self) -> ScoreData:
     time_signatures = []
     tempos = []
     instruments = []
+    clefs = []
     title = ""
     composer = ""
 
@@ -204,6 +207,18 @@ def get_data(self) -> ScoreData:
                     tempo=line.tempo,
                 )
             )
+        elif isinstance(line, models.Clef):
+            # Initial clef specifications at the beginning of the score
+            clefs.append(
+                ClefItem(
+                    time=bar_start_time,
+                    voice_name=line.voice_name,
+                    clef_name=line.clef_type.name,
+                    octave_change=line.clef_type.octave_change,
+                    measure_number=line.measure_number if line.measure_number is not None else current_bar_index,
+                    beat=1.0,  # Default to first beat of the measure
+                )
+            )
     # Fill the durations (using delta between next time)
     if len(chords) > 0:
         for i in range(len(chords) - 1):
@@ -222,6 +237,7 @@ def get_data(self) -> ScoreData:
         instruments=instruments,
         title=title,
         composer=composer,
+        clefs=clefs,
     )
 
 
@@ -430,3 +446,50 @@ class ScoreDocument(BaseModel):
             ):
                 active_techniques.append(technique.technique)
         return active_techniques
+
+    @property
+    def clefs(self) -> List[ClefItem]:
+        results = []
+        measure_map = get_measure_map(self.lines)
+        
+        # First add any clefs declared as metadata
+        for line in self.lines:
+            if isinstance(line, models.Clef):
+                measure_number = line.measure_number if line.measure_number is not None else 1
+                bar_start_time, _, current_time_signature = measure_map.get(
+                    measure_number, (0, 0, (4, 4))
+                )
+                results.append(
+                    ClefItem(
+                        time=bar_start_time,
+                        voice_name=line.voice_name,
+                        clef_name=line.clef_type.name,
+                        octave_change=line.clef_type.octave_change,
+                        measure_number=measure_number,
+                        beat=1.0  # Default to first beat
+                    )
+                )
+        
+        # Then add clef changes within the score
+        for line in self.lines:
+            if isinstance(line, models.ClefChange):
+                bar_start_time, _, current_time_signature = measure_map.get(
+                    line.measure_number, (0, 0, (4, 4))
+                )
+                beat_start_time = beat_to_quarter(line.beat, current_time_signature)
+                time = beat_start_time + bar_start_time
+                
+                results.append(
+                    ClefItem(
+                        time=time,
+                        voice_name=line.voice_name,
+                        clef_name=line.clef_type.name,
+                        octave_change=line.clef_type.octave_change,
+                        measure_number=line.measure_number,
+                        beat=line.beat
+                    )
+                )
+        
+        # Sort clefs by time for proper processing
+        results.sort(key=lambda c: (c.time, c.measure_number, c.beat))
+        return results

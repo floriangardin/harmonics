@@ -39,6 +39,7 @@ class TempoItem(BaseModel):
 
 class TimeSignatureItem(BaseModel):
     time: float
+    measure_number: int
     time_signature: Tuple[int, int]
 
 
@@ -69,15 +70,18 @@ class TechniqueItem(BaseModel):
     technique: str
 
 
-class TimeSignatureItem(BaseModel):
-    time: float
-    measure_number: int
-    time_signature: Tuple[int, int]
-
-
 class MetadataItem(BaseModel):
     title: str
     composer: str
+
+
+class ClefItem(BaseModel):
+    time: float
+    voice_name: str
+    clef_name: str  # treble, bass, alto, etc.
+    octave_change: Optional[int] = None  # +1, -1, etc.
+    measure_number: Optional[int] = None
+    beat: Optional[float] = None
 
 
 class Score(BaseModel):
@@ -88,5 +92,6 @@ class Score(BaseModel):
     events: List[EventItem] = []
     instruments: List[InstrumentItem] = []
     techniques: List[TechniqueItem] = []  # Add techniques to Score
+    clefs: List[ClefItem] = []  # Add clefs to Score
     title: str
     composer: str

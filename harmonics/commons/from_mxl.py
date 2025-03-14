@@ -26,6 +26,8 @@ def from_mxl(filepath):
     tempos = []
     instruments = []
     events = []
+    clefs = []  # Add clefs list
+    techniques = []  # Add techniques list for spanners
 
     # Extract metadata
     metadata = m21_score.metadata
@@ -40,7 +42,11 @@ def from_mxl(filepath):
     current_time = 0
 
     instrument_dict = {}
-
+    
+    # Process spanners (crescendo, diminuendo, slurs)
+    # Create a mapping from note to techniques that will be applied
+    note_to_techniques_map = {}
+    
     # Process each part in the score
     for part_idx, part in enumerate(m21_score.parts):
         # Extract instrument information
@@ -71,9 +77,96 @@ def from_mxl(filepath):
         )
         instruments.append(instrument)
         instrument_dict[name] = voice_name
+        
+        # Process spanners (crescendo, diminuendo, slurs)
+        for spanner in part.getElementsByClass('Spanner'):
+            spanner_type = type(spanner).__name__.lower()
+            technique_name = None
+            # Map spanner type to technique name
+            if spanner_type == 'crescendo':
+                technique_name = "crescendo"
+            elif spanner_type in ['diminuendo', 'decrescendo']:
+                technique_name = "diminuendo"
+            elif spanner_type == 'slur':
+                technique_name = "legato"
+            
+            if technique_name and hasattr(spanner, 'getSpannedElements'):
+                spanned_elements = spanner.getSpannedElements()
+                if spanned_elements:
+                    # Add the technique to the first and last note
+                    first_note = spanned_elements[0]
+                    last_note = spanned_elements[-1]
+                    
+                    # Calculate measure and beat for first and last notes
+                    first_measure = first_note.measureNumber
+                    last_measure = last_note.measureNumber
+                    
+                    # Get the offset within the measure (1-indexed)
+                    first_beat = first_note.offset + 1.0
+                    last_beat = last_note.offset + 1.0
+                    
+                    # Create a technique item for spanning techniques
+                    technique_item = models.TechniqueItem(
+                        time_start=0,  # We don't care about time
+                        time_end=0,    # We don't care about time
+                        measure_number_start=first_measure,
+                        beat_start=first_beat,
+                        measure_number_end=last_measure,
+                        beat_end=last_beat,
+                        voice_name=voice_name,
+                        technique=technique_name
+                    )
+                    techniques.append(technique_item)
+                    
+                    # Add the technique start to the first note
+                    note_key = (voice_name, first_measure, first_beat)
+                    if note_key not in note_to_techniques_map:
+                        note_to_techniques_map[note_key] = []
+                    note_to_techniques_map[note_key].append(technique_name)
+                    
+                    # Add the technique end to the last note (prefixed with !)
+                    note_key = (voice_name, last_measure, last_beat)
+                    if note_key not in note_to_techniques_map:
+                        note_to_techniques_map[note_key] = []
+                    note_to_techniques_map[note_key].append(f"!{technique_name}")
+        
         # Process measures
         for measure in part.getElementsByClass("Measure"):
             measure_number = measure.number if measure.number is not None else 1
+
+            # Process clefs
+            for clef_element in measure.getElementsByClass("Clef"):
+                # Map music21 clef names to our clef names
+                clef_name = clef_element.sign.lower()
+                if clef_name == "g":
+                    clef_name = "treble"
+                elif clef_name == "f":
+                    clef_name = "bass"
+                elif clef_name == "c":
+                    # Determine specific C clef type (alto, tenor, etc.) based on line
+                    if clef_element.line == 3:
+                        clef_name = "alto"
+                    elif clef_element.line == 4:
+                        clef_name = "tenor"
+                    else:
+                        clef_name = "C"  # Generic C clef
+                
+                # Get octave change if any
+                octave_change = clef_element.octaveChange
+                
+                # Get beat position (1-indexed)
+                beat = clef_element.offset + 1.0
+                
+                # Create ClefItem
+                clef_item = models.ClefItem(
+                    time=0,  # We don't care about time
+                    voice_name=voice_name,
+                    clef_name=clef_name,
+                    octave_change=octave_change,
+                    measure_number=measure_number,
+                    beat=beat
+                )
+                clefs.append(clef_item)
 
             # Process time signatures
             for ts in measure.getElementsByClass("TimeSignature"):
@@ -217,6 +310,11 @@ def from_mxl(filepath):
                             "fff",
                         ]:
                             global_techniques.append(dynamic_text)
+                
+                # Add techniques from spanners (crescendo, diminuendo, legato)
+                note_key = (voice_name, measure_number, beat)
+                if note_key in note_to_techniques_map:
+                    techniques.extend(note_to_techniques_map[note_key])
 
                 # Create note item
                 note_item = models.NoteItem(
@@ -233,6 +331,43 @@ def from_mxl(filepath):
                 )
                 notes.append(note_item)
 
+    # Extract default clefs from the first measure of each part
+    for part_idx, part in enumerate(m21_score.parts):
+        voice_name = f"T{part_idx+1}"
+        first_measure = part.measure(1)
+        if first_measure:
+            default_clef = first_measure.getContextByClass('Clef')
+            if default_clef:
+                # If there's a default clef, add it to measure 1 beat 1 if we don't already have one
+                # Check if we already have a clef for this voice in measure 1
+                has_m1_clef = any(c.voice_name == voice_name and c.measure_number == 1 and c.beat == 1.0 for c in clefs)
+                
+                if not has_m1_clef:
+                    # Map music21 clef to our clef format
+                    clef_name = default_clef.sign.lower()
+                    if clef_name == "g":
+                        clef_name = "treble"
+                    elif clef_name == "f":
+                        clef_name = "bass"
+                    elif clef_name == "c":
+                        if default_clef.line == 3:
+                            clef_name = "alto"
+                        elif default_clef.line == 4:
+                            clef_name = "tenor"
+                        else:
+                            clef_name = "C"
+                    
+                    # Create default clef at the beginning
+                    default_clef_item = models.ClefItem(
+                        time=0,
+                        voice_name=voice_name,
+                        clef_name=clef_name,
+                        octave_change=default_clef.octaveChange,
+                        measure_number=1,
+                        beat=1.0
+                    )
+                    clefs.append(default_clef_item)
+
     # Create and return the score
     score = models.Score(
         chords=chords,
@@ -241,7 +376,8 @@ def from_mxl(filepath):
         tempos=tempos,
         events=events,
         instruments=instruments,
-        techniques=[],  # Not supporting technique lines for now
+        techniques=techniques,  # Add techniques to the score
+        clefs=clefs,  # Add clefs to score
         title=title,
         composer=composer,
     )

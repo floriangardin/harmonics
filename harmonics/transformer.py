@@ -40,6 +40,9 @@ from harmonics.models import (
     Technique,
     TechniqueRange,
     Continuation,
+    ClefType,
+    Clef,
+    ClefChange,
 )
 from .score import ScoreDocument
 
@@ -141,6 +144,8 @@ def transform_metadata_line(node: Tree) -> MetadataLine:
         return Tempo(tempo=120)
     elif child.data == "instrument_line":
         return transform_instrument_line(child)
+    elif child.data == "clef_line":
+        return transform_clef_line(child)
     else:
         raise ValueError(f"Unknown metadata_line type: {child.data}")
 
@@ -496,6 +501,11 @@ def transform_beat_note(node: Tree, notes: List[MelodyNote]) -> BeatItem:
             return [transform_voice_list(token, beat)]
         elif isinstance(token, Tree) and token.data == "note_techniques":
             techniques += transform_note_techniques(token)
+        elif isinstance(token, Tree) and token.data == "clef_change":
+            # Handle clef change within a melody line
+            clef_type = transform_clef_type(token.children[0])
+            # Return a special indicator that will be processed in transform_melody_line
+            return ["clef_change", beat, clef_type]
 
     if len(all_notes) == 1:
         for note in all_notes:
@@ -518,19 +528,27 @@ def transform_melody_line_content(
 ) -> List[BeatItem]:
     notes = []
     for child in node.children:
-
         if isinstance(child, Tree) and child.data in ["beat_note", "first_beat_note"]:
-            notes += transform_beat_note(child, notes)
+            result = transform_beat_note(child, notes)
+            # Check if result is a clef change
+            if isinstance(result, list) and len(result) > 0 and result[0] == "clef_change":
+                # Just pass through the clef change indicator
+                notes.append(result)
+            else:
+                # Add normal notes
+                notes.extend(result)
     return notes
 
 
 def transform_melody_line(
     node: Tree, context: Dict[str, List[AccompanimentBeat]]
-) -> Melody:
-    # melody_line: MELODY_MEASURE_INDICATOR (beat_note)* NEWLINE
+) -> Union[Melody, ClefChange]:
+    # melody_line: MEASURE_INDICATOR (beat_note)* NEWLINE
     notes = []
     bar_octave = 0
     voice_name = "T1"
+    measure_number = 0
+    
     for child in node.children:
         if isinstance(child, Token) and child.type == "MEASURE_INDICATOR":
             measure_number = int(child.value[len("m") :])
@@ -540,7 +558,18 @@ def transform_melody_line(
         elif isinstance(child, Token) and child.type == "TRACK_NAME":
             voice_name = transform_token(child)
         elif isinstance(child, Tree) and child.data == "melody_line_content":
-            notes = transform_melody_line_content(child, context)
+            for beat_note_result in transform_melody_line_content(child, context):
+                if isinstance(beat_note_result, list) and len(beat_note_result) > 0 and beat_note_result[0] == "clef_change":
+                    # This is a clef change, not a note
+                    _, beat, clef_type = beat_note_result
+                    return ClefChange(
+                        measure_number=measure_number,
+                        beat=beat,
+                        voice_name=voice_name,
+                        clef_type=clef_type
+                    )
+                else:
+                    notes.append(beat_note_result)
 
     return Melody(measure_number=measure_number, notes=notes, voice_name=voice_name)
 
@@ -752,6 +781,8 @@ def transform_statement_line(
         return transform_variable_declaration_line(child, context)
     elif child.data == "technique_line":
         return transform_technique_line(child)
+    elif child.data == "clef_change_line":
+        return transform_clef_change_line(child)
     else:
         raise ValueError(f"Unknown statement_line type: {child.data}")
 
@@ -831,6 +862,82 @@ def parse_key_signature(key_signature: str) -> tuple[Optional[str], Optional[str
         tonality = key_signature
         mode = "major"
     return mode, tonality
+
+
+def transform_clef_line(node: Tree) -> Clef:
+    # clef_line: ( "(" WS*  "m" MEASURE_NUMBER WS* ")" WS*)? "Clef:" WS+ TRACK_NAME WS* "=" WS* clef_type NEWLINE
+    measure_number = None
+    voice_name = ""
+    clef_name = ""
+    octave_change = None
+    
+    for child in node.children:
+        if isinstance(child, Token):
+            if child.type == "MEASURE_NUMBER":
+                measure_number = int(child.value)
+            elif child.type == "TRACK_NAME":
+                voice_name = transform_token(child)
+        elif isinstance(child, Tree) and child.data == "clef_type":
+            clef_type = transform_clef_type(child)
+            clef_name = clef_type.name
+            octave_change = clef_type.octave_change
+    
+    return Clef(
+        voice_name=voice_name,
+        clef_type=ClefType(name=clef_name, octave_change=octave_change),
+        measure_number=measure_number
+    )
+
+
+def transform_clef_type(node: Tree) -> ClefType:
+    # clef_type: CLEF_NAME (WS+ CLEF_OCTAVE_CHANGE)?
+    clef_name = ""
+    octave_change = None
+    
+    for child in node.children:
+        if isinstance(child, Token):
+            if child.type == "CLEF_NAME":
+                clef_name = transform_token(child)
+            elif child.type == "CLEF_OCTAVE_CHANGE":
+                value = transform_token(child)
+                # Parse +1, -1, etc.
+                if value.startswith('+'):
+                    octave_change = int(value[1:])
+                elif value.startswith('-'):
+                    octave_change = -int(value[1:])
+                else:
+                    octave_change = int(value)
+    
+    return ClefType(name=clef_name, octave_change=octave_change)
+
+
+def transform_clef_change_line(node: Tree) -> ClefChange:
+    # clef_change_line: MEASURE_INDICATOR (WS+ TRACK_NAME)? WS+ BEAT_INDICATOR WS+ "clef" WS+ clef_type NEWLINE
+    measure_number = 0
+    voice_name = "T1"  # Default voice
+    beat = 1.0
+    clef_name = ""
+    octave_change = None
+    
+    for child in node.children:
+        if isinstance(child, Token):
+            if child.type == "MEASURE_INDICATOR":
+                measure_number = int(child.value[1:])
+            elif child.type == "BEAT_INDICATOR":
+                beat = float(child.value[1:])
+            elif child.type == "TRACK_NAME":
+                voice_name = transform_token(child)
+        elif isinstance(child, Tree) and child.data == "clef_type":
+            clef_type = transform_clef_type(child)
+            clef_name = clef_type.name
+            octave_change = clef_type.octave_change
+    
+    return ClefChange(
+        measure_number=measure_number,
+        beat=beat,
+        voice_name=voice_name,
+        clef_type=ClefType(name=clef_name, octave_change=octave_change)
+    )
 
 
 # ------------------------------

@@ -124,6 +124,7 @@ class HarmonicsParser:
             instruments=data.instruments,
             composer=data.composer,
             title=data.title,
+            clefs=data.clefs
         )
         return score
 

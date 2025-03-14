@@ -120,6 +120,25 @@ class Instruments(BaseModel):
     instruments: List[Instrument]
 
 
+# Clef models
+class ClefType(BaseModel):
+    name: str  # treble, bass, alto, etc.
+    octave_change: Optional[int] = None  # +1, -1, etc. for octave displacement
+
+
+class Clef(BaseModel):
+    voice_name: str
+    clef_type: ClefType
+    measure_number: Optional[int] = None
+
+
+class ClefChange(BaseModel):
+    measure_number: int
+    beat: float
+    voice_name: str
+    clef_type: ClefType
+
+
 # New models for techniques
 class TechniqueRange(BaseModel):
     start_measure: int
@@ -146,6 +165,7 @@ MetadataLine = Union[
     MinorMode,
     Tempo,
     Instruments,
+    Clef,
 ]
 
 # ==============================
@@ -257,6 +277,7 @@ StatementLine = Union[
     Events,
     VariableDeclaration,
     Technique,
+    ClefChange,
 ]
 
 Line = Union[MetadataLine, StatementLine]
