@@ -44,7 +44,7 @@ class Continuation(MelodyNote):
 
 
 class Instrument(BaseModel):
-    voice_name: str
+    track_name: str
     name: str
     gm_number: int
 
@@ -62,7 +62,8 @@ class AccompanimentBeat(MelodyNote):
 class Melody(BaseModel):
     measure_number: int
     notes: List[MelodyNote]
-    voice_name: str
+    track_name: str = "T1"
+    voice_name: str = "v1"
 
 
 # ==================================
@@ -132,7 +133,7 @@ class ClefType(BaseModel):
 
 
 class Clef(BaseModel):
-    voice_name: str
+    track_name: str
     clef_type: ClefType
     measure_number: Optional[int] = None
 
@@ -140,7 +141,7 @@ class Clef(BaseModel):
 class ClefChange(BaseModel):
     measure_number: int
     beat: float
-    voice_name: str
+    track_name: str
     clef_type: ClefType
 
 
@@ -153,7 +154,7 @@ class TechniqueRange(BaseModel):
 
 
 class Technique(BaseModel):
-    voice_names: List[str]
+    track_names: List[str]
     technique_range: TechniqueRange
     techniques: List[str]
 

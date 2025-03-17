@@ -555,7 +555,9 @@ def transform_melody_line(
 ) -> Union[Melody, ClefChange]:
     # melody_line: MEASURE_INDICATOR (WS+ TRACK_NAME)? (beat_note)* NEWLINE
     measure_number = 0
-    voice_name = "T1"  # Default voice
+    track_name = "T1"  # Default voice
+    voice_name = "v1"  # Default voice
+
     notes = []
     variable_calling = None
 
@@ -564,6 +566,8 @@ def transform_melody_line(
             if child.type == "MEASURE_INDICATOR":
                 measure_number = int(child.value[1:])
             elif child.type == "TRACK_NAME":
+                track_name = transform_token(child)
+            elif child.type == "VOICE_NAME":
                 voice_name = transform_token(child)
             elif child.type == "VARIABLE_CALLING":
                 variable_calling = transform_token(child)[1:]  # Remove @ prefix
@@ -581,7 +585,7 @@ def transform_melody_line(
             for beat_note_result in transform_melody_line_content(child, context):
                 notes.append(beat_note_result)
 
-    return Melody(measure_number=measure_number, voice_name=voice_name, notes=notes)
+    return Melody(measure_number=measure_number, track_name=track_name, voice_name=voice_name, notes=notes)
 
 
 # ------------------------------
@@ -636,16 +640,16 @@ def transform_tempo_line(node: Tree) -> Tempo:
 def transform_instrument_line(node: Tree) -> Instruments:
     # instrument_line: "Instrument:" WS TRACK_NAME WS* "=" WS* GM_INSTRUMENT_NAME NEWLINE
     instruments = []
-    voice_name = ""
+    track_name = ""
     gm_instrument_name = ""
     for child in node.children:
         if isinstance(child, Token) and child.type == "TRACK_NAME":
-            voice_name = transform_token(child)
+            track_name = transform_token(child)
         elif isinstance(child, Token) and child.type == "GM_INSTRUMENT_NAME":
             gm_instrument_name = transform_token(child)
             instruments.append(
                 Instrument(
-                    voice_name=voice_name,
+                    track_name=track_name,
                     gm_number=INSTRUMENTS_DICT[gm_instrument_name][0] + 1,
                     name=gm_instrument_name,
                 )
@@ -756,15 +760,15 @@ def transform_technique_line(node: Tree) -> Technique:
                 technique_list_node = child
 
     if voice_list_node:
-        voice_names = transform_voice_list_for_technique(voice_list_node)
+        track_names = transform_voice_list_for_technique(voice_list_node)
     else:
-        voice_names = transform_single_voice_for_technique(single_voice_node)
+        track_names = transform_single_voice_for_technique(single_voice_node)
 
     technique_range = transform_measure_range_with_beats(measure_range_node)
     techniques = transform_technique_list(technique_list_node)
 
     return Technique(
-        voice_names=voice_names, technique_range=technique_range, techniques=techniques
+        track_names=track_names, technique_range=technique_range, techniques=techniques
     )
 
 
@@ -888,14 +892,14 @@ def transform_clef_line(node: Tree) -> Clef:
             if child.type == "MEASURE_NUMBER":
                 measure_number = int(child.value)
             elif child.type == "TRACK_NAME":
-                voice_name = transform_token(child)
+                track_name = transform_token(child)
         elif isinstance(child, Tree) and child.data == "clef_type":
             clef_type = transform_clef_type(child)
             clef_name = clef_type.name
             octave_change = clef_type.octave_change
     
     return Clef(
-        voice_name=voice_name,
+        track_name=track_name,
         clef_type=ClefType(name=clef_name, octave_change=octave_change),
         measure_number=measure_number
     )

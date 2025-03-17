@@ -9,20 +9,20 @@ def test_techniques():
     lines = [
         models.TimeSignature(numerator=4, denominator=4, measure_number=1),
         models.Technique(
-            voice_names=["V1"],
+            track_names=["V1"],
             technique_range=models.TechniqueRange(
                 start_measure=1, start_beat=1.0, end_measure=2, end_beat=1.0
             ),
             techniques=["staccato"],
         ),
         models.Technique(
-            voice_names=["V1", "V2"],
+            track_names=["V1", "V2"],
             technique_range=models.TechniqueRange(
                 start_measure=2, start_beat=1.0, end_measure=3, end_beat=1.0
             ),
             techniques=["legato", "forte"],
         ),
-        models.Melody(measure_number=1, notes=[], voice_name="V1"),
+        models.Melody(measure_number=1, notes=[], track_name="V1"),
     ]
 
     doc = ScoreDocument(lines=lines)
@@ -36,7 +36,7 @@ def test_techniques():
     # Test the first technique (staccato for V1)
     staccato_items = [t for t in techniques if t.technique == "staccato"]
     assert len(staccato_items) == 1
-    assert staccato_items[0].voice_name == "V1"
+    assert staccato_items[0].track_name == "V1"
     assert staccato_items[0].time_start == 0.0  # Measure 1, beat 1
     assert (
         staccato_items[0].time_end == 4.0
@@ -49,8 +49,8 @@ def test_techniques():
     assert len(forte_items) == 2  # One for each voice
 
     # Check that both voices have the techniques
-    v1_items = [t for t in techniques if t.voice_name == "V1"]
-    v2_items = [t for t in techniques if t.voice_name == "V2"]
+    v1_items = [t for t in techniques if t.track_name == "V1"]
+    v2_items = [t for t in techniques if t.track_name == "V2"]
     assert len(v1_items) == 3  # staccato, legato, forte
     assert len(v2_items) == 2  # legato, forte
 
@@ -60,15 +60,15 @@ def test_techniques_with_different_time_signatures():
     lines = [
         models.TimeSignature(numerator=4, denominator=4, measure_number=1),
         models.Technique(
-            voice_names=["V1"],
+            track_names=["V1"],
             technique_range=models.TechniqueRange(
                 start_measure=1, start_beat=2.0, end_measure=3, end_beat=1.0
             ),
             techniques=["pizzicato"],
         ),
-        models.Melody(measure_number=1, notes=[], voice_name="V1"),
+        models.Melody(measure_number=1, notes=[], track_name="V1"),
         models.TimeSignature(numerator=3, denominator=4, measure_number=2),
-        models.Melody(measure_number=2, notes=[], voice_name="V1"),
+        models.Melody(measure_number=2, notes=[], track_name="V1"),
     ]
 
     doc = ScoreDocument(lines=lines)
@@ -77,7 +77,7 @@ def test_techniques_with_different_time_signatures():
     # Check that the technique spans correctly across different time signatures
     assert len(techniques) == 1
     technique = techniques[0]
-    assert technique.voice_name == "V1"
+    assert technique.track_name == "V1"
     assert technique.technique == "pizzicato"
 
     # Measure 1 (4/4) starts at 0.0, beat 2 is at 1.0
@@ -92,13 +92,13 @@ def test_techniques_with_multiple_techniques_same_range():
     lines = [
         models.TimeSignature(numerator=4, denominator=4, measure_number=1),
         models.Technique(
-            voice_names=["V1"],
+            track_names=["V1"],
             technique_range=models.TechniqueRange(
                 start_measure=1, start_beat=1.0, end_measure=1, end_beat=4.0
             ),
             techniques=["staccato", "forte", "accent"],
         ),
-        models.Melody(measure_number=1, notes=[], voice_name="V1"),
+        models.Melody(measure_number=1, notes=[], track_name="V1"),
     ]
 
     doc = ScoreDocument(lines=lines)
@@ -109,7 +109,7 @@ def test_techniques_with_multiple_techniques_same_range():
 
     # All techniques should have the same time range
     for technique in techniques:
-        assert technique.voice_name == "V1"
+        assert technique.track_name == "V1"
         assert technique.time_start == 0.0  # Measure 1, beat 1
         assert technique.time_end == 3.0  # Measure 1, beat 4
 
@@ -125,7 +125,7 @@ def test_techniques_with_measure_beyond_declared_measures():
     lines = [
         models.TimeSignature(numerator=4, denominator=4, measure_number=1),
         models.Technique(
-            voice_names=["V1"],
+            track_names=["V1"],
             technique_range=models.TechniqueRange(
                 start_measure=1,
                 start_beat=1.0,
@@ -134,7 +134,7 @@ def test_techniques_with_measure_beyond_declared_measures():
             ),
             techniques=["tremolo"],
         ),
-        models.Melody(measure_number=1, notes=[], voice_name="V1"),
+        models.Melody(measure_number=1, notes=[], track_name="V1"),
     ]
 
     doc = ScoreDocument(lines=lines)
@@ -143,7 +143,7 @@ def test_techniques_with_measure_beyond_declared_measures():
     # Check that the technique extends correctly
     assert len(techniques) == 1
     technique = techniques[0]
-    assert technique.voice_name == "V1"
+    assert technique.track_name == "V1"
     assert technique.technique == "tremolo"
     assert technique.time_start == 0.0  # Measure 1, beat 1
 
@@ -157,20 +157,20 @@ def test_get_techniques_for_note():
     lines = [
         models.TimeSignature(numerator=4, denominator=4, measure_number=1),
         models.Technique(
-            voice_names=["V1"],
+            track_names=["V1"],
             technique_range=models.TechniqueRange(
                 start_measure=1, start_beat=1.0, end_measure=2, end_beat=1.0
             ),
             techniques=["staccato"],
         ),
         models.Technique(
-            voice_names=["V1"],
+            track_names=["V1"],
             technique_range=models.TechniqueRange(
                 start_measure=1, start_beat=2.0, end_measure=1, end_beat=4.0
             ),
             techniques=["forte"],
         ),
-        models.Melody(measure_number=1, notes=[], voice_name="V1"),
+        models.Melody(measure_number=1, notes=[], track_name="V1"),
     ]
 
     doc = ScoreDocument(lines=lines)

@@ -21,6 +21,8 @@ clef_line: ( "(" WS*  "m" MEASURE_NUMBER WS* ")" WS*)? "Clef:" WS+ TRACK_NAME WS
 key_signature_line: ( "(" WS*  "m" MEASURE_NUMBER WS* ")" WS*)? "Signature:" WS+ key_signature NEWLINE
 
 TRACK_NAME: "T" DIGIT+
+// Potentially multiple voices per track (a voice is not necessarily monophonic though)
+VOICE_NAME: "v" DIGIT+
 GM_INSTRUMENT_NAME: /[a-zA-Z_1-9]+/
 TEMPO_NUMBER: DIGIT+
 key_signature: ACCIDENTAL*
@@ -86,7 +88,7 @@ OCTAVE: "o" SIGNED_INT
 // Delta alteration (semitones)
 ALTERATION: ("+" | "-")+
 
-melody_line: MEASURE_INDICATOR (WS+ TRACK_NAME)? (melody_line_content | VARIABLE_CALLING) NEWLINE
+melody_line: MEASURE_INDICATOR (WS+ TRACK_NAME ("." VOICE_NAME)? )? (melody_line_content | VARIABLE_CALLING) NEWLINE
 melody_line_content: (first_beat_note)? (beat_note)*
 first_beat_note: WS+ (BEAT_INDICATOR WS+)? (TEXT_COMMENT WS+)? (ABSOLUTE_NOTE+ | SILENCE | CONTINUATION | voice_list) note_techniques?
 beat_note: WS+ BEAT_INDICATOR WS (TEXT_COMMENT WS+)? (ABSOLUTE_NOTE+ | SILENCE | CONTINUATION | voice_list) note_techniques?

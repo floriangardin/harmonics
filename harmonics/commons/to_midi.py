@@ -6,20 +6,20 @@ from .utils_techniques import apply_techniques_after, apply_techniques_before
 def to_midi(filepath, score):
     # Default MIDI programs if not specified
     DEFAULT_MELODY_CHANNEL = 1
-    # Create a time-based mapping of voice assignments from instrument items
-    voice_program_map = {}
+    # Create a time-based mapping of track assignments from instrument items
+    track_program_map = {}
     for instrument in score.instruments:
-        if instrument.voice_name == "T":
-            voice_key = f"T{instrument.voice_index}"
+        if instrument.track_name == "T":
+            track_key = f"T{instrument.track_index}"
         else:
-            voice_key = instrument.voice_name
-        voice_program_map[voice_key] = int(instrument.gm_number)
+            track_key = instrument.track_name
+        track_program_map[track_key] = int(instrument.gm_number)
 
     note_events = []
     notes = solve_continuation(score.notes)
     for s in notes:
         if not s.is_silence:
-            program = voice_program_map.get(s.voice_name, DEFAULT_MELODY_CHANNEL)
+            program = track_program_map.get(s.track_name, DEFAULT_MELODY_CHANNEL)
             if isinstance(s.pitch, str):
                 note_event = [
                     s.time,
@@ -303,20 +303,20 @@ def solve_continuation(notes):
     Returns:
         A list of NoteItem objects with continuations resolved
     """
-    last_note_of_voice = {}  # Tracks the last note for each voice
+    last_note_of_track = {}  # Tracks the last note for each track
     result = []
 
     for note in notes:
         if note.is_continuation:
-            # If this is a continuation, extend the duration of the last note in this voice
-            if note.voice_name in last_note_of_voice:
-                last_note = last_note_of_voice[note.voice_name]
+            # If this is a continuation, extend the duration of the last note in this track
+            if note.track_name in last_note_of_track:
+                last_note = last_note_of_track[note.track_name]
                 last_note.duration += note.duration
             # Don't add the continuation note to the result
         else:
             # Add regular notes to the result
             result.append(note)
-            # Update the last note for this voice
-            last_note_of_voice[note.voice_name] = note
+            # Update the last note for this track
+            last_note_of_track[note.track_name] = note
 
     return result

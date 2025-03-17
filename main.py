@@ -50,7 +50,7 @@ if __name__ == "__main__":
             text = f.read()
         if output_type == "mid":
             parser.parse_to_midi(text, output_file)
-        elif output_type == "mxl":
+        elif output_type in ["mxl", "musicxml"]:
             parser.parse_to_mxl(text, output_file)
         elif output_type == "mp3":
             parser.parse_to_audio(text, output_file)

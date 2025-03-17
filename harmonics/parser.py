@@ -33,7 +33,7 @@ class HarmonicsParser:
     def prepare_input(self, input_string):
         # Basic replacements
         input_string = input_string.replace("`", "").replace("%", "ø").replace("º", "o")
-        input_string = input_string.replace("//", "Note:")
+        input_string = input_string.replace("//", "Note: ")
         input_string = input_string.replace("Fr+", "Fr")
 
         # Optimize whitespace for parsing performance

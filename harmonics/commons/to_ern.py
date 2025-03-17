@@ -78,18 +78,18 @@ def to_ern(filepath, score):
         if "notes" in measure:
             melody_by_voice = {}
             for note in measure["notes"]:
-                voice_name = note.voice_name
-                if voice_name not in melody_by_voice:
-                    melody_by_voice[voice_name] = []
-                melody_by_voice[voice_name].append(note)
+                track_name = note.track_name
+                if track_name not in melody_by_voice:
+                    melody_by_voice[track_name] = []
+                melody_by_voice[track_name].append(note)
 
-            for voice_name, notes in melody_by_voice.items():
+            for track_name, notes in melody_by_voice.items():
                 # Add beginning-of-measure clef changes if they exist and if they are not in the metadata
                 if "clefs" in measure and measure["clefs"]:
                     clef_changes = [
                         c
                         for c in measure["clefs"]
-                        if c.voice_name == voice_name and c.beat == 1.0
+                        if c.track_name == track_name and c.beat == 1.0
                     ]
                     if clef_changes:
                         lines.extend(
@@ -98,7 +98,7 @@ def to_ern(filepath, score):
 
                 lines.extend(
                     _generate_melody_line(
-                        measure_number, voice_name, sorted(notes, key=lambda n: n.beat)
+                        measure_number, track_name, sorted(notes, key=lambda n: n.beat)
                     )
                 )
         lines.append("")
@@ -145,20 +145,20 @@ def _generate_metadata(score):
     initial_clefs = {}
     for clef in score.clefs:
         if clef.measure_number == 1 and clef.beat == 1.0:
-            voice_name = clef.voice_name
+            track_name = clef.track_name
             # Only keep the first clef per voice (measure 1, beat 1)
-            if voice_name not in initial_clefs:
-                initial_clefs[voice_name] = clef
+            if track_name not in initial_clefs:
+                initial_clefs[track_name] = clef
 
     # Add instrument definitions
     if score.instruments:
         instrument_defs = []
         for instrument in score.instruments:
-            instrument_defs.append(f"{instrument.voice_name}={instrument.name}")
+            instrument_defs.append(f"{instrument.track_name}={instrument.name}")
         lines.append(f"Instrument: {', '.join(instrument_defs)}")
 
     # Add clef definitions after instrument definitions
-    for voice_name, clef in initial_clefs.items():
+    for track_name, clef in initial_clefs.items():
         # Format clef with octave change if necessary
         formatted_clef = clef.clef_name
         if clef.octave_change:
@@ -167,7 +167,7 @@ def _generate_metadata(score):
             else:
                 formatted_clef += f"{clef.octave_change}"
 
-        lines.append(f"Clef: {voice_name}={formatted_clef}")
+        lines.append(f"Clef: {track_name}={formatted_clef}")
 
     return lines
 
@@ -182,7 +182,7 @@ def _generate_technique_lines(score):
     )
 
     for technique in sorted_techniques:
-        voice_list = technique.voice_name
+        voice_list = technique.track_name
 
         # Format the technique range
         technique_range = f"(m{technique.measure_number_start} {beat_to_ern(technique.beat_start)} - m{technique.measure_number_end} {beat_to_ern(technique.beat_end)})"
@@ -230,7 +230,7 @@ def _generate_clef_changes(measure_number, clef_items):
     lines = []
 
     for clef_item in clef_items:
-        voice_name = clef_item.voice_name
+        track_name = clef_item.track_name
         beat = clef_item.beat
 
         # Format clef with octave change if necessary
@@ -243,11 +243,11 @@ def _generate_clef_changes(measure_number, clef_items):
 
         if beat == 1.0:
             # Beginning of measure clef change
-            lines.append(f"(m{measure_number}) Clef: {voice_name}={formatted_clef}")
+            lines.append(f"(m{measure_number}) Clef: {track_name}={formatted_clef}")
         else:
             # Mid-measure clef change
             lines.append(
-                f"m{measure_number} {voice_name} {beat_to_ern(beat)} clef {formatted_clef}"
+                f"m{measure_number} {track_name} {beat_to_ern(beat)} clef {formatted_clef}"
             )
 
     return lines
@@ -327,11 +327,11 @@ def _generate_harmony_line(measure_number, chords):
     return lines
 
 
-def _generate_melody_line(measure_number, voice_name, notes):
+def _generate_melody_line(measure_number, track_name, notes):
     """Generate melody line for a measure and voice."""
     lines = []
 
-    melody_line = f"m{measure_number} {voice_name}"
+    melody_line = f"m{measure_number} {track_name}"
 
     # Sort notes by beat
     sorted_notes = sorted(notes, key=lambda n: n.beat if n.beat is not None else 0)

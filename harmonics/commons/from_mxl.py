@@ -61,7 +61,7 @@ def from_mxl(filepath):
         instrument_name = instrument_name.lower().replace(" ", "_")
         # Convert instrument name to lowercase with underscores
         name = instrument_name.lower().replace(" ", "_")
-        voice_name = f"T{part_idx+1}"
+        track_name = f"T{part_idx+1}"
         # Get GM number (default to 1 if not specified)
         gm_number = (
             m21_instrument.midiProgram + 1
@@ -72,13 +72,13 @@ def from_mxl(filepath):
         # Create instrument item
         instrument = models.InstrumentItem(
             time=0,  # We don't care about time
-            voice_name=voice_name,
-            voice_index=part_idx,
+            track_name=track_name,
+            track_index=part_idx,
             gm_number=gm_number,
             name=name,
         )
         instruments.append(instrument)
-        instrument_dict[name] = voice_name
+        instrument_dict[name] = track_name
         comment_notes = {} # Indexed by (measure, beat, track)
 
         # Process spanners (crescendo, diminuendo, slurs)
@@ -116,19 +116,19 @@ def from_mxl(filepath):
                         beat_start=first_beat,
                         measure_number_end=last_measure,
                         beat_end=last_beat,
-                        voice_name=voice_name,
+                        track_name=track_name,
                         technique=technique_name,
                     )
                     techniques.append(technique_item)
 
                     # Add the technique start to the first note
-                    note_key = (voice_name, first_measure, first_beat)
+                    note_key = (track_name, first_measure, first_beat)
                     if note_key not in note_to_techniques_map:
                         note_to_techniques_map[note_key] = []
                     note_to_techniques_map[note_key].append(technique_name)
 
                     # Add the technique end to the last note (prefixed with !)
-                    note_key = (voice_name, last_measure, last_beat)
+                    note_key = (track_name, last_measure, last_beat)
                     if note_key not in note_to_techniques_map:
                         note_to_techniques_map[note_key] = []
                     note_to_techniques_map[note_key].append(f"!{technique_name}")
@@ -190,7 +190,7 @@ def from_mxl(filepath):
                 # Create ClefItem
                 clef_item = models.ClefItem(
                     time=0,  # We don't care about time
-                    voice_name=voice_name,
+                    track_name=track_name,
                     clef_name=clef_name,
                     octave_change=octave_change,
                     measure_number=measure_number,
@@ -310,7 +310,7 @@ def from_mxl(filepath):
                             global_techniques.append(dynamic_text)
 
                 # Add techniques from spanners (crescendo, diminuendo, legato)
-                note_key = (voice_name, measure_number, beat)
+                note_key = (track_name, measure_number, beat)
                 if note_key in note_to_techniques_map:
                     techniques.extend(note_to_techniques_map[note_key])
 
@@ -321,7 +321,7 @@ def from_mxl(filepath):
                     pitch=pitch,
                     is_silence=is_silence,
                     is_continuation=is_continuation,
-                    voice_name=voice_name,
+                    track_name=track_name,
                     techniques=techniques,
                     global_techniques=global_techniques,
                     measure_number=measure_number,
@@ -380,7 +380,7 @@ def from_mxl(filepath):
             notes.extend(measure_notes)
     # Extract default clefs from the first measure of each part
     for part_idx, part in enumerate(m21_score.parts):
-        voice_name = f"T{part_idx+1}"
+        track_name = f"T{part_idx+1}"
         first_measure = part.measure(1)
         if first_measure:
             default_clef = first_measure.getContextByClass("Clef")
@@ -388,7 +388,7 @@ def from_mxl(filepath):
                 # If there's a default clef, add it to measure 1 beat 1 if we don't already have one
                 # Check if we already have a clef for this voice in measure 1
                 has_m1_clef = any(
-                    c.voice_name == voice_name
+                    c.track_name == track_name
                     and c.measure_number == 1
                     and c.beat == 1.0
                     for c in clefs
@@ -412,7 +412,7 @@ def from_mxl(filepath):
                     # Create default clef at the beginning
                     default_clef_item = models.ClefItem(
                         time=0,
-                        voice_name=voice_name,
+                        track_name=track_name,
                         clef_name=clef_name,
                         octave_change=default_clef.octaveChange,
                         measure_number=1,

@@ -27,10 +27,11 @@ from harmonics.score_models import (
 def bar_duration_in_quarters(time_signature: Tuple[int, int]) -> int:
     return 4 * time_signature[0] / time_signature[1]
 
+def bar_duration_in_beats(time_signature: Tuple[int, int]) -> int:
+    return time_signature[0]
 
 def beat_to_quarter(beat: float, time_signature: Tuple[int, int]) -> float:
     return (beat - 1) * 4 / time_signature[1]
-
 
 def get_current_chord_from_time(time: float, chords: List[NoteItem]) -> Optional[str]:
     for chord in chords:
@@ -185,18 +186,12 @@ def get_data(self) -> ScoreData:
                 )
             )
         elif isinstance(line, models.Instruments):
-            for instrument in line.instruments:
-                voice_index = 1
-                if instrument.voice_name.startswith("V"):
-                    voice_index = int(instrument.voice_name[1:])
-                    voice_cat = "V"
-                else:
-                    voice_cat = instrument.voice_name
+            for track_index, instrument in enumerate(line.instruments):
                 instruments.append(
                     InstrumentItem(
                         time=bar_start_time,
-                        voice_name=voice_cat,
-                        voice_index=voice_index,
+                        track_name=instrument.track_name,
+                        track_index=track_index,
                         gm_number=instrument.gm_number,
                         name=instrument.name,
                     )
@@ -215,7 +210,7 @@ def get_data(self) -> ScoreData:
             clefs.append(
                 ClefItem(
                     time=bar_start_time,
-                    voice_name=line.voice_name,
+                    track_name=line.track_name,
                     clef_name=line.clef_type.name,
                     octave_change=line.clef_type.octave_change,
                     measure_number=(
@@ -243,11 +238,11 @@ def get_data(self) -> ScoreData:
     # Fill the durations (using delta between next time)
     if len(chords) > 0:
         for i in range(len(chords) - 1):
-            chords[i].duration = chords[i + 1].time - chords[i].time
+            chords[i].duration = chords[i + 1].beat - chords[i].beat
         chords[-1].duration = (
-            bar_start_time
-            + bar_duration_in_quarters(current_time_signature)
-            - chords[-1].time
+            + bar_duration_in_beats(current_time_signature)
+            + 1
+            - chords[-1].beat
         )
 
     self.get_progression(chords)
@@ -347,7 +342,7 @@ class ScoreDocument(BaseModel):
                         )
 
                     global_techniques = self.get_techniques_for_note(
-                        time, line.voice_name, self.techniques
+                        time, line.track_name, self.techniques
                     )
                     bar_notes.append(
                         NoteItem(
@@ -361,6 +356,7 @@ class ScoreDocument(BaseModel):
                             is_silence=is_silence,
                             is_continuation=is_continuation,
                             voice_name=line.voice_name,
+                            track_name=line.track_name,
                             techniques=note.techniques,
                             global_techniques=global_techniques,
                             measure_number=line.measure_number,
@@ -371,12 +367,11 @@ class ScoreDocument(BaseModel):
                 if len(bar_notes) > 0:
                     for i in range(len(bar_notes) - 1):
                         bar_notes[i].duration = (
-                            bar_notes[i + 1].time - bar_notes[i].time
+                            bar_notes[i + 1].beat - bar_notes[i].beat
                         )
                     bar_notes[-1].duration = (
-                        bar_start_time
-                        + bar_duration_in_quarters(current_time_signature)
-                        - bar_notes[-1].time
+                        bar_duration_in_beats(current_time_signature)
+                        - bar_notes[-1].beat + 1
                     )
                     results.extend(bar_notes)
 
@@ -442,7 +437,7 @@ class ScoreDocument(BaseModel):
                 end_time = end_end_bar_time + beat_to_quarter(
                     line.technique_range.end_beat, end_time_signature
                 )
-                for voice_name in line.voice_names:
+                for track_name in line.track_names:
                     for technique in line.techniques:
                         results.append(
                             TechniqueItem(
@@ -452,7 +447,7 @@ class ScoreDocument(BaseModel):
                                 beat_start=line.technique_range.start_beat,
                                 measure_number_end=line.technique_range.end_measure,
                                 beat_end=line.technique_range.end_beat,
-                                voice_name=voice_name,
+                                track_name=track_name,
                                 technique=technique,
                             )
                         )
@@ -464,13 +459,13 @@ class ScoreDocument(BaseModel):
         return self.data.key_signatures
 
     def get_techniques_for_note(
-        self, time: float, voice_name: str, techniques: List[TechniqueItem]
+        self, time: float, track_name: str, techniques: List[TechniqueItem]
     ) -> List[str]:
         """Get all techniques that apply to a note at a specific time for a specific voice"""
         active_techniques = []
         for technique in techniques:
             if (
-                technique.voice_name == voice_name
+                technique.track_name == track_name
                 and technique.time_start <= time < technique.time_end
             ):
                 active_techniques.append(technique.technique)
@@ -493,7 +488,7 @@ class ScoreDocument(BaseModel):
                 results.append(
                     ClefItem(
                         time=bar_start_time,
-                        voice_name=line.voice_name,
+                        track_name=line.track_name,
                         clef_name=line.clef_type.name,
                         octave_change=line.clef_type.octave_change,
                         measure_number=measure_number,
@@ -513,7 +508,7 @@ class ScoreDocument(BaseModel):
                 results.append(
                     ClefItem(
                         time=time,
-                        voice_name=line.voice_name,
+                        track_name=line.track_name,
                         clef_name=line.clef_type.name,
                         octave_change=line.clef_type.octave_change,
                         measure_number=line.measure_number,

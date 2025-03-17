@@ -15,7 +15,7 @@ class ChordItem(BaseModel):
 
 
 class NoteItem(BaseModel):
-    time: float
+    time: Optional[float] = 0
     duration: float
     chord: Optional[str] = None
     key: Optional[str] = None
@@ -24,6 +24,7 @@ class NoteItem(BaseModel):
     is_silence: bool = False
     is_continuation: bool = False
     voice_name: Optional[str] = None
+    track_name: Optional[str] = None
     techniques: Optional[List[str]] = None  # Add techniques field
     global_techniques: Optional[List[str]] = None
     measure_number: Optional[int] = None
@@ -48,8 +49,8 @@ class TimeSignatureItem(BaseModel):
 
 class InstrumentItem(BaseModel):
     time: float
-    voice_name: str
-    voice_index: Optional[int] = None
+    track_name: str
+    track_index: Optional[int] = None
     gm_number: int
     name: str
 
@@ -69,7 +70,8 @@ class TechniqueItem(BaseModel):
     beat_start: float
     measure_number_end: int
     beat_end: float
-    voice_name: str
+    voice_name: Optional[str] = None
+    track_name: Optional[str] = None
     technique: str
 
 
@@ -80,7 +82,7 @@ class MetadataItem(BaseModel):
 
 class ClefItem(BaseModel):
     time: float
-    voice_name: str
+    track_name: str
     clef_name: str  # treble, bass, alto, etc.
     octave_change: Optional[int] = None  # +1, -1, etc.
     measure_number: Optional[int] = None

@@ -13,9 +13,9 @@ def test_get_measure_map_single_time_signature():
     # Create a simple score with a single time signature
     lines = [
         TimeSignature(numerator=4, denominator=4),
-        Melody(measure_number=1, notes=[], voice_name="V1"),
-        Melody(measure_number=2, notes=[], voice_name="V1"),
-        Melody(measure_number=3, notes=[], voice_name="V1"),
+        Melody(measure_number=1, notes=[], voice_name="v1", track_name="T1"),
+        Melody(measure_number=2, notes=[], voice_name="v1", track_name="T1"),
+        Melody(measure_number=3, notes=[], voice_name="v1", track_name="T1"),
     ]
 
     measure_map = get_measure_map(lines)
@@ -34,13 +34,13 @@ def test_get_measure_map_changing_time_signatures():
     # Create a score with changing time signatures
     lines = [
         TimeSignature(numerator=4, denominator=4),  # Initial 4/4 time signature
-        Melody(measure_number=1, notes=[], voice_name="V1"),
-        Melody(measure_number=2, notes=[], voice_name="V1"),
+        Melody(measure_number=1, notes=[], voice_name="v1", track_name="T1"),
+        Melody(measure_number=2, notes=[], voice_name="v1", track_name="T1"),
         TimeSignature(numerator=3, denominator=4),  # Change to 3/4 at measure 3
-        Melody(measure_number=3, notes=[], voice_name="V1"),
-        Melody(measure_number=4, notes=[], voice_name="V1"),
+        Melody(measure_number=3, notes=[], voice_name="v1", track_name="T1"),
+        Melody(measure_number=4, notes=[], voice_name="v1", track_name="T1"),
         TimeSignature(numerator=6, denominator=8),  # Change to 6/8 at measure 5
-        Melody(measure_number=5, notes=[], voice_name="V1"),
+        Melody(measure_number=5, notes=[], voice_name="v1", track_name="T1"),
     ]
 
     measure_map = get_measure_map(lines)
@@ -61,13 +61,13 @@ def test_get_measure_map_complex_time_signatures():
     """Test get_measure_map with complex time signatures like 5/4, 7/8."""
     lines = [
         TimeSignature(numerator=4, denominator=4),  # Initial 4/4
-        Melody(measure_number=1, notes=[], voice_name="V1"),
+        Melody(measure_number=1, notes=[], voice_name="v1", track_name="T1"),
         TimeSignature(numerator=5, denominator=4),  # Change to 5/4
-        Melody(measure_number=2, notes=[], voice_name="V1"),
+        Melody(measure_number=2, notes=[], voice_name="v1", track_name="T1"),
         TimeSignature(numerator=7, denominator=8),  # Change to 7/8
-        Melody(measure_number=3, notes=[], voice_name="V1"),
+        Melody(measure_number=3, notes=[], voice_name="v1", track_name="T1"),
         TimeSignature(numerator=3, denominator=2),  # Change to 3/2
-        Melody(measure_number=4, notes=[], voice_name="V1"),
+        Melody(measure_number=4, notes=[], voice_name="v1", track_name="T1"),
     ]
 
     measure_map = get_measure_map(lines)
@@ -83,11 +83,11 @@ def test_get_measure_map_with_different_line_types():
     """Test get_measure_map with different line types (Melody, Events)."""
     lines = [
         TimeSignature(numerator=4, denominator=4),
-        Melody(measure_number=1, notes=[], voice_name="V1"),
-        Melody(measure_number=2, notes=[], voice_name="V1"),
+        Melody(measure_number=1, notes=[], voice_name="v1", track_name="T1"),
+        Melody(measure_number=2, notes=[], voice_name="v1", track_name="T1"),
         Events(measure_number=3, events=[]),
         TimeSignature(numerator=3, denominator=4),
-        Melody(measure_number=4, notes=[], voice_name="V1"),
+        Melody(measure_number=4, notes=[], voice_name="v1", track_name="T1"),
     ]
 
     measure_map = get_measure_map(lines)
@@ -103,9 +103,9 @@ def test_get_measure_map_with_non_consecutive_measures():
     """Test get_measure_map with non-consecutive measure numbers."""
     lines = [
         TimeSignature(numerator=4, denominator=4),
-        Melody(measure_number=1, notes=[], voice_name="V1"),
-        Melody(measure_number=3, notes=[], voice_name="V1"),  # Skip measure 2
-        Melody(measure_number=5, notes=[], voice_name="V1"),  # Skip measure 4
+        Melody(measure_number=1, notes=[], voice_name="v1", track_name="T1"),
+        Melody(measure_number=3, notes=[], voice_name="v1", track_name="T1"),  # Skip measure 2
+        Melody(measure_number=5, notes=[], voice_name="v1", track_name="T1"),  # Skip measure 4
     ]
 
     measure_map = get_measure_map(lines)
@@ -135,14 +135,14 @@ def test_get_measure_map_with_multiple_time_signatures_same_measure_raises_excep
     """Test handling of multiple time signatures assigned to the same measure raises exception."""
     lines = [
         TimeSignature(numerator=4, denominator=4),
-        Melody(measure_number=1, notes=[], voice_name="V1"),
+        Melody(measure_number=1, notes=[], voice_name="v1", track_name="T1"),
         TimeSignature(
             numerator=3, denominator=4
         ),  # This will be assigned to measure 2, will be ignored
         TimeSignature(
             numerator=2, denominator=4
         ),  # This will also be assigned to measure 2
-        Melody(measure_number=2, notes=[], voice_name="V1"),
+        Melody(measure_number=2, notes=[], voice_name="v1", track_name="T1"),
     ]
 
     with pytest.raises(TimeSignatureAlreadyDeclared):
@@ -156,17 +156,17 @@ def test_get_measure_map_with_out_of_order_time_signatures_raises_exception():
         # Define measure 1 time signature first
         TimeSignature(numerator=2, denominator=4),
         # But declare measure 5
-        Melody(measure_number=5, notes=[], voice_name="V1"),
+        Melody(measure_number=5, notes=[], voice_name="v1", track_name="T1"),
         # Then define another time signature, will be applied to measure 6, because last line was 5
         TimeSignature(numerator=3, denominator=4),
-        Melody(measure_number=3, notes=[], voice_name="V1"),
+        Melody(measure_number=3, notes=[], voice_name="v1", track_name="T1"),
         # Finally define measure 1's time signature
         TimeSignature(numerator=4, denominator=4),
-        Melody(measure_number=1, notes=[], voice_name="V1"),
+        Melody(measure_number=1, notes=[], voice_name="v1", track_name="T1"),
         # Add a few more measures without explicit time signatures
-        Melody(measure_number=2, notes=[], voice_name="V1"),
-        Melody(measure_number=4, notes=[], voice_name="V1"),
-        Melody(measure_number=6, notes=[], voice_name="V1"),
+        Melody(measure_number=2, notes=[], voice_name="v1", track_name="T1"),
+        Melody(measure_number=4, notes=[], voice_name="v1", track_name="T1"),
+        Melody(measure_number=6, notes=[], voice_name="v1", track_name="T1"),
     ]
 
     with pytest.raises(TimeSignatureMeasureMustBeDeclared):
@@ -179,11 +179,11 @@ def test_get_measure_map_with_out_of_order_time_signatures():
     lines = [
         # Define measure 1 time signature first
         # But declare measure 5
-        Melody(measure_number=2, notes=[], voice_name="V1"),
+        Melody(measure_number=2, notes=[], voice_name="v1", track_name="T1"),
         TimeSignature(numerator=2, denominator=4, measure_number=1),
-        Melody(measure_number=1, notes=[], voice_name="V1"),
+        Melody(measure_number=1, notes=[], voice_name="v1", track_name="T1"),
         TimeSignature(numerator=3, denominator=4, measure_number=3),
-        Melody(measure_number=3, notes=[], voice_name="V1"),
+        Melody(measure_number=3, notes=[], voice_name="v1", track_name="T1"),
     ]
 
     measure_map = get_measure_map(lines)
