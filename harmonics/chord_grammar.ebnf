@@ -1,6 +1,6 @@
 ?start: document
 
-document: (NEWLINE)* line*
+document: chord
 line: metadata_line
      | statement_line
 
@@ -124,9 +124,6 @@ DIGIT: /[0-9]/
 DIGITS: DIGIT+
 LETTER: /[a-z]+/
 
-REST_LINE: /.+/
-PHRASE_BOUNDARY: WS "||" WS?
-
 WS: (" " | /\t/)+
 CR: /\r/
 LF: /\n/
@@ -137,8 +134,3 @@ NEWLINE: WS* (CR? LF)+
 %ignore LF
 %ignore PHRASE_BOUNDARY
 %ignore WS
-
-clef_change_line: MEASURE_INDICATOR (WS+ TRACK_NAME)? WS+ BEAT_INDICATOR WS+ "clef" WS+ clef_type NEWLINE
-clef_type: CLEF_NAME (WS* CLEF_OCTAVE_CHANGE)?
-CLEF_NAME: "treble" | "bass" | "alto" | "tenor" | "soprano" | "mezzo-soprano" | "baritone" | "sub-bass" | "french" | "G" | "F" | "C"
-CLEF_OCTAVE_CHANGE: ("+" | "-") DIGIT+

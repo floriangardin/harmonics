@@ -84,6 +84,15 @@ class ClefItem(BaseModel):
     beat: Optional[float] = None
 
 
+class KeySignatureItem(BaseModel):
+    time: float
+    measure_number: int
+    beat: Optional[float] = None
+    key_signature: (
+        str  # String of accidentals, e.g. "bbb" for 3 flats or "###" for 3 sharps
+    )
+
+
 class Score(BaseModel):
     chords: List[ChordItem]
     notes: List[NoteItem]
@@ -93,5 +102,6 @@ class Score(BaseModel):
     instruments: List[InstrumentItem] = []
     techniques: List[TechniqueItem] = []  # Add techniques to Score
     clefs: List[ClefItem] = []  # Add clefs to Score
+    key_signatures: List[KeySignatureItem] = []  # Add key signatures to Score
     title: str
     composer: str

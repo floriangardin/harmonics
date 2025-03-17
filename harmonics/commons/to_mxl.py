@@ -8,7 +8,7 @@ from harmonics.commons import utils_techniques
 
 class PartState:
     """Class to track the state of a part during MusicXML conversion."""
-    
+
     def __init__(self):
         self.ref_note = {}  # Reference notes for tied notes
         self.crescendo_notes = []  # Notes in a crescendo
@@ -16,15 +16,14 @@ class PartState:
         self.slur_notes = []  # Notes in a slur
         self.crescendo_start = False  # Whether a crescendo has started
         self.diminuendo_start = False  # Whether a diminuendo has started
-        self.slur_start = False  # Whether a slur has started 
+        self.slur_start = False  # Whether a slur has started
         self.last_chord = None  # Last chord for comparison
         self.last_key = None  # Last key for comparison
-
 
         self.slur_notes = []  # Notes in a slur
         self.crescendo_start = False  # Whether a crescendo has started
         self.diminuendo_start = False  # Whether a diminuendo has started
-        self.slur_start = False  # Whether a slur has started 
+        self.slur_start = False  # Whether a slur has started
         self.last_chord = None  # Last chord for comparison
         self.last_key = None  # Last key for comparison
 
@@ -32,14 +31,14 @@ class PartState:
 def _apply_techniques(note, m21_note, measure, part_state, voice_name):
     """
     Apply techniques to a note and update the part state.
-    
+
     Args:
         note: The note object from the score
         m21_note: The music21 note object
         measure: The current measure
         part_state: The state of the part
         voice_name: The name of the voice
-    
+
     Returns:
         The updated music21 note
     """
@@ -47,11 +46,11 @@ def _apply_techniques(note, m21_note, measure, part_state, voice_name):
     techniques = note.global_techniques + note.techniques
     # Resolve techniques
     techniques = utils_techniques.resolve_techniques(techniques)
-    
+
     if techniques:
         for technique in techniques:
-            if technique.replace('!', '') == 'crescendo':
-                if not technique.startswith('!'):
+            if technique.replace("!", "") == "crescendo":
+                if not technique.startswith("!"):
                     part_state.crescendo_start = True
                     part_state.crescendo_notes.append(m21_note)
                 else:
@@ -61,8 +60,8 @@ def _apply_techniques(note, m21_note, measure, part_state, voice_name):
                     crescendo.addSpannedElements(part_state.crescendo_notes)
                     measure.insert(0, crescendo)
                     part_state.crescendo_notes = []
-            elif technique.replace('!', '') == 'diminuendo':
-                if not technique.startswith('!'):
+            elif technique.replace("!", "") == "diminuendo":
+                if not technique.startswith("!"):
                     part_state.diminuendo_start = True
                     part_state.diminuendo_notes.append(m21_note)
                 else:
@@ -72,8 +71,8 @@ def _apply_techniques(note, m21_note, measure, part_state, voice_name):
                     diminuendo.addSpannedElements(part_state.diminuendo_notes)
                     measure.insert(0, diminuendo)
                     part_state.diminuendo_notes = []
-            elif technique.replace('!', '') in ['legato', 'slur']:
-                if not technique.startswith('!'):
+            elif technique.replace("!", "") in ["legato", "slur"]:
+                if not technique.startswith("!"):
                     part_state.slur_start = True
                     # Add the current note to slur notes
                     part_state.slur_notes.append(m21_note)
@@ -95,18 +94,48 @@ def _apply_techniques(note, m21_note, measure, part_state, voice_name):
                         measure.insert(_get_offset(note.beat), technique_obj)
                     elif technique_type == "expressions":
                         m21_note.expressions.append(technique_obj)
-    
+
     # Only add to slur_notes if we're in a slur and haven't already added this note
     # (we already add the note when the slur starts or ends)
     if part_state.slur_start and m21_note not in part_state.slur_notes:
         part_state.slur_notes.append(m21_note)
-    
+
     if part_state.crescendo_start and m21_note not in part_state.crescendo_notes:
         part_state.crescendo_notes.append(m21_note)
     if part_state.diminuendo_start and m21_note not in part_state.diminuendo_notes:
         part_state.diminuendo_notes.append(m21_note)
-    
+
     return m21_note
+
+
+def _add_key_signature_to_measure(measure, key_signature_item):
+    """
+    Add a key signature to a measure.
+
+    Args:
+        measure: The music21 measure to add the key signature to
+        key_signature_item: The KeySignatureItem containing key signature information
+    """
+    if key_signature_item is None:
+        return
+
+    # Count sharps/flats in the key signature string
+    sharps_count = key_signature_item.key_signature.count("#")
+    flats_count = key_signature_item.key_signature.count("b")
+
+    # If sharps, use positive number; if flats, use negative number
+    sharps = sharps_count if sharps_count > 0 else -flats_count
+
+    # Create the key signature
+    m21_key = m21.key.KeySignature(sharps)
+
+    # Insert at the appropriate offset
+    offset = 0.0
+    if key_signature_item.beat is not None and key_signature_item.beat > 1.0:
+        offset = _get_offset(key_signature_item.beat)
+
+    measure.insert(offset, m21_key)
+
 
 def to_mxl(filepath, score):
     """
@@ -186,10 +215,16 @@ def to_mxl(filepath, score):
             # Get clef specifications for this voice
             voice_clefs = sorted(
                 [clef for clef in score.clefs if clef.voice_name == voice_name],
-                key=lambda c: (c.time, c.measure_number, c.beat)
+                key=lambda c: (c.time, c.measure_number, c.beat),
             )
             current_clef_idx = 0
-            
+
+            # Get key signatures
+            key_signatures = sorted(
+                score.key_signatures, key=lambda ks: (ks.time, ks.measure_number)
+            )
+            current_key_sig_idx = 0
+
             # Initialize default clef (treble clef)
             current_clef = None
             if voice_clefs:
@@ -198,7 +233,7 @@ def to_mxl(filepath, score):
             # Initialize part state
             part_state = PartState()
             all_notes = []
-            
+
             # Create measures
             for measure_num in range(1, max_measure + 1):
                 measure = m21.stream.Measure(number=measure_num)
@@ -207,21 +242,32 @@ def to_mxl(filepath, score):
                 ]
                 if idx == 0:
                     first_instrument_measures[measure_num] = measure
-                
+
                 # Add initial clef to first measure or if there's a clef change
                 if measure_num == 1 and current_clef is not None:
                     _add_clef_to_measure(measure, current_clef, 0)
-                
+
                 # Check for clef changes at the start of this measure
                 while (
-                    current_clef_idx < len(voice_clefs) and
-                    voice_clefs[current_clef_idx].measure_number == measure_num and
-                    voice_clefs[current_clef_idx].beat == 1.0
+                    current_clef_idx < len(voice_clefs)
+                    and voice_clefs[current_clef_idx].measure_number == measure_num
+                    and voice_clefs[current_clef_idx].beat == 1.0
                 ):
                     current_clef = voice_clefs[current_clef_idx]
                     _add_clef_to_measure(measure, current_clef, 0)
                     current_clef_idx += 1
                     if current_clef_idx >= len(voice_clefs):
+                        break
+
+                while (
+                    current_key_sig_idx < len(key_signatures)
+                    and key_signatures[current_key_sig_idx].measure_number
+                    == measure_num
+                ):
+                    key_sig = key_signatures[current_key_sig_idx]
+                    _add_key_signature_to_measure(measure, key_sig)
+                    current_key_sig_idx += 1
+                    if current_key_sig_idx >= len(key_signatures):
                         break
 
                 # Add tempo marking if it changes at this measure
@@ -250,7 +296,9 @@ def to_mxl(filepath, score):
                     m21_note.quarterLength = measure_durations[measure_num]
                     measure.append(m21_note)
 
-                for idx_note, note in enumerate(sorted(measure_notes, key=lambda n: n.time)):
+                for idx_note, note in enumerate(
+                    sorted(measure_notes, key=lambda n: n.time)
+                ):
                     # Convert duration to fraction
                     duration = _to_fraction(note.duration)
                     # Create note or rest
@@ -259,7 +307,9 @@ def to_mxl(filepath, score):
                         m21_note.quarterLength = duration
                     elif note.is_continuation:
                         # Skip continuation notes as they're handled with ties
-                        m21_note = deepcopy(part_state.ref_note.get(note.voice_name, None))
+                        m21_note = deepcopy(
+                            part_state.ref_note.get(note.voice_name, None)
+                        )
                         m21_note.tie = m21.tie.Tie("stop")
                         m21_note.articulations = []
                         if m21_note is None:
@@ -291,7 +341,9 @@ def to_mxl(filepath, score):
                             # Add continuation notes
 
                     # Apply techniques and update part state
-                    m21_note = _apply_techniques(note, m21_note, measure, part_state, voice_name)
+                    m21_note = _apply_techniques(
+                        note, m21_note, measure, part_state, voice_name
+                    )
 
                     # Insert note at the correct offset within the measure
                     # Calculate offset based on beat position
@@ -304,10 +356,9 @@ def to_mxl(filepath, score):
                     if clef_item.measure_number == measure_num and clef_item.beat > 1.0:
                         offset = _get_offset(clef_item.beat)
                         _add_clef_to_measure(measure, clef_item, offset)
-                
+
                 # Add measure to part
                 part.append(measure)
-            
 
     last_key = None
     for chord in score.chords:
@@ -383,7 +434,7 @@ def _to_beat_fraction(beat):
         fraction = _to_fraction(fractional_part)
         return int(beat) + fraction
 
-    
+
 def _to_fraction(duration):
     """Convert a float duration to a Fraction for better MusicXML representation."""
     # Handle common durations
@@ -456,7 +507,7 @@ def _create_technique(technique):
 def _add_clef_to_measure(measure, clef_item, offset):
     """
     Add a clef to a measure at the specified offset.
-    
+
     Args:
         measure: The music21 measure to add the clef to
         clef_item: The ClefItem containing clef information
@@ -464,12 +515,12 @@ def _add_clef_to_measure(measure, clef_item, offset):
     """
     if clef_item is None:
         return
-    
+
     # Map harmonics clef names to music21 clef names
     clef_map = {
         "treble": "treble",
         "G": "treble",
-        "bass": "bass", 
+        "bass": "bass",
         "F": "bass",
         "alto": "alto",
         "C": "alto",
@@ -478,16 +529,16 @@ def _add_clef_to_measure(measure, clef_item, offset):
         "mezzo-soprano": "mezzosoprano",
         "baritone": "baritone",
         "sub-bass": "subbass",
-        "french": "french"
+        "french": "french",
     }
-    
+
     # Create the clef
     clef_name = clef_map.get(clef_item.clef_name, "treble")
     m21_clef = m21.clef.clefFromString(clef_name)
-    
+
     # Apply octave change if specified
     if clef_item.octave_change is not None:
         m21_clef.octaveChange = clef_item.octave_change
-    
+
     # Insert clef at the specified offset
     measure.insert(offset, m21_clef)

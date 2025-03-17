@@ -26,7 +26,7 @@ if __name__ == "__main__":
         help="Input file path",
     )
     parser.add_argument(
-        "--output", type=str, default="test.mid", help="Output file path"
+        "output", type=str, nargs="?", default="test.mid", help="Output file path"
     )
     args = parser.parse_args()
     file = args.file

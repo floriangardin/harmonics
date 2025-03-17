@@ -16,6 +16,7 @@ from harmonics.score_models import (
     EventItem,
     TechniqueItem,
     ClefItem,
+    KeySignatureItem,
 )
 
 # ==================================
@@ -120,6 +121,7 @@ class ScoreData(BaseModel):
     title: str
     composer: str
     clefs: List[ClefItem]
+    key_signatures: List[KeySignatureItem]
 
 
 @lru_cache(maxsize=10)
@@ -134,6 +136,7 @@ def get_data(self) -> ScoreData:
     tempos = []
     instruments = []
     clefs = []
+    key_signatures = []
     title = ""
     composer = ""
 
@@ -215,8 +218,26 @@ def get_data(self) -> ScoreData:
                     voice_name=line.voice_name,
                     clef_name=line.clef_type.name,
                     octave_change=line.clef_type.octave_change,
-                    measure_number=line.measure_number if line.measure_number is not None else current_bar_index,
+                    measure_number=(
+                        line.measure_number
+                        if line.measure_number is not None
+                        else current_bar_index
+                    ),
                     beat=1.0,  # Default to first beat of the measure
+                )
+            )
+        elif isinstance(line, models.KeySignature):
+            # Add key signature to the list
+            key_signatures.append(
+                KeySignatureItem(
+                    time=bar_start_time,
+                    measure_number=(
+                        line.measure_number
+                        if line.measure_number is not None
+                        else current_bar_index
+                    ),
+                    beat=1.0,  # Default to first beat of the measure
+                    key_signature=line.key_signature,
                 )
             )
     # Fill the durations (using delta between next time)
@@ -238,6 +259,7 @@ def get_data(self) -> ScoreData:
         title=title,
         composer=composer,
         clefs=clefs,
+        key_signatures=key_signatures,
     )
 
 
@@ -434,6 +456,11 @@ class ScoreDocument(BaseModel):
                         )
         return results
 
+    @property
+    def key_signatures(self) -> List[KeySignatureItem]:
+        """Get all key signatures from the document data."""
+        return self.data.key_signatures
+
     def get_techniques_for_note(
         self, time: float, voice_name: str, techniques: List[TechniqueItem]
     ) -> List[str]:
@@ -451,11 +478,13 @@ class ScoreDocument(BaseModel):
     def clefs(self) -> List[ClefItem]:
         results = []
         measure_map = get_measure_map(self.lines)
-        
+
         # First add any clefs declared as metadata
         for line in self.lines:
             if isinstance(line, models.Clef):
-                measure_number = line.measure_number if line.measure_number is not None else 1
+                measure_number = (
+                    line.measure_number if line.measure_number is not None else 1
+                )
                 bar_start_time, _, current_time_signature = measure_map.get(
                     measure_number, (0, 0, (4, 4))
                 )
@@ -466,10 +495,10 @@ class ScoreDocument(BaseModel):
                         clef_name=line.clef_type.name,
                         octave_change=line.clef_type.octave_change,
                         measure_number=measure_number,
-                        beat=1.0  # Default to first beat
+                        beat=1.0,  # Default to first beat
                     )
                 )
-        
+
         # Then add clef changes within the score
         for line in self.lines:
             if isinstance(line, models.ClefChange):
@@ -478,7 +507,7 @@ class ScoreDocument(BaseModel):
                 )
                 beat_start_time = beat_to_quarter(line.beat, current_time_signature)
                 time = beat_start_time + bar_start_time
-                
+
                 results.append(
                     ClefItem(
                         time=time,
@@ -486,10 +515,10 @@ class ScoreDocument(BaseModel):
                         clef_name=line.clef_type.name,
                         octave_change=line.clef_type.octave_change,
                         measure_number=line.measure_number,
-                        beat=line.beat
+                        beat=line.beat,
                     )
                 )
-        
+
         # Sort clefs by time for proper processing
         results.sort(key=lambda c: (c.time, c.measure_number, c.beat))
         return results

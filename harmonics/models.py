@@ -98,6 +98,7 @@ class Tempo(BaseModel):
 
 class KeySignature(BaseModel):
     key_signature: str
+    measure_number: Optional[int] = None
 
 
 class MinorMode(BaseModel):
@@ -161,7 +162,6 @@ MetadataLine = Union[
     Proofreader,
     Movement,
     TimeSignature,
-    KeySignature,
     MinorMode,
     Tempo,
     Instruments,
@@ -278,6 +278,7 @@ StatementLine = Union[
     VariableDeclaration,
     Technique,
     ClefChange,
+    KeySignature,
 ]
 
 Line = Union[MetadataLine, StatementLine]

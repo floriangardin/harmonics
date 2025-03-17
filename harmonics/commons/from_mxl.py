@@ -28,6 +28,7 @@ def from_mxl(filepath):
     events = []
     clefs = []  # Add clefs list
     techniques = []  # Add techniques list for spanners
+    key_signatures = []  # Add key signatures list
 
     # Extract metadata
     metadata = m21_score.metadata
@@ -42,11 +43,11 @@ def from_mxl(filepath):
     current_time = 0
 
     instrument_dict = {}
-    
+
     # Process spanners (crescendo, diminuendo, slurs)
     # Create a mapping from note to techniques that will be applied
     note_to_techniques_map = {}
-    
+
     # Process each part in the score
     for part_idx, part in enumerate(m21_score.parts):
         # Extract instrument information
@@ -77,62 +78,87 @@ def from_mxl(filepath):
         )
         instruments.append(instrument)
         instrument_dict[name] = voice_name
-        
+
         # Process spanners (crescendo, diminuendo, slurs)
-        for spanner in part.getElementsByClass('Spanner'):
+        for spanner in part.getElementsByClass("Spanner"):
             spanner_type = type(spanner).__name__.lower()
             technique_name = None
             # Map spanner type to technique name
-            if spanner_type == 'crescendo':
+            if spanner_type == "crescendo":
                 technique_name = "crescendo"
-            elif spanner_type in ['diminuendo', 'decrescendo']:
+            elif spanner_type in ["diminuendo", "decrescendo"]:
                 technique_name = "diminuendo"
-            elif spanner_type == 'slur':
+            elif spanner_type == "slur":
                 technique_name = "legato"
-            
-            if technique_name and hasattr(spanner, 'getSpannedElements'):
+
+            if technique_name and hasattr(spanner, "getSpannedElements"):
                 spanned_elements = spanner.getSpannedElements()
                 if spanned_elements:
                     # Add the technique to the first and last note
                     first_note = spanned_elements[0]
                     last_note = spanned_elements[-1]
-                    
+
                     # Calculate measure and beat for first and last notes
                     first_measure = first_note.measureNumber
                     last_measure = last_note.measureNumber
-                    
+
                     # Get the offset within the measure (1-indexed)
                     first_beat = first_note.offset + 1.0
                     last_beat = last_note.offset + 1.0
-                    
+
                     # Create a technique item for spanning techniques
                     technique_item = models.TechniqueItem(
                         time_start=0,  # We don't care about time
-                        time_end=0,    # We don't care about time
+                        time_end=0,  # We don't care about time
                         measure_number_start=first_measure,
                         beat_start=first_beat,
                         measure_number_end=last_measure,
                         beat_end=last_beat,
                         voice_name=voice_name,
-                        technique=technique_name
+                        technique=technique_name,
                     )
                     techniques.append(technique_item)
-                    
+
                     # Add the technique start to the first note
                     note_key = (voice_name, first_measure, first_beat)
                     if note_key not in note_to_techniques_map:
                         note_to_techniques_map[note_key] = []
                     note_to_techniques_map[note_key].append(technique_name)
-                    
+
                     # Add the technique end to the last note (prefixed with !)
                     note_key = (voice_name, last_measure, last_beat)
                     if note_key not in note_to_techniques_map:
                         note_to_techniques_map[note_key] = []
                     note_to_techniques_map[note_key].append(f"!{technique_name}")
-        
+
         # Process measures
         for measure in part.getElementsByClass("Measure"):
             measure_number = measure.number if measure.number is not None else 1
+
+            # Process key signatures (only process once per measure, on the first part)
+            if part_idx == 0:
+                for ks in measure.getElementsByClass("KeySignature"):
+                    # Get the count of sharps or flats
+                    sharps = ks.sharps
+
+                    # Convert to string of accidentals ('bbb' for 3 flats, '###' for 3 sharps)
+                    ks_string = ""
+                    if sharps > 0:
+                        ks_string = "#" * sharps
+                    elif sharps < 0:
+                        ks_string = "b" * abs(sharps)
+
+                    # Get beat position (1-indexed)
+                    beat = ks.offset + 1.0
+
+                    # Create KeySignatureItem
+                    ks_item = models.KeySignatureItem(
+                        time=0,  # We don't care about time
+                        measure_number=measure_number,
+                        beat=beat,
+                        key_signature=ks_string,
+                    )
+                    key_signatures.append(ks_item)
 
             # Process clefs
             for clef_element in measure.getElementsByClass("Clef"):
@@ -150,13 +176,13 @@ def from_mxl(filepath):
                         clef_name = "tenor"
                     else:
                         clef_name = "C"  # Generic C clef
-                
+
                 # Get octave change if any
                 octave_change = clef_element.octaveChange
-                
+
                 # Get beat position (1-indexed)
                 beat = clef_element.offset + 1.0
-                
+
                 # Create ClefItem
                 clef_item = models.ClefItem(
                     time=0,  # We don't care about time
@@ -164,7 +190,7 @@ def from_mxl(filepath):
                     clef_name=clef_name,
                     octave_change=octave_change,
                     measure_number=measure_number,
-                    beat=beat
+                    beat=beat,
                 )
                 clefs.append(clef_item)
 
@@ -310,7 +336,7 @@ def from_mxl(filepath):
                             "fff",
                         ]:
                             global_techniques.append(dynamic_text)
-                
+
                 # Add techniques from spanners (crescendo, diminuendo, legato)
                 note_key = (voice_name, measure_number, beat)
                 if note_key in note_to_techniques_map:
@@ -336,12 +362,17 @@ def from_mxl(filepath):
         voice_name = f"T{part_idx+1}"
         first_measure = part.measure(1)
         if first_measure:
-            default_clef = first_measure.getContextByClass('Clef')
+            default_clef = first_measure.getContextByClass("Clef")
             if default_clef:
                 # If there's a default clef, add it to measure 1 beat 1 if we don't already have one
                 # Check if we already have a clef for this voice in measure 1
-                has_m1_clef = any(c.voice_name == voice_name and c.measure_number == 1 and c.beat == 1.0 for c in clefs)
-                
+                has_m1_clef = any(
+                    c.voice_name == voice_name
+                    and c.measure_number == 1
+                    and c.beat == 1.0
+                    for c in clefs
+                )
+
                 if not has_m1_clef:
                     # Map music21 clef to our clef format
                     clef_name = default_clef.sign.lower()
@@ -356,7 +387,7 @@ def from_mxl(filepath):
                             clef_name = "tenor"
                         else:
                             clef_name = "C"
-                    
+
                     # Create default clef at the beginning
                     default_clef_item = models.ClefItem(
                         time=0,
@@ -364,9 +395,29 @@ def from_mxl(filepath):
                         clef_name=clef_name,
                         octave_change=default_clef.octaveChange,
                         measure_number=1,
-                        beat=1.0
+                        beat=1.0,
                     )
                     clefs.append(default_clef_item)
+
+    # Extract default key signature from the score if not already found
+    if len(key_signatures) == 0:
+        first_part = m21_score.parts[0] if m21_score.parts else None
+        if first_part:
+            default_key = first_part.getContextByClass("KeySignature")
+            if default_key:
+                # Convert sharps to string of accidentals
+                sharps = default_key.sharps
+                ks_string = ""
+                if sharps > 0:
+                    ks_string = "#" * sharps
+                elif sharps < 0:
+                    ks_string = "b" * abs(sharps)
+
+                # Add default key signature for the first measure
+                default_ks_item = models.KeySignatureItem(
+                    time=0, measure_number=1, beat=1.0, key_signature=ks_string
+                )
+                key_signatures.append(default_ks_item)
 
     # Create and return the score
     score = models.Score(
@@ -378,6 +429,7 @@ def from_mxl(filepath):
         instruments=instruments,
         techniques=techniques,  # Add techniques to the score
         clefs=clefs,  # Add clefs to score
+        key_signatures=key_signatures,  # Add key signatures to score
         title=title,
         composer=composer,
     )

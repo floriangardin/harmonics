@@ -47,13 +47,29 @@ def to_ern(filepath, score):
                 lines.append(
                     f"(m{measure_number}) Time Signature: {time_sig[0]}/{time_sig[1]}"
                 )
-        
+
+        # Add key signature changes if there are any for this measure
+        if "key_signatures" in measure and measure["key_signatures"]:
+            for key_sig in measure["key_signatures"]:
+                if measure_number > 1 or key_sig.beat > 1.0:
+                    # Format the key signature change
+                    if key_sig.beat > 1.0:
+                        # Mid-measure key signature change
+                        lines.append(
+                            f"(m{measure_number} b{beat_to_ern(key_sig.beat)}) Signature: {key_sig.key_signature}"
+                        )
+                    else:
+                        # Start of measure key signature change
+                        lines.append(
+                            f"(m{measure_number}) Signature: {key_sig.key_signature}"
+                        )
+
         # Add mid-measure clef changes for this measure
         if "clefs" in measure and measure["clefs"]:
             clef_changes = [c for c in measure["clefs"] if c.beat > 1.0]
             if clef_changes:
                 lines.extend(_generate_clef_changes(measure_number, clef_changes))
-        
+
         # Add harmony line if exists
         if "chords" in measure and measure["chords"]:
             lines.extend(_generate_harmony_line(measure_number, measure["chords"]))
@@ -70,11 +86,21 @@ def to_ern(filepath, score):
             for voice_name, notes in melody_by_voice.items():
                 # Add beginning-of-measure clef changes if they exist and if they are not in the metadata
                 if "clefs" in measure and measure["clefs"]:
-                    clef_changes = [c for c in measure["clefs"] if c.voice_name == voice_name and c.beat == 1.0]
+                    clef_changes = [
+                        c
+                        for c in measure["clefs"]
+                        if c.voice_name == voice_name and c.beat == 1.0
+                    ]
                     if clef_changes:
-                        lines.extend(_generate_clef_changes(measure_number, clef_changes))
-                
-                lines.extend(_generate_melody_line(measure_number, voice_name, sorted(notes, key=lambda n: n.beat)))
+                        lines.extend(
+                            _generate_clef_changes(measure_number, clef_changes)
+                        )
+
+                lines.extend(
+                    _generate_melody_line(
+                        measure_number, voice_name, sorted(notes, key=lambda n: n.beat)
+                    )
+                )
         lines.append("")
     # Write the ern text to file
     with open(filepath, "w") as f:
@@ -99,6 +125,16 @@ def _generate_metadata(score):
         time_signature = score.time_signatures[0].time_signature
     lines.append(f"Time Signature: {time_signature[0]}/{time_signature[1]}")
 
+    # Add initial key signature for measure 1 if exists
+    key_signature = None
+    for ks in score.key_signatures:
+        if ks.measure_number == 1 and ks.beat == 1.0:
+            key_signature = ks.key_signature
+            break
+
+    if key_signature:
+        lines.append(f"Signature: {key_signature}")
+
     # Add tempo (defaults to 120 if none found)
     tempo = 120
     if score.tempos and len(score.tempos) > 0:
@@ -113,14 +149,14 @@ def _generate_metadata(score):
             # Only keep the first clef per voice (measure 1, beat 1)
             if voice_name not in initial_clefs:
                 initial_clefs[voice_name] = clef
-    
+
     # Add instrument definitions
     if score.instruments:
         instrument_defs = []
         for instrument in score.instruments:
             instrument_defs.append(f"{instrument.voice_name}={instrument.name}")
         lines.append(f"Instrument: {', '.join(instrument_defs)}")
-    
+
     # Add clef definitions after instrument definitions
     for voice_name, clef in initial_clefs.items():
         # Format clef with octave change if necessary
@@ -130,7 +166,7 @@ def _generate_metadata(score):
                 formatted_clef += f"+{clef.octave_change}"
             else:
                 formatted_clef += f"{clef.octave_change}"
-        
+
         lines.append(f"Clef: {voice_name}={formatted_clef}")
 
     return lines
@@ -139,31 +175,30 @@ def _generate_metadata(score):
 def _generate_technique_lines(score):
     """Generate technique lines for the ern file."""
     lines = []
-    
+
     # Sort techniques by start measure and beat for consistent output
     sorted_techniques = sorted(
-        score.techniques, 
-        key=lambda t: (t.measure_number_start, t.beat_start)
+        score.techniques, key=lambda t: (t.measure_number_start, t.beat_start)
     )
-    
+
     for technique in sorted_techniques:
         voice_list = technique.voice_name
-        
+
         # Format the technique range
         technique_range = f"(m{technique.measure_number_start} {beat_to_ern(technique.beat_start)} - m{technique.measure_number_end} {beat_to_ern(technique.beat_end)})"
-        
+
         # Format the technique list
         techniques_str = ", ".join(technique.technique.split(","))
-        
+
         lines.append(f"tech {voice_list} {technique_range} : {techniques_str}")
-    
+
     return lines
 
 
 def _generate_event_lines(score):
     """Generate event lines for the ern file."""
     lines = []
-    
+
     # Group events by measure number
     events_by_measure = {}
     for event in score.events:
@@ -171,31 +206,33 @@ def _generate_event_lines(score):
         if measure_number not in events_by_measure:
             events_by_measure[measure_number] = []
         events_by_measure[measure_number].append(event)
-    
+
     # Generate event lines for each measure
     for measure_number in sorted(events_by_measure.keys()):
         events = events_by_measure[measure_number]
         event_line = f"e{measure_number}"
-        
+
         # Sort events by beat for consistent output
         sorted_events = sorted(events, key=lambda e: e.beat)
-        
+
         for event in sorted_events:
-            event_line += f" {beat_to_ern(event.beat)} {event.event_type}({event.event_value})"
-        
+            event_line += (
+                f" {beat_to_ern(event.beat)} {event.event_type}({event.event_value})"
+            )
+
         lines.append(event_line)
-    
+
     return lines
 
 
 def _generate_clef_changes(measure_number, clef_items):
     """Generate clef change lines for the ern file."""
     lines = []
-    
+
     for clef_item in clef_items:
         voice_name = clef_item.voice_name
         beat = clef_item.beat
-        
+
         # Format clef with octave change if necessary
         formatted_clef = clef_item.clef_name
         if clef_item.octave_change:
@@ -203,21 +240,23 @@ def _generate_clef_changes(measure_number, clef_items):
                 formatted_clef += f"+{clef_item.octave_change}"
             else:
                 formatted_clef += f"{clef_item.octave_change}"
-                
+
         if beat == 1.0:
             # Beginning of measure clef change
             lines.append(f"(m{measure_number}) Clef: {voice_name}={formatted_clef}")
         else:
             # Mid-measure clef change
-            lines.append(f"(m{measure_number} {beat_to_ern(beat)}) Clef: {voice_name}={formatted_clef}")
-    
+            lines.append(
+                f"m{measure_number} {voice_name} {beat_to_ern(beat)} clef {formatted_clef}"
+            )
+
     return lines
 
 
 def _organize_by_measure(score):
     """Organize score data by measure number."""
     measure_data = {}
-    
+
     # Process harmony (chords)
     for chord in score.chords:
         measure_number = chord.measure_number
@@ -226,7 +265,7 @@ def _organize_by_measure(score):
         if "chords" not in measure_data[measure_number]:
             measure_data[measure_number]["chords"] = []
         measure_data[measure_number]["chords"].append(chord)
-    
+
     # Process melody (notes)
     for note in score.notes:
         measure_number = note.measure_number
@@ -235,14 +274,14 @@ def _organize_by_measure(score):
         if "notes" not in measure_data[measure_number]:
             measure_data[measure_number]["notes"] = []
         measure_data[measure_number]["notes"].append(note)
-    
+
     # Process time signatures
     for ts in score.time_signatures:
         measure_number = ts.measure_number
         if measure_number not in measure_data:
             measure_data[measure_number] = {}
         measure_data[measure_number]["time_signature"] = ts.time_signature
-    
+
     # Process clefs
     for clef in score.clefs:
         measure_number = clef.measure_number
@@ -251,7 +290,16 @@ def _organize_by_measure(score):
         if "clefs" not in measure_data[measure_number]:
             measure_data[measure_number]["clefs"] = []
         measure_data[measure_number]["clefs"].append(clef)
-    
+
+    # Process key signatures
+    for ks in score.key_signatures:
+        measure_number = ks.measure_number
+        if measure_number not in measure_data:
+            measure_data[measure_number] = {}
+        if "key_signatures" not in measure_data[measure_number]:
+            measure_data[measure_number]["key_signatures"] = []
+        measure_data[measure_number]["key_signatures"].append(ks)
+
     return measure_data
 
 
