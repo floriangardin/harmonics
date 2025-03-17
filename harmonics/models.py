@@ -7,16 +7,20 @@ from .notes_utils import getPitchFromIntervalFromMinimallyModifiedScale
 # Melody Lines
 # ==============================
 
-
 class BaseModel(RawBaseModel):
 
     def __hash__(self):  # make hashable BaseModel subclass
         return hash(self.model_dump_json())
-
+    
 
 class MelodyNote(BaseModel):
     beat: float
     techniques: List[str] = []
+    text_comment: Optional[str] = None
+
+
+class TextComment(MelodyNote):
+    text: str
 
 
 class AbsoluteMelodyNote(MelodyNote):

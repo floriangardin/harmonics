@@ -277,7 +277,7 @@ def to_mxl(filepath, score):
                     and tempos[current_tempo_idx].beat == 1.0
                 ):
                     tempo = tempos[current_tempo_idx]
-                    m21_tempo = m21.tempo.MetronomeMark(number=tempo.tempo)
+                    m21_tempo = m21.tempo.MetronomeMark(number=tempo.tempo, referent=m21.note.Note(type='quarter'))
                     measure.insert(0, m21_tempo)
                     current_tempo_idx += 1
                     if current_tempo_idx >= len(tempos):
@@ -349,6 +349,18 @@ def to_mxl(filepath, score):
                     # Calculate offset based on beat position
                     offset = _get_offset(note.beat)
                     measure.insert(offset, m21_note)
+
+                    # Add text comment if present
+                    if note.text_comment is not None:
+                        if note.text_comment != "pizz.":    
+                            text_expression = m21.expressions.TextExpression(note.text_comment)
+                            text_expression.positionVertical = 20  # Position above the staff
+                            text_expression.style.fontStyle = "italic"  # Make it italic
+                            measure.insert(offset, text_expression)
+                        else:
+                            text_expression = m21.articulations.Pizzicato()
+                            measure.insert(offset, text_expression)
+
                     all_notes.append(m21_note)
 
                 # Check for mid-measure clef changes
@@ -380,7 +392,7 @@ def to_mxl(filepath, score):
             if event.measure_number in first_instrument_measures:
                 measure = first_instrument_measures[event.measure_number]
                 # Create a tempo mark
-                tempo_mark = m21.tempo.MetronomeMark(number=event.event_value)
+                tempo_mark = m21.tempo.MetronomeMark(number=event.event_value, referent=m21.note.Note(type='quarter'))
                 # Calculate offset based on beat position
                 offset = _get_offset(event.beat)
                 # Insert tempo mark at the correct offset within the measure
@@ -409,16 +421,13 @@ def _write_comment(measure, beat, key=None, chord=None):
         return
 
     comment_text = chord_text
-    # Create a text expression for the chord symbol
-    chord_expression = m21.expressions.TextExpression(chord_text)
-    chord_expression.style.fontWeight = "bold"
-    chord_expression.placement = "above"
-
     # Create a comment object
     comment = m21.expressions.TextExpression(comment_text)
-    comment.style.fontStyle = "italic"
-    comment.style.fontSize = 8
-    comment.placement = "above"
+    comment.style.fontStyle = "normal"
+    comment.style.fontSize = 10
+    # Add padding top 
+    comment.style.relativeY = 0.5
+    comment.placement = "below"
     measure.insert(_get_offset(beat), comment)
 
 

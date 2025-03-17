@@ -4,6 +4,7 @@ from fractions import Fraction
 import re
 from typing import Dict, List, Optional, Set, Tuple
 import logging
+from harmonics.chord_parser import ChordParser
 
 
 def from_mxl(filepath):
@@ -78,6 +79,7 @@ def from_mxl(filepath):
         )
         instruments.append(instrument)
         instrument_dict[name] = voice_name
+        comment_notes = {} # Indexed by (measure, beat, track)
 
         # Process spanners (crescendo, diminuendo, slurs)
         for spanner in part.getElementsByClass("Spanner"):
@@ -132,7 +134,9 @@ def from_mxl(filepath):
                     note_to_techniques_map[note_key].append(f"!{technique_name}")
 
         # Process measures
+        
         for measure in part.getElementsByClass("Measure"):
+            measure_notes = []
             measure_number = measure.number if measure.number is not None else 1
 
             # Process key signatures (only process once per measure, on the first part)
@@ -205,11 +209,13 @@ def from_mxl(filepath):
 
             # Process tempo markings
             for tempo_mark in measure.getElementsByClass("MetronomeMark"):
+                real_tempo = tempo_mark.number if tempo_mark.number is not None else tempo_mark._numberSounding
                 tempo = models.TempoItem(
                     time=0,  # We don't care about time
-                    tempo=int(tempo_mark.number),
+                    tempo=real_tempo,
                     measure_number=measure_number,
                     beat=1.0,  # Default to first beat if not specified
+                    figure=tempo_mark.referent.type,
                 )
                 tempos.append(tempo)
 
@@ -219,43 +225,9 @@ def from_mxl(filepath):
                     measure_number=measure_number,
                     beat=1.0,  # Default to first beat
                     event_type="tempo",
-                    event_value=int(tempo_mark.number),
+                    event_value=real_tempo,
                 )
                 events.append(event)
-
-            # Process comments for chord symbols
-            last_key = None
-            for expression in measure.getElementsByClass("TextExpression"):
-                # Check if this is a chord/harmony comment
-                text = expression.content
-                offset = expression.offset + 1.0  # Convert to 1-indexed beat
-
-                # Try to extract key and chord information
-                key = None
-                chord_symbol = None
-
-                if ":" in text:
-                    # Format might be "C: Cmaj7" or similar
-                    key, chord_symbol = text.split(":", 1)
-                    key = key.strip()
-                    chord_symbol = chord_symbol.strip()
-                    last_key = key
-                else:
-                    # Just a chord symbol like "Cmaj7"
-                    chord_symbol = text.strip()
-
-                if chord_symbol or key:
-                    chord_item = models.ChordItem(
-                        time=0,  # We don't care about time
-                        beat=offset,
-                        measure_number=measure_number,
-                        duration=0.0,  # Duration doesn't apply to chord symbols
-                        chord=chord_symbol if chord_symbol else None,
-                        key=last_key,
-                        new_key=key is not None,
-                    )
-                    chords.append(chord_item)
-
             # Process notes
             for note_element in measure.notesAndRests:
                 # Calculate beat position (1-indexed)
@@ -355,8 +327,57 @@ def from_mxl(filepath):
                     measure_number=measure_number,
                     beat=beat,
                 )
-                notes.append(note_item)
+                measure_notes.append(note_item)
 
+                            # Process comments for chord symbols
+            last_key = None
+            for expression in measure.getElementsByClass("TextExpression"):
+                # Check if this is a chord/harmony comment
+                text = expression.content
+                offset = expression.offset + 1.0  # Convert to 1-indexed beat
+
+                is_chord = ChordParser().is_chord(text)
+
+                if is_chord:
+                    # Try to extract key and chord information
+                    key = None
+                    chord_symbol = None
+                    if ":" in text:
+                        # Format might be "C: V7/V" or similar
+                        key, chord_symbol = text.split(":", 1)
+                        key = key.strip()
+                        chord_symbol = chord_symbol.strip()
+                        last_key = key
+                    else:
+                        # Just a chord symbol like "iv65"
+                        chord_symbol = text.strip()
+
+                    if chord_symbol or key:
+                        chord_item = models.ChordItem(
+                            time=0,  # We don't care about time
+                            beat=offset,
+                            measure_number=measure_number,
+                            duration=0.0,  # Duration doesn't apply to chord symbols
+                            chord=chord_symbol if chord_symbol else None,
+                            key=last_key,
+                            new_key=key is not None,
+                        )
+                        chords.append(chord_item)
+                else: # Is a generic comment
+                    # If it's not a chord symbol, treat it as a text comment for this part
+                    # Find the nearest note to attach this comment to
+                    nearest_note = None
+                    min_distance = float('inf')
+                    comment_beat = expression.offset + 1.0
+                    for note in measure_notes:
+                        distance = abs(note.beat - comment_beat)
+                        if distance < min_distance:
+                            min_distance = distance
+                            nearest_note = note
+                    if nearest_note:
+                        nearest_note.text_comment = text
+                    
+            notes.extend(measure_notes)
     # Extract default clefs from the first measure of each part
     for part_idx, part in enumerate(m21_score.parts):
         voice_name = f"T{part_idx+1}"

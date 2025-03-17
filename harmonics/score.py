@@ -320,6 +320,7 @@ class ScoreDocument(BaseModel):
                     voices = None
                     is_silence = False
                     is_continuation = False
+                    
                     if isinstance(note, models.Silence):
                         pitch = None
                         is_silence = True
@@ -364,6 +365,7 @@ class ScoreDocument(BaseModel):
                             global_techniques=global_techniques,
                             measure_number=line.measure_number,
                             beat=note.beat,
+                            text_comment=note.text_comment,
                         )
                     )
                 if len(bar_notes) > 0:

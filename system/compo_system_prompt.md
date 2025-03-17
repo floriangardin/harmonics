@@ -356,45 +356,36 @@ m7 T1 b1 A5 b1.5 G5 b2 F#5 b3 C6 b4 F#5
 m7 T1 1 b2 2 b3 4 b4 3
 ```
 
-**Example 2: Simple Chorale with two voices**
+**Example 3: All features in a short example**
 
 ```ern
-Composer: Frédéric Chopin (Style)
-Piece: Nocturne in E minor
-Time Signature: 4/4
-Tempo: 72
-Note: A Chopin-style nocturne in E minor with lyrical melodies and varied arpeggiated accompaniments
-
-// We use GM piano but we separate accompaniment and melody voices (different staff)
-Instrument: T1=piano, T2=piano
-
-Note: Defining different arpeggiated accompaniment patterns
-arpeggio_basic = b1 1 b1.5 3 b1.75 4 b2 3 b2.5 1 b3 3 b3.5 4 b3.75 3 b4 1 b4.5 3 b4.75 4
-arpeggio_var1 = b1 1 b1.25 3 b1.5 4 b1.75 3 b2 1 b2.5 3 b2.75 4 b3 1 b3.25 3 b3.5 4 b3.75 3 b4 1 b4.5 3 b4.75 4
-arpeggio_var2 = b1 1 b1.5 3 b2 4 b2.5 3 b3 1 b3.5 4 b4 3 b4.5 1
-arpeggio_var3 = b1 1 b1.33 3 b1.67 4 b2 3 b2.33 1 b2.67 3 b3 4 b3.33 3 b3.67 1 b4 3 b4.33 4 b4.67 3
-block_chords = b1 134 b2 134 b3 134 b4 134
+Composer: Claude Debussy (Style)
+Piece: Prélude à l'après-midi d'un faune (A minor)
+Time Signature: 5/4
+Note: A demo piece showing all features of the language (but non musical example)
+// Comment can also be written like this.
+Instrument: T1=violin, T2=viola
 
 e1 b1 tempo(72) b1 velocity(mp)
 
-Note: Section A - Main Theme (bars 1-8)
+tech [T1] (m1 b1 - m4 b3) : staccato
 
-m1 b1 e: i6 b3 V7 ||
-m1 T1 b1 B4 b2 E5 b2.5 F#5 b3 G5 b3.25 A5 b3.5 B5 D#6 b4 B5 E6 
-m1 T2 @arpeggio_basic
+(m1) Signature: bbb
+(m1) Clef: T1=treble
+(m1) Clef: T2= alto
+// You can specify the octave (here -1) for the clef, useful for choirs for example.
+(m2) Clef: T2=treble-1
 
-m2 b1 i b3 VI b4 iiø65 ||
-m2 T1 b1 E5 b1.5 F#5 b2 G5 b2.5 F#5 b3 C6 b3.5 B5 b4 A5
-m2 T2 @arpeggio_basic
+m1 b1 a: V7[add9] "Allegro con brio."       
+m1 T1 b2 C5 E5. [pp, accelerando,accent] b3 L b4 E5[trill, fff, !accelerando,marcato,diminuendo, !diminuendo]
+m1 T2 b1 C4 [p,crescendo] b2 C4 [legato] b3 D4 b4 C4 [!legato]
 
-m3 b1 T2 b3 i6 ||
-m3 T1 b1 B5 b1.5 A5 b2 F#5 b2.5 D#5 b3 G5 b3.5 F#5 b4 E5
-m3 T2 @arpeggio_var1
-
-e4 b1 start_crescendo(p) b4 end_crescendo(ff)
-m4 b1 iv b3 V7 b4 i ||
-m4 T1 b1 A5 b1.5 G5 b2 F#5 b2.5 E5 b3 B5 b3.5 D5 b4 E5
-m4 T2 @block_chords
+(m2) Time Signature: 4/4
+(m2) Signature: #
+e2 b1 tempo(75)
+m2 b1 i
+m2 T1 b1 E4 b1.33 B4 b1.66 Bb4 [mf] b2 F4
+m2 T2 b1 C4 [!crescendo,f] b2 C4 b3 C4 b4 C4
 ```
 
 **Example 3 : Full featured score with several voices**

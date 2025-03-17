@@ -28,11 +28,14 @@ class NoteItem(BaseModel):
     global_techniques: Optional[List[str]] = None
     measure_number: Optional[int] = None
     beat: Optional[float] = None
+    text_comment: Optional[str] = None  # Add text comment field
 
 
 class TempoItem(BaseModel):
     time: float
     tempo: int
+    figure: Optional[str] = 'quarter'
+    text: Optional[str] = None
     measure_number: Optional[int] = None
     beat: Optional[float] = None
 

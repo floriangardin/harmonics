@@ -88,10 +88,10 @@ ALTERATION: ("+" | "-")+
 
 melody_line: MEASURE_INDICATOR (WS+ TRACK_NAME)? (melody_line_content | VARIABLE_CALLING) NEWLINE
 melody_line_content: (first_beat_note)? (beat_note)*
-first_beat_note: WS+ (BEAT_INDICATOR WS+)? (ABSOLUTE_NOTE+ | SILENCE | CONTINUATION | voice_list | clef_change) note_techniques?
-beat_note: WS+ BEAT_INDICATOR WS (ABSOLUTE_NOTE+ | SILENCE | CONTINUATION | voice_list | clef_change) note_techniques?
+first_beat_note: WS+ (BEAT_INDICATOR WS+)? (TEXT_COMMENT WS+)? (ABSOLUTE_NOTE+ | SILENCE | CONTINUATION | voice_list) note_techniques?
+beat_note: WS+ BEAT_INDICATOR WS (TEXT_COMMENT WS+)? (ABSOLUTE_NOTE+ | SILENCE | CONTINUATION | voice_list) note_techniques?
 note_techniques: "[" WS* TECHNIQUE_NAME ("," WS* TECHNIQUE_NAME)* WS* "]"
-clef_change: "clef" WS+ clef_type
+TEXT_COMMENT: "\"" /[^"]+/ "\""
 // For example to stop the crescendo (!crescendo)
 STOP_TECHNIQUE: "!" 
 SILENCE: "r" | "R"

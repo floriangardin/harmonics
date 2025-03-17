@@ -337,22 +337,23 @@ def _generate_melody_line(measure_number, voice_name, notes):
     sorted_notes = sorted(notes, key=lambda n: n.beat if n.beat is not None else 0)
 
     # If only silence don't add the melody line
-    if all(note.is_silence for note in notes):
+    if all(note.is_silence for note in notes) and all(note.text_comment is None for note in notes):
         return lines
 
     for note in sorted_notes:
+        text_comment = '"' + note.text_comment + '" ' if note.text_comment is not None else ""
         # Skip continuation notes as they're part of the previous note's duration
         if note.is_continuation:
-            melody_line += f" {beat_to_ern(note.beat)} L"
-
+            melody_line += f" {beat_to_ern(note.beat)} {text_comment}L"
+        # Handle text comments
         elif note.is_silence:
-            melody_line += f" {beat_to_ern(note.beat)} R"
+            melody_line += f" {beat_to_ern(note.beat)} {text_comment}R"
         elif isinstance(note.pitch, list):
             # Handle chord
             pitches = " ".join(note.pitch)
-            melody_line += f" {beat_to_ern(note.beat)} {pitches}"
+            melody_line += f" {beat_to_ern(note.beat)} {text_comment}{pitches}"
         elif note.pitch:
-            melody_line += f" {beat_to_ern(note.beat)} {note.pitch}"
+            melody_line += f" {beat_to_ern(note.beat)} {text_comment}{note.pitch}"
 
         # Add techniques
         if note.techniques:
