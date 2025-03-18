@@ -74,31 +74,46 @@ def to_ern(filepath, score):
         if "chords" in measure and measure["chords"]:
             lines.extend(_generate_harmony_line(measure_number, measure["chords"]))
 
-        # Add melody lines grouped by voice
+        # Add melody lines grouped by track and voice
         if "notes" in measure:
-            melody_by_voice = {}
+            # Group notes by track and voice
+            track_voice_notes = {}
             for note in measure["notes"]:
                 track_name = note.track_name
-                if track_name not in melody_by_voice:
-                    melody_by_voice[track_name] = []
-                melody_by_voice[track_name].append(note)
+                voice_name = note.voice_name if note.voice_name else "default"
+                
+                # Create a composite key for track and voice
+                track_voice_key = (track_name, voice_name)
+                
+                if track_voice_key not in track_voice_notes:
+                    track_voice_notes[track_voice_key] = []
+                track_voice_notes[track_voice_key].append(note)
 
-            for track_name, notes in melody_by_voice.items():
-                # Add beginning-of-measure clef changes if they exist and if they are not in the metadata
-                if "clefs" in measure and measure["clefs"]:
+            # Process each track's clef changes first
+            track_clef_changes = {}
+            if "clefs" in measure and measure["clefs"]:
+                for track_name in set(tv[0] for tv in track_voice_notes.keys()):
                     clef_changes = [
                         c
                         for c in measure["clefs"]
                         if c.track_name == track_name and c.beat == 1.0
                     ]
                     if clef_changes:
-                        lines.extend(
-                            _generate_clef_changes(measure_number, clef_changes)
-                        )
+                        track_clef_changes[track_name] = clef_changes
 
+            # Generate melody lines for each track-voice combination
+            for (track_name, voice_name), notes in track_voice_notes.items():
+                # Add beginning-of-measure clef changes if they exist
+                if track_name in track_clef_changes:
+                    lines.extend(
+                        _generate_clef_changes(measure_number, track_clef_changes[track_name])
+                    )
+                
+                # Generate melody line for this track-voice combination
+                sorted_notes = sorted(notes, key=lambda n: n.beat)
                 lines.extend(
                     _generate_melody_line(
-                        measure_number, track_name, sorted(notes, key=lambda n: n.beat)
+                        measure_number, track_name, voice_name, sorted_notes
                     )
                 )
         lines.append("")
@@ -327,20 +342,25 @@ def _generate_harmony_line(measure_number, chords):
     return lines
 
 
-def _generate_melody_line(measure_number, track_name, notes):
+def _generate_melody_line(measure_number, track_name, voice_name, notes):
     """Generate melody line for a measure and voice."""
     lines = []
-
-    melody_line = f"m{measure_number} {track_name}"
-
-    # Sort notes by beat
-    sorted_notes = sorted(notes, key=lambda n: n.beat if n.beat is not None else 0)
-
+    
+    # Skip empty voices
+    if not notes:
+        return lines
+        
     # If only silence don't add the melody line
     if all(note.is_silence for note in notes) and all(note.text_comment is None for note in notes):
         return lines
+        
+    # Start the melody line with measure number and track name
+    if voice_name == "default":
+        melody_line = f"m{measure_number} {track_name}"
+    else:
+        melody_line = f"m{measure_number} {track_name}.{voice_name}"
 
-    for note in sorted_notes:
+    for note in notes:
         text_comment = '"' + note.text_comment + '" ' if note.text_comment is not None else ""
         # Skip continuation notes as they're part of the previous note's duration
         if note.is_continuation:

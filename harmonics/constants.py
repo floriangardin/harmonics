@@ -301,6 +301,7 @@ INSTRUMENTS_DICT["violins"] = (40, 0)
 INSTRUMENTS_DICT["violas"] = (41, 0)
 INSTRUMENTS_DICT["cellos"] = (42, 0)
 INSTRUMENTS_DICT["contrabasses"] = (43, 0)
+INSTRUMENTS_DICT["violoncello"] = (42, 0)
 
 REVERSE_INSTRUMENT_DICT = {val: key for key, val in INSTRUMENTS_DICT.items()}
 
