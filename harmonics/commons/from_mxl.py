@@ -12,9 +12,10 @@ class MxlParserState:
     Container class to hold the state of MusicXML parsing.
     Used to pass data between subfunctions during parsing.
     """
+
     def __init__(self):
         self.notes = []
-        self.chords = [] 
+        self.chords = []
         self.time_signatures = []
         self.tempos = []
         self.instruments = []
@@ -24,7 +25,7 @@ class MxlParserState:
         self.key_signatures = []
         self.instrument_dict = {}
         self.note_to_techniques_map = {}
-        
+
         # Metadata
         self.title = None
         self.composer = "Unknown"
@@ -42,34 +43,38 @@ def from_mxl(filepath):
     """
     # Parse the MusicXML file using music21
     m21_score = music21.converter.parse(filepath)
-    
+
     # Initialize parser state
     state = MxlParserState()
-    
+
     # Extract metadata
     extract_metadata(m21_score, state)
-    
+
     # Process each part in the score
     process_parts(m21_score, state)
-    
+
     # Extract default clefs
     extract_default_clefs(m21_score, state)
-    
+
     # Extract default key signature
     extract_default_key_signature(m21_score, state)
-    
+
     # Create and return the score
-    return create_score(state)
+    score = create_score(state)
+    score.notes = refactor_voices(score.notes)
+    return score
 
 
 def extract_metadata(m21_score, state):
     """Extract title, movement name, and composer from the score metadata."""
     metadata = m21_score.metadata
-    
+
     state.title = metadata.title if metadata and metadata.title else None
-    movementName = metadata.movementName if metadata and metadata.movementName else "Untitled"
+    movementName = (
+        metadata.movementName if metadata and metadata.movementName else "Untitled"
+    )
     state.composer = metadata.composer if metadata and metadata.composer else "Unknown"
-    
+
     # Use movement name as title if title is None
     state.title = state.title if state.title else movementName
 
@@ -79,10 +84,10 @@ def process_parts(m21_score, state):
     for part_idx, part in enumerate(m21_score.parts):
         # Extract and add instrument information
         track_name = process_instrument(part, part_idx, state)
-        
+
         # Process spanners (crescendo, diminuendo, slurs)
         process_spanners(part, track_name, state)
-        
+
         # Process measures
         process_measures(part, part_idx, track_name, state)
 
@@ -95,16 +100,14 @@ def process_instrument(part, part_idx, state):
         if m21_instrument.instrumentName
         else f"Instrument_{part_idx}"
     )
-    
+
     # Convert instrument name to lowercase with underscores
     name = instrument_name.lower().replace(" ", "_")
     track_name = f"T{part_idx+1}"
-    
+
     # Get GM number (default to 1 if not specified)
     gm_number = (
-        m21_instrument.midiProgram + 1
-        if m21_instrument.midiProgram is not None
-        else 1
+        m21_instrument.midiProgram + 1 if m21_instrument.midiProgram is not None else 1
     )
 
     # Create instrument item
@@ -115,10 +118,10 @@ def process_instrument(part, part_idx, state):
         gm_number=gm_number,
         name=name,
     )
-    
+
     state.instruments.append(instrument)
     state.instrument_dict[name] = track_name
-    
+
     return track_name
 
 
@@ -127,7 +130,7 @@ def process_spanners(part, track_name, state):
     for spanner in part.recurse().getElementsByClass("Spanner"):
         spanner_type = type(spanner).__name__.lower()
         technique_name = map_spanner_type_to_technique(spanner_type)
-        
+
         if technique_name and hasattr(spanner, "getSpannedElements"):
             spanned_elements = spanner.getSpannedElements()
             if spanned_elements:
@@ -197,13 +200,13 @@ def process_measures(part, part_idx, track_name, state):
 
         # Process tempo markings
         process_tempo_markings(measure, measure_number, state)
-        
+
         # Process voices and notes
         measure_notes = process_voices(measure, measure_number, track_name, state)
-        
+
         # Process comments and chord symbols
         process_comments_and_chords(measure, measure_number, measure_notes, state)
-        
+
         state.notes.extend(measure_notes)
 
 
@@ -289,7 +292,11 @@ def process_time_signatures(measure, measure_number, state):
 def process_tempo_markings(measure, measure_number, state):
     """Process tempo markings in a measure."""
     for tempo_mark in measure.getElementsByClass("MetronomeMark"):
-        real_tempo = tempo_mark.number if tempo_mark.number is not None else tempo_mark._numberSounding
+        real_tempo = (
+            tempo_mark.number
+            if tempo_mark.number is not None
+            else tempo_mark._numberSounding
+        )
         tempo = models.TempoItem(
             time=0,  # We don't care about time
             tempo=real_tempo,
@@ -313,18 +320,55 @@ def process_tempo_markings(measure, measure_number, state):
 def process_voices(measure, measure_number, track_name, state):
     """Process voices and notes in a measure."""
     measure_notes = []
-    if len(measure.recurse().getElementsByClass('Voice')) == 0:
-        for note_element in measure.recurse().getElementsByClass(['Note', 'Chord', 'Rest', 'Continuation']):
+    if len(measure.recurse().getElementsByClass("Voice")) == 0:
+        for note_element in measure.recurse().getElementsByClass(
+            ["Note", "Chord", "Rest", "Continuation"]
+        ):
             note = process_note(note_element, measure_number, track_name, "v1", state)
             measure_notes.append(note)
     else:
-        for voice in measure.recurse().getElementsByClass('Voice'):
+        for voice in measure.recurse().getElementsByClass("Voice"):
             voice_name = "v" + str(voice._id)
-            for note_element in voice.recurse().getElementsByClass(['Note', 'Chord', 'Rest', 'Continuation']):
-                note = process_note(note_element, measure_number, track_name, voice_name, state)
+            for note_element in voice.recurse().getElementsByClass(
+                ["Note", "Chord", "Rest", "Continuation"]
+            ):
+                note = process_note(
+                    note_element, measure_number, track_name, voice_name, state
+                )
                 measure_notes.append(note)
-    
+
     return measure_notes
+
+
+def refactor_voices(notes):
+    """
+    Refactor the voices to start with v1 and be contiguous.
+    This grouping of voices is done grouped by track_name.
+    """
+    """
+    Refactor the voices to start with v1 and be contiguous.
+    This grouping of voices is done grouped by track_name.
+    """
+    # Group notes by track_name
+    notes_by_track = {}
+    for note in notes:
+        if note.track_name not in notes_by_track:
+            notes_by_track[note.track_name] = []
+        notes_by_track[note.track_name].append(note)
+
+    # For each track, refactor voice names
+    for track_name, track_notes in notes_by_track.items():
+        # Get unique voice names in this track
+        voice_names = sorted(set(note.voice_name for note in track_notes))
+
+        # Create mapping from old voice names to new voice names
+        voice_mapping = {old_name: f"v{i+1}" for i, old_name in enumerate(voice_names)}
+
+        # Apply the mapping to all notes in this track
+        for note in track_notes:
+            note.voice_name = voice_mapping[note.voice_name]
+
+    return notes
 
 
 def process_note(note_element, measure_number, track_name, voice_name, state):
@@ -345,7 +389,9 @@ def process_note(note_element, measure_number, track_name, voice_name, state):
     is_continuation = check_for_tie(note_element)
 
     # Get techniques (articulations, expressions, dynamics)
-    note_techniques, global_techniques = extract_techniques(note_element, measure_number, beat, track_name, state)
+    note_techniques, global_techniques = extract_techniques(
+        note_element, measure_number, beat, track_name, state
+    )
 
     # Create note item
     note_item = models.NoteItem(
@@ -361,7 +407,7 @@ def process_note(note_element, measure_number, track_name, voice_name, state):
         measure_number=measure_number,
         beat=beat,
     )
-    
+
     return note_item
 
 
@@ -369,7 +415,7 @@ def extract_pitch(note_element, is_silence):
     """Extract pitch information from a note element."""
     if is_silence:
         return None
-        
+
     if hasattr(note_element, "pitches"):  # It's a chord
         return [p.nameWithOctave.replace("-", "b") for p in note_element.pitches]
     else:  # It's a note
@@ -404,7 +450,9 @@ def extract_techniques(note_element, measure_number, beat, track_name, state):
             note_techniques.append(technique)
 
     # Look for dynamics near this note
-    for dynamic in note_element.getContextByClass('Measure').getElementsByClass("Dynamic"):
+    for dynamic in note_element.getContextByClass("Measure").getElementsByClass(
+        "Dynamic"
+    ):
         if abs(dynamic.offset - note_element.offset) < 0.1:
             # This dynamic applies to this note
             dynamic_text = dynamic.value.lower()
@@ -446,7 +494,7 @@ def map_expression_to_technique(technique_name):
 def process_comments_and_chords(measure, measure_number, measure_notes, state):
     """Process text expressions for chord symbols and comments."""
     last_key = None
-    
+
     for expression in measure.getElementsByClass("TextExpression"):
         # Check if this is a chord/harmony comment
         text = expression.content
@@ -472,7 +520,7 @@ def process_chord_symbol(text, offset, measure_number, last_key):
     key = None
     chord_symbol = None
     new_key = False
-    
+
     if ":" in text:
         # Format might be "C: V7/V" or similar
         key, chord_symbol = text.split(":", 1)
@@ -500,14 +548,14 @@ def process_chord_symbol(text, offset, measure_number, last_key):
 def attach_comment_to_nearest_note(text, comment_beat, measure_notes):
     """Attach a text comment to the nearest note in the measure."""
     nearest_note = None
-    min_distance = float('inf')
-    
+    min_distance = float("inf")
+
     for note in measure_notes:
         distance = abs(note.beat - comment_beat)
         if distance < min_distance:
             min_distance = distance
             nearest_note = note
-            
+
     if nearest_note:
         nearest_note.text_comment = text
 

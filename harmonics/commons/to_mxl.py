@@ -6,6 +6,7 @@ from copy import deepcopy
 from harmonics.commons import utils_techniques
 from harmonics.commons.utils_output import increment_voices, convert_musicxml_to_mxl
 
+
 class PartState:
     """Class to track the state of a part during MusicXML conversion."""
 
@@ -163,7 +164,7 @@ def to_mxl(filepath, score):
     for instrument in score.instruments:
         # Create a part for each voice
         part = m21.stream.Part()
-        #part.id = instrument.track_name
+        # part.id = instrument.track_name
 
         # Add instrument to part
         m21_instrument = m21.instrument.Instrument()
@@ -173,7 +174,17 @@ def to_mxl(filepath, score):
         m21_instrument.instrumentName = instrument.name.capitalize().replace("_", " ")
         part.insert(0, m21_instrument)
 
-        all_voices_for_instrument = list(sorted(set([note.voice_name for note in score.notes if note.track_name == instrument.track_name])))
+        all_voices_for_instrument = list(
+            sorted(
+                set(
+                    [
+                        note.voice_name
+                        for note in score.notes
+                        if note.track_name == instrument.track_name
+                    ]
+                )
+            )
+        )
         voices = []
         for idx, voice_name in enumerate(all_voices_for_instrument):
             voice = m21.stream.Voice()
@@ -184,7 +195,7 @@ def to_mxl(filepath, score):
             part.append(voice)
         # Add part to score
         m21_score.insert(0, part)
-        #m21_score.append(part)
+        # m21_score.append(part)
 
     first_instrument_measures = {}
     all_measures = {}
@@ -207,6 +218,8 @@ def to_mxl(filepath, score):
                     break
             measure_durations[measure_num] = 4 * current_ts[0] / current_ts[1]
         time_sig_map = _get_time_sig_map(score.time_signatures, max_measure)
+
+        first_voice_of_track = {track_name: True for track_name, _ in parts.keys()}
         for (track_name, voice_name), part in parts.items():
             idx += 1
             # Get time signatures for this part
@@ -217,57 +230,30 @@ def to_mxl(filepath, score):
             tempos = sorted(score.tempos, key=lambda t: t.time)
             current_tempo_idx = 0
 
-            # Get clef specifications for this voice
-            voice_clefs = sorted(
-                [clef for clef in score.clefs if clef.track_name == track_name],
-                key=lambda c: (c.time, c.measure_number, c.beat),
-            )
-            current_clef_idx = 0
-
             # Get key signatures
             key_signatures = sorted(
                 score.key_signatures, key=lambda ks: (ks.time, ks.measure_number)
             )
             current_key_sig_idx = 0
-
-            # Initialize default clef (treble clef)
-            current_clef = None
-            if voice_clefs:
-                current_clef = voice_clefs[0]
-
             # Initialize part state
             part_state = PartState()
             all_notes = []
-
             # Create measures
             for measure_num in range(1, max_measure + 1):
                 current_ts = time_sig_map[measure_num]
-                
-                measure = m21.stream.Measure(number=measure_num, timeSignature=current_ts)
+                measure = m21.stream.Measure(
+                    number=measure_num, timeSignature=current_ts
+                )
+
                 all_measures[measure_num] = all_measures.get(measure_num, []) + [
                     measure
                 ]
                 if idx == 0:
                     first_instrument_measures[measure_num] = measure
 
-                # Add initial clef to first measure or if there's a clef change
-                if measure_num == 1 and current_clef is not None:
-                    _add_clef_to_measure(measure, current_clef, 0)
-
-                # Check for clef changes at the start of this measure
-                while (
-                    current_clef_idx < len(voice_clefs)
-                    and voice_clefs[current_clef_idx].measure_number == measure_num
-                    and voice_clefs[current_clef_idx].beat == 1.0
-                ):
-                    current_clef = voice_clefs[current_clef_idx]
-                    _add_clef_to_measure(measure, current_clef, 0)
-                    current_clef_idx += 1
-                    if current_clef_idx >= len(voice_clefs):
-                        break
-
                 while (
                     current_key_sig_idx < len(key_signatures)
+                    and first_voice_of_track[track_name]
                     and key_signatures[current_key_sig_idx].measure_number
                     == measure_num
                 ):
@@ -280,11 +266,14 @@ def to_mxl(filepath, score):
                 # Add tempo marking if it changes at this measure
                 while (
                     current_tempo_idx < len(tempos)
+                    and first_voice_of_track[track_name]
                     and tempos[current_tempo_idx].measure_number == measure_num
                     and tempos[current_tempo_idx].beat == 1.0
                 ):
                     tempo = tempos[current_tempo_idx]
-                    m21_tempo = m21.tempo.MetronomeMark(number=tempo.tempo, referent=m21.note.Note(type='quarter'))
+                    m21_tempo = m21.tempo.MetronomeMark(
+                        number=tempo.tempo, referent=m21.note.Note(type="quarter")
+                    )
                     measure.insert(0, m21_tempo)
                     current_tempo_idx += 1
                     if current_tempo_idx >= len(tempos):
@@ -304,9 +293,7 @@ def to_mxl(filepath, score):
                     m21_note.quarterLength = measure_durations[measure_num]
                     measure.append(m21_note)
 
-                for idx_note, note in enumerate(
-                    sorted(measure_notes, key=lambda n: n.time)
-                ):
+                for note in sorted(measure_notes, key=lambda n: n.time):
                     # Convert duration to fraction
                     duration = _to_fraction(note.duration, current_ts)
                     # Create note or rest
@@ -316,7 +303,9 @@ def to_mxl(filepath, score):
                     elif note.is_continuation:
                         # Skip continuation notes as they're handled with ties
                         m21_note = deepcopy(
-                            part_state.ref_note.get((note.track_name, note.voice_name), None)
+                            part_state.ref_note.get(
+                                (note.track_name, note.voice_name), None
+                            )
                         )
                         m21_note.tie = m21.tie.Tie("stop")
                         m21_note.articulations = []
@@ -347,7 +336,9 @@ def to_mxl(filepath, score):
 
                         if next_notes:
                             m21_note.tie = m21.tie.Tie("start")
-                            part_state.ref_note[(note.track_name, note.voice_name)] = m21_note
+                            part_state.ref_note[(note.track_name, note.voice_name)] = (
+                                m21_note
+                            )
                             # Add continuation notes
 
                     # Apply techniques and update part state
@@ -362,21 +353,20 @@ def to_mxl(filepath, score):
 
                     # Add text comment if present
                     if note.text_comment is not None:
-                        text_expression = m21.expressions.TextExpression(note.text_comment)
-                        text_expression.positionVertical = 20  # Position above the staff
+                        text_expression = m21.expressions.TextExpression(
+                            note.text_comment
+                        )
+                        text_expression.positionVertical = (
+                            20  # Position above the staff
+                        )
                         text_expression.style.fontStyle = "italic"  # Make it italic
                         measure.insert(offset, text_expression)
 
                     all_notes.append(m21_note)
 
-                # Check for mid-measure clef changes
-                for clef_item in voice_clefs:
-                    if clef_item.measure_number == measure_num and clef_item.beat > 1.0:
-                        offset = _get_offset(clef_item.beat, current_ts)
-                        _add_clef_to_measure(measure, clef_item, offset)
-
                 # Add measure to part
                 part.append(measure)
+                first_voice_of_track[track_name] = False
 
     last_key = None
     for chord in score.chords:
@@ -400,12 +390,26 @@ def to_mxl(filepath, score):
                 measure = first_instrument_measures[event.measure_number]
                 current_ts = time_sig_map[event.measure_number]
                 # Create a tempo mark
-                tempo_mark = m21.tempo.MetronomeMark(number=event.event_value, referent=m21.note.Note(type='quarter'))
+                tempo_mark = m21.tempo.MetronomeMark(
+                    number=event.event_value, referent=m21.note.Note(type="quarter")
+                )
                 # Calculate offset based on beat position
                 offset = _get_offset(event.beat, current_ts)
                 # Insert tempo mark at the correct offset within the measure
                 measure.insert(offset, tempo_mark)
 
+    _apply_time_signatures(m21_score, score, all_measures, first_instrument_measures)
+    
+    _apply_clefs(m21_score, score)
+
+    # m21_score.write("musicxml", filepath)
+    _increment_and_compress(m21_score, filepath)
+
+
+def _apply_time_signatures(m21_score, score, all_measures, first_instrument_measures):
+    """
+    Apply time signatures to the appropriate measures in the score.
+    """
     for time_signature in score.time_signatures:
         if time_signature.measure_number in first_instrument_measures:
             measures = all_measures[time_signature.measure_number]
@@ -414,9 +418,82 @@ def to_mxl(filepath, score):
                 den = time_signature.time_signature[1]
                 time_signature_mark = m21.meter.TimeSignature(f"{num}/{den}")
                 measure.insert(0, time_signature_mark)
+
     m21_score.makeMeasures(inPlace=True)
-    #m21_score.write("musicxml", filepath)
-    _increment_and_compress(m21_score, filepath)
+
+
+def _apply_clefs(m21_score, score):
+    """
+    Apply clefs to the appropriate measures in the score.
+
+    Args:
+        m21_score: The music21 score to add clefs to
+        score: The harmonics score object containing clef information
+    """
+    # Early return if no clefs
+    if not score.clefs:
+        return
+
+    # Sort clefs by time, measure, and beat for consistent application
+    sorted_clefs = sorted(
+        score.clefs, key=lambda c: (c.time, c.measure_number or 0, c.beat or 0)
+    )
+
+    # Find parts by track name
+    track_to_part = {}
+    for idx, part in enumerate(m21_score.parts):
+        track_name = score.instruments[idx].track_name
+        track_to_part[track_name] = part
+
+    # Apply each clef to the appropriate part and measure
+    for clef_item in sorted_clefs:
+        # Find the part this clef belongs to
+        part = track_to_part.get(clef_item.track_name)
+        if not part:
+            continue
+
+        # Skip clefs without measure numbers
+        if clef_item.measure_number is None:
+            continue
+
+        # Find the measure
+        measure = None
+        for m in part.getElementsByClass("Measure"):
+            if m.number == clef_item.measure_number:
+                measure = m
+                break
+
+        if not measure:
+            continue
+
+        # Calculate offset
+        offset = 0.0
+        if clef_item.beat is not None and clef_item.beat > 1.0:
+            # Get the current time signature for this measure
+            ts = None
+            for ts_obj in measure.getElementsByClass("TimeSignature"):
+                ts = (ts_obj.numerator, ts_obj.denominator)
+                break
+
+            if ts:
+                offset = _get_offset(clef_item.beat, ts)
+
+        # Remove any existing clefs at the same offset
+        # This is particularly important for the first measure which often has a default clef
+        existing_clefs = measure.getElementsByClass("Clef")
+        clefs_to_remove = []
+        for existing_clef in existing_clefs:
+            if (
+                abs(existing_clef.offset - offset) < 0.001
+            ):  # Using a small threshold for floating point comparison
+                clefs_to_remove.append(existing_clef)
+
+        # Remove the conflicting clefs
+        for clef_to_remove in clefs_to_remove:
+            measure.remove(clef_to_remove)
+
+        # Now add our new clef
+        _add_clef_to_measure(measure, clef_item, offset)
 
 
 def _get_time_sig_map(time_signatures, max_measure):
@@ -430,14 +507,18 @@ def _get_time_sig_map(time_signatures, max_measure):
         time_sig_map[idx] = current_ts
     return time_sig_map
 
+
 def _increment_and_compress(m21_score, filepath):
     import shutil
     import tempfile
     import os
+
     final_filepath = filepath
-    with tempfile.NamedTemporaryFile(delete=False,suffix=".musicxml") as temp_file:
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".musicxml") as temp_file:
         m21_score.write("musicxml", temp_file.name)
-        increment_voices(temp_file.name)  # TEMP : To fix 0-indexed voice issue in musescore, is there a better solution ?
+        increment_voices(
+            temp_file.name
+        )  # TEMP : To fix 0-indexed voice issue in musescore, is there a better solution ?
         if final_filepath.endswith(".mxl"):
             new_filepath = convert_musicxml_to_mxl(temp_file.name)
         else:
@@ -466,7 +547,7 @@ def _write_comment(measure, beat, key=None, chord=None, current_ts=None):
     comment = m21.expressions.TextExpression(comment_text)
     comment.style.fontStyle = "normal"
     comment.style.fontSize = 10
-    # Add padding top 
+    # Add padding top
     comment.style.relativeY = 0.5
     comment.placement = "below"
     measure.insert(_get_offset(beat, current_ts), comment)
@@ -498,7 +579,7 @@ def _to_fraction(duration, current_ts):
     elif abs(duration - 0.75) < threshold:
         return 0.75 * ratio_beat  # Dotted eighth note
     elif abs(duration - 1.0) < threshold:
-        return 1.0 * ratio_beat      # Quarter note
+        return 1.0 * ratio_beat  # Quarter note
     elif abs(duration - 1.5) < threshold:
         return 1.5 * ratio_beat  # Dotted quarter note
     elif abs(duration - 2.0) < threshold:
@@ -506,14 +587,14 @@ def _to_fraction(duration, current_ts):
     elif abs(duration - 3.0) < threshold:
         return 3.0 * ratio_beat  # Dotted half note
     elif abs(duration - 4.0) < threshold:
-        return 4.0 * ratio_beat # Whole note
+        return 4.0 * ratio_beat  # Whole note
 
     # For triplets and other complex rhythms
     if abs(duration - 1 / 3) < threshold:
         return Fraction(1, 3) * ratio_beat
     elif abs(duration - 2 / 3) < threshold:
         return Fraction(2, 3) * ratio_beat
-    
+
     # For other durations, convert to fraction
     return Fraction(duration).limit_denominator(64) * ratio_beat
 
@@ -582,15 +663,16 @@ def _add_clef_to_measure(measure, clef_item, offset):
         "baritone": "baritone",
         "sub-bass": "subbass",
         "french": "french",
+        "treble8vb": "treble8vb",
+        "bass8vb": "bass8vb",
     }
 
     # Create the clef
     clef_name = clef_map.get(clef_item.clef_name, "treble")
     m21_clef = m21.clef.clefFromString(clef_name)
-
     # Apply octave change if specified
     if clef_item.octave_change is not None:
         m21_clef.octaveChange = clef_item.octave_change
-
     # Insert clef at the specified offset
     measure.insert(offset, m21_clef)
+    return m21_clef

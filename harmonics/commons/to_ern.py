@@ -81,10 +81,10 @@ def to_ern(filepath, score):
             for note in measure["notes"]:
                 track_name = note.track_name
                 voice_name = note.voice_name if note.voice_name else "default"
-                
+
                 # Create a composite key for track and voice
                 track_voice_key = (track_name, voice_name)
-                
+
                 if track_voice_key not in track_voice_notes:
                     track_voice_notes[track_voice_key] = []
                 track_voice_notes[track_voice_key].append(note)
@@ -106,9 +106,11 @@ def to_ern(filepath, score):
                 # Add beginning-of-measure clef changes if they exist
                 if track_name in track_clef_changes:
                     lines.extend(
-                        _generate_clef_changes(measure_number, track_clef_changes[track_name])
+                        _generate_clef_changes(
+                            measure_number, track_clef_changes[track_name]
+                        )
                     )
-                
+
                 # Generate melody line for this track-voice combination
                 sorted_notes = sorted(notes, key=lambda n: n.beat)
                 lines.extend(
@@ -345,15 +347,17 @@ def _generate_harmony_line(measure_number, chords):
 def _generate_melody_line(measure_number, track_name, voice_name, notes):
     """Generate melody line for a measure and voice."""
     lines = []
-    
+
     # Skip empty voices
     if not notes:
         return lines
-        
+
     # If only silence don't add the melody line
-    if all(note.is_silence for note in notes) and all(note.text_comment is None for note in notes):
+    if all(note.is_silence for note in notes) and all(
+        note.text_comment is None for note in notes
+    ):
         return lines
-        
+
     # Start the melody line with measure number and track name
     if voice_name == "default":
         melody_line = f"m{measure_number} {track_name}"
@@ -361,7 +365,9 @@ def _generate_melody_line(measure_number, track_name, voice_name, notes):
         melody_line = f"m{measure_number} {track_name}.{voice_name}"
 
     for note in notes:
-        text_comment = '"' + note.text_comment + '" ' if note.text_comment is not None else ""
+        text_comment = (
+            '"' + note.text_comment + '" ' if note.text_comment is not None else ""
+        )
         # Skip continuation notes as they're part of the previous note's duration
         if note.is_continuation:
             melody_line += f" {beat_to_ern(note.beat)} {text_comment}L"

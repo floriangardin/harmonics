@@ -27,11 +27,14 @@ from harmonics.score_models import (
 def bar_duration_in_quarters(time_signature: Tuple[int, int]) -> int:
     return 4 * time_signature[0] / time_signature[1]
 
+
 def bar_duration_in_beats(time_signature: Tuple[int, int]) -> int:
     return time_signature[0]
 
+
 def beat_to_quarter(beat: float, time_signature: Tuple[int, int]) -> float:
     return (beat - 1) * 4 / time_signature[1]
+
 
 def get_current_chord_from_time(time: float, chords: List[NoteItem]) -> Optional[str]:
     for chord in chords:
@@ -240,9 +243,7 @@ def get_data(self) -> ScoreData:
         for i in range(len(chords) - 1):
             chords[i].duration = chords[i + 1].beat - chords[i].beat
         chords[-1].duration = (
-            + bar_duration_in_beats(current_time_signature)
-            + 1
-            - chords[-1].beat
+            +bar_duration_in_beats(current_time_signature) + 1 - chords[-1].beat
         )
 
     self.get_progression(chords)
@@ -315,7 +316,7 @@ class ScoreDocument(BaseModel):
                     voices = None
                     is_silence = False
                     is_continuation = False
-                    
+
                     if isinstance(note, models.Silence):
                         pitch = None
                         is_silence = True
@@ -371,7 +372,8 @@ class ScoreDocument(BaseModel):
                         )
                     bar_notes[-1].duration = (
                         bar_duration_in_beats(current_time_signature)
-                        - bar_notes[-1].beat + 1
+                        - bar_notes[-1].beat
+                        + 1
                     )
                     results.extend(bar_notes)
 

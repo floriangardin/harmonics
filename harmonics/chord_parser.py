@@ -5,9 +5,11 @@ from lark import Lark, Token, Transformer, Discard
 CURRENT_FILEPATH = os.path.dirname(os.path.abspath(__file__))
 GRAMMAR_FILEPATH = os.path.join(CURRENT_FILEPATH, "chord_grammar.ebnf")
 
+
 class SpaceTransformer(Transformer):
     def WS(self, tok: Token):
         return Discard
+
 
 class ChordParser:
     def __init__(self):
@@ -29,12 +31,9 @@ class ChordParser:
         return input_string
 
     def is_chord(self, input_string):
-        try:    
+        try:
             tree = self.parser.parse(self.prepare_input(input_string))
             tree = SpaceTransformer().transform(tree)
             return True
         except Exception as e:
             return False
-
-    
-

@@ -114,20 +114,27 @@ line: metadata_line
      | statement_line
 
 metadata_line: composer_line
-             | piece_line
+             | title_line
              | time_signature_line
              | tempo_line
              | instrument_line
+             | clef_line
+             
 
 composer_line: "Composer:" WS REST_LINE NEWLINE
-piece_line: "Piece:" WS REST_LINE NEWLINE
-time_signature_line: "Time Signature:" WS time_signature NEWLINE
+title_line: "Piece:" WS REST_LINE NEWLINE
+time_signature_line: ( "(" WS*  "m" MEASURE_NUMBER WS* ")" WS*)? "Time Signature" WS* ":" WS* time_signature NEWLINE
 tempo_line: "Tempo:" WS* TEMPO_NUMBER NEWLINE  // Tempo number in QPM
 instrument_line: "Instrument:" WS TRACK_NAME WS* "=" WS* GM_INSTRUMENT_NAME ("," WS* TRACK_NAME WS* "=" WS* GM_INSTRUMENT_NAME)* NEWLINE
+clef_line: ( "(" WS*  "m" MEASURE_NUMBER WS* ")" WS*)? "Clef:" WS+ TRACK_NAME WS* "=" WS* clef_type NEWLINE
+key_signature_line: ( "(" WS*  "m" MEASURE_NUMBER WS* ")" WS*)? "Signature:" WS+ key_signature NEWLINE
 
 TRACK_NAME: "T" DIGIT+
+// Potentially multiple voices per track (a voice is not necessarily monophonic though)
+VOICE_NAME: "v" DIGIT+
 GM_INSTRUMENT_NAME: /[a-zA-Z_1-9]+/
 TEMPO_NUMBER: DIGIT+
+key_signature: ACCIDENTAL*
 
 statement_line: measure_line
               | note_line
@@ -135,14 +142,15 @@ statement_line: measure_line
               | event_line
               | variable_declaration_line
               | technique_line
-
+              | clef_change_line
+              | key_signature_line
 
 technique_line: "tech" WS (voice_list_for_technique | single_voice_for_technique) WS+ measure_range_with_beats WS* ":" WS* technique_list NEWLINE
 voice_list_for_technique: "[" WS* TRACK_NAME ("," WS* TRACK_NAME)* WS* "]"
 single_voice_for_technique: TRACK_NAME
 measure_range_with_beats: "(" MEASURE_INDICATOR WS+ BEAT_INDICATOR WS+ "-" WS MEASURE_INDICATOR WS+ BEAT_INDICATOR ")"
 technique_list: TECHNIQUE_NAME ("," WS* TECHNIQUE_NAME)*
-TECHNIQUE_NAME: /[a-zA-Z_][a-zA-Z0-9_]*/
+TECHNIQUE_NAME: STOP_TECHNIQUE? /[a-zA-Z_][a-zA-Z0-9_]*/
 
 variable_declaration_line: VARIABLE_NAME WS* "=" WS* variable_content NEWLINE
 variable_content: ( melody_line_content | measure_line_content)
@@ -180,7 +188,7 @@ CHORD_QUALITY: "o" | "+" | "%" | "ø" | "°"
 chord_alteration: "[" alteration_content "]"
 omit_alteration: "no"
 add_alteration: "add"
-alteration_content: (( omit_alteration | add_alteration )? [ ACCIDENTAL ] DIGITS)
+alteration_content: (( omit_alteration | add_alteration )? ACCIDENTAL? DIGITS)
 
 voice_list: (ALTERATION? VOICE OCTAVE?)+
 VOICE: /[1-4]/
@@ -189,18 +197,23 @@ OCTAVE: "o" SIGNED_INT
 // Delta alteration (semitones)
 ALTERATION: ("+" | "-")+
 
-melody_line: MEASURE_INDICATOR (WS+ TRACK_NAME)? (melody_line_content | VARIABLE_CALLING) NEWLINE
+melody_line: MEASURE_INDICATOR (WS+ TRACK_NAME ("." VOICE_NAME)? )? (melody_line_content | VARIABLE_CALLING) NEWLINE
 melody_line_content: (first_beat_note)? (beat_note)*
-first_beat_note: WS+ (BEAT_INDICATOR WS+)? (ABSOLUTE_NOTE+ | SILENCE | voice_list)
-beat_note: WS+ BEAT_INDICATOR WS (ABSOLUTE_NOTE+ | SILENCE | voice_list)
+first_beat_note: WS+ (BEAT_INDICATOR WS+)? (TEXT_COMMENT WS+)? (ABSOLUTE_NOTE+ | SILENCE | CONTINUATION | voice_list) note_techniques?
+beat_note: WS+ BEAT_INDICATOR WS (TEXT_COMMENT WS+)? (ABSOLUTE_NOTE+ | SILENCE | CONTINUATION | voice_list) note_techniques?
+note_techniques: "[" WS* TECHNIQUE_NAME ("," WS* TECHNIQUE_NAME)* WS* "]"
+TEXT_COMMENT: "\"" /[^"]+/ "\""
+// For example to stop the crescendo (!crescendo)
+STOP_TECHNIQUE: "!" 
 SILENCE: "r" | "R"
+CONTINUATION: "L" | "l"
 ABSOLUTE_NOTE: NOTELETTER_CAPITALIZED (ACCIDENTAL)? (ABSOLUTE_OCTAVE)?
 NOTELETTER_CAPITALIZED: /[A-G]/
 ABSOLUTE_OCTAVE: DIGIT+
 
 MEASURE_INDICATOR: "m" MEASURE_NUMBER
 MEASURE_NUMBER: DIGIT+ (LETTER+ | "var" DIGIT+)? 
-BEAT_INDICATOR: ("b" | "t") BEAT_NUMBER
+BEAT_INDICATOR: "b" BEAT_NUMBER
 BEAT_NUMBER: DIGIT+ ("." DIGIT+)?
 
 time_signature: numerator "/" denominator
@@ -225,10 +238,16 @@ LETTER: /[a-z]+/
 REST_LINE: /.+/
 PHRASE_BOUNDARY: WS "||" WS?
 
+clef_change_line: MEASURE_INDICATOR (WS+ TRACK_NAME)? WS+ BEAT_INDICATOR WS+ "clef" WS+ clef_type NEWLINE
+clef_type: CLEF_NAME (WS* CLEF_OCTAVE_CHANGE)?
+CLEF_NAME: "treble" | "bass" | "alto" | "tenor" | "soprano" | "mezzo-soprano" | "baritone" | "sub-bass" | "french" | "G" | "F" | "C"
+CLEF_OCTAVE_CHANGE: ("+" | "-") DIGIT+
+
 WS: (" " | /\t/)+
 CR: /\r/
 LF: /\n/
 NEWLINE: WS* (CR? LF)+
+
 
 ### Composition Guidelines
 
@@ -270,6 +289,11 @@ NEWLINE: WS* (CR? LF)+
 - Variables must be declared before they are used
 - Variables can be used to declare (1 bar) accompaniments, melodies, and harmonies
 
+#### Voices
+- Voices are specified with `T<number>.v<number>`
+- Example: `T1.v1` is the first voice of the first track
+- You can use several voices for an accompaniment
+
 ---
 
 ### Example Score
@@ -308,52 +332,48 @@ m4 T1 b1 B5 b1.25 A5 b1.5 G#5 b1.75 A5 b2 B5 b2.25 A5 b2.5 G#5 b2.75 A5
 m4 T2 b1 A3 b1.5 C4 E4 b2 A3 b2.5 C4 E4
 ```
 
-**Example 2: Standard score**
+**Example 2: Multi voice score**
 
 ```ern
-Composer: Claude Debussy
-Piece: Nocturne in E minor
+Composer: J.S. Bach
+Piece: Danse
 Time Signature: 4/4
-Tempo: 90
-Note: Section A - Mysterious opening
+Signature: bbb
+Tempo: 120
+Instrument: T1=piano, T2=piano, T3=violin, T4=violoncello
+(m1) Clef: T1=treble
+(m1) Clef: T2=bass
+(m1) Clef: T3=treble
+(m1) Clef: T4=bass
 
-tech [T1] (m1 b1 - m5 b1) : legato
-tech [T1] (m5 b1 - m8 b1) : staccato
+m1 b1 c: i
+m1 T2.v7 b1 C3 Eb3
+m1 T3.v1 b1 C4 b2 D4 b3 Eb4 b4 C4 b4.5 B3
+m1 T4.v3 b1 C3 Eb3
 
-arpeggiated_acc = b1 1 b2 2 b3 4 b4 3
-arpeggiated_acc_var1 = b1 1 b2 2 b3 3 b4 4
-block_chord_acc = b1 1234
+m2 b1 iv
+m2 T1.v1 b1 C4 b2 Ab4 b3 G4 b4 F4
+m2 T2.v6 b1 F3 b2 C3 b2.5 D3 b3 Eb3
+m2 T2.v7 b1 Ab2 b3 C3 b4 D3
+m2 T3.v1 b1 C4 b2 Ab4 b3 G4 b4 F4
+m2 T4.v2 b1 F3 b2 C3 b2.5 D3 b3 Eb3
+m2 T4.v3 b1 Ab2 b3 C3 b4 D3
 
-e1 b1 tempo(90) b1 velocity(f)
-m1 b1 e: i6[add9] b3 III+ ||
-m1 T1 b1 B4 b2 E5 b2.5 F#5 b3 G5 b4 B5
-m1 T1 @arpeggiated_acc
+m3 b1 V
+m3 T1.v1 b1 D5 b2 C5 b2.5 B4 b3 C5 b4 D5
+m3 T2.v6 b1 G3 b2 Ab3 b2.5 G3 b3 Ab3
+m3 T2.v7 b1 Eb3 b3 F3
+m3 T3.v1 b1 D5 b2 C5 b2.5 B4 b3 C5 b4 D5
+m3 T4.v2 b1 G3 b2 Ab3 b2.5 G3 b3 Ab3
+m3 T4.v3 b1 Eb3 b3 F3
 
-m2 b1 VI b3 iiø7 b4 V7 ||
-m2 T1 b1 A5 b2 G5 b3 F#5 b4 D5
-m2 T1 @arpeggiated_acc_var1
-
-m3 b1 i b3 III6[add6] ||
-m3 T1 b1 E5 b2 G5 b3 B5 b4 R
-m3 T1 @block_chord_acc
-
-m4 b1 VI b2 iv6 b3 V7 b4 i ||
-m4 T1 b1.5 C6 b2 B5 b3 A5 b4 G5
-m4 T1 @arpeggiated_acc_var1
-
-Note: Section B - More chromatic
-
-m5 b1 bII b3 Fr6/V ||
-m5 T1 b1 F5 b2 Ab5 b3 B5 b4 D6
-m5 T1 1 b2 2 b3 4 b4 3
-
-m6 b1 V2 b3 i6 ||
-m6 T1 b1 B5 b2 A5 b3 G5 b4 E5
-m6 T1 1 b2 2 b3 1 b4 3 b4.5 4
-
-m7 b1 iv b2 III b3 VI b4 iiø7 ||
-m7 T1 b1 A5 b1.5 G5 b2 F#5 b3 C6 b4 F#5
-m7 T1 1 b2 2 b3 4 b4 3
+m4 b1 i b4 V/III
+m4 T1.v1 b1 G4 b3 G4 b4 C5
+m4 T2.v6 b1 B3 b3 C4 b4 Bb3 b4.5 C4
+m4 T2.v7 b1 Eb3 b2 D3 b3 Eb3
+m4 T3.v1 b1 G4 b3 G4 b4 C5
+m4 T4.v2 b1 B3 b3 C4 b4 Bb3 b4.5 C4
+m4 T4.v3 b1 Eb3 b2 D3 b3 Eb3[trill]
 ```
 
 **Example 3: All features in a short example**
@@ -386,42 +406,4 @@ e2 b1 tempo(75)
 m2 b1 i
 m2 T1 b1 E4 b1.33 B4 b1.66 Bb4 [mf] b2 F4
 m2 T2 b1 C4 [!crescendo,f] b2 C4 b3 C4 b4 C4
-```
-
-**Example 3 : Full featured score with several voices**
-
-```ern
-Composer: AI Assistant
-Piece: Requiem in D minor
-Time Signature: 4/4
-Tempo: 72
-Note: Solemn opening with polyphonic texture
-
-Instrument: T1=violin, T2=french_horn, T3=choir_oohs, T4=timpani, T5=contrabass
-
-block_chord_acc = b1 234
-first_melody = b1 D5 b2 A5 b3 F5 b3.5 F#5 b4 G5
-
-e1 b1 tempo(72) b1 velocity(f)
-m1 b1 d: i b3 V
-m1 T1 @first_melody
-m1 T3 @block_chord_acc
-m1 T5 b1 1 b3 1 b4 2o-1
-
-m2 b1 i[add9] b3 iv43
-m2 T1 b1 A5 b2 G5 b3 F5 b4 E5
-m2 T3 @block_chord_acc
-m2 T5 b1 1 b3 1 b4 2o-1
-
-m3 b1 V65 b3 i
-m3 T1 b1 D5 b3 Bb4 b4.5 A4
-m3 T3 @block_chord_acc
-m3 T5 b1 1 b3 1 b4 2o-1
-
-e4 b1 velocity(ff)
-m4 b1 iv b2 V b3 VI b4 V65/V
-m4 T1 b1 G5 b3 Bb5 b4 E5
-m4 T3 @block_chord_acc
-m4 T4 b1 1
-m4 T5 b1 1 b3 1 b4 2o-1
 ```

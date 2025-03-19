@@ -104,8 +104,12 @@ def test_get_measure_map_with_non_consecutive_measures():
     lines = [
         TimeSignature(numerator=4, denominator=4),
         Melody(measure_number=1, notes=[], voice_name="v1", track_name="T1"),
-        Melody(measure_number=3, notes=[], voice_name="v1", track_name="T1"),  # Skip measure 2
-        Melody(measure_number=5, notes=[], voice_name="v1", track_name="T1"),  # Skip measure 4
+        Melody(
+            measure_number=3, notes=[], voice_name="v1", track_name="T1"
+        ),  # Skip measure 2
+        Melody(
+            measure_number=5, notes=[], voice_name="v1", track_name="T1"
+        ),  # Skip measure 4
     ]
 
     measure_map = get_measure_map(lines)

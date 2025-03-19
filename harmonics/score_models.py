@@ -35,7 +35,7 @@ class NoteItem(BaseModel):
 class TempoItem(BaseModel):
     time: float
     tempo: int
-    figure: Optional[str] = 'quarter'
+    figure: Optional[str] = "quarter"
     text: Optional[str] = None
     measure_number: Optional[int] = None
     beat: Optional[float] = None
