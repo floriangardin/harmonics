@@ -3,8 +3,11 @@ from fractions import Fraction
 import re
 from typing import Dict, List, Optional, Set, Any
 from copy import deepcopy
+import os
+import shutil
+import tempfile
 from harmonics.commons import utils_techniques
-from harmonics.commons.utils_output import increment_voices, convert_musicxml_to_mxl
+from harmonics.commons.utils_output import correct_xml_file, convert_musicxml_to_mxl
 
 
 class PartState:
@@ -15,18 +18,53 @@ class PartState:
         self.crescendo_notes = []  # Notes in a crescendo
         self.diminuendo_notes = []  # Notes in a diminuendo
         self.slur_notes = []  # Notes in a slur
+        self.pedal_notes = []  # Notes in a pedal
+        self.crescendo_start = False  # Whether a crescendo has started
+        self.diminuendo_start = False  # Whether a diminuendo has started
+        self.slur_start = False  # Whether a slur has started
+        self.pedal_start = False  # Whether a pedal has started
+        self.last_chord = None  # Last chord for comparison
+        self.last_key = None  # Last key for comparison
+
+        self.slur_notes = []  # Notes in a slur
+        self.pedal_notes = []  # Notes in a pedal
         self.crescendo_start = False  # Whether a crescendo has started
         self.diminuendo_start = False  # Whether a diminuendo has started
         self.slur_start = False  # Whether a slur has started
         self.last_chord = None  # Last chord for comparison
         self.last_key = None  # Last key for comparison
 
-        self.slur_notes = []  # Notes in a slur
-        self.crescendo_start = False  # Whether a crescendo has started
-        self.diminuendo_start = False  # Whether a diminuendo has started
-        self.slur_start = False  # Whether a slur has started
-        self.last_chord = None  # Last chord for comparison
-        self.last_key = None  # Last key for comparison
+
+def to_mxl(filepath, score):
+    """
+    Convert a score to a MusicXML file.
+
+    Args:
+        filepath: Path to save the MusicXML file
+        score: Score object containing notes, chords, time signatures, etc.
+    """
+    # Initialize music21 score and parts
+    m21_score, parts = _init_m21_score(score)
+
+    # Find max measure number
+    max_measure = _find_max_measure_number(score)
+
+    # Create time signature map and calculate measure durations
+    time_sig_map, measure_durations = _create_time_sig_map(score, max_measure)
+
+    # Create all measures for all parts
+    first_instrument_measures, all_measures = _create_all_measures(
+        score, parts, max_measure, time_sig_map, measure_durations
+    )
+
+    # Process comments, harmony, events, time signatures, and clefs
+    _write_comments_and_harmony(score, time_sig_map, first_instrument_measures)
+    _apply_events(score, time_sig_map, first_instrument_measures)
+    _apply_time_signatures(m21_score, score, all_measures, first_instrument_measures)
+    _apply_clefs(m21_score, score)
+
+    # Write to file
+    _correct_xml_and_compress(m21_score, filepath)
 
 
 def _apply_techniques(note, m21_note, measure, part_state, ts):
@@ -85,6 +123,18 @@ def _apply_techniques(note, m21_note, measure, part_state, ts):
                     slur.addSpannedElements(part_state.slur_notes)
                     measure.insert(0, slur)
                     part_state.slur_notes = []
+            elif technique.replace("!", "") == "pedal":
+                if not technique.startswith("!"):
+                    # Add pedal down marking (as a text comment)
+                    text = m21.expressions.TextExpression("$pedal_start")
+                    text.positionVertical = 20
+                    text.style.fontStyle = "italic"
+                    measure.insert(_get_offset(note.beat, ts), text)
+                else:
+                    text = m21.expressions.TextExpression("$pedal_stop")
+                    text.positionVertical = 20
+                    text.style.fontStyle = "italic"
+                    measure.insert(_get_offset(note.beat, ts), text)
             else:
                 technique_obj, technique_type = _create_technique(technique)
                 if technique_obj:
@@ -104,6 +154,8 @@ def _apply_techniques(note, m21_note, measure, part_state, ts):
         part_state.crescendo_notes.append(m21_note)
     if part_state.diminuendo_start and m21_note not in part_state.diminuendo_notes:
         part_state.diminuendo_notes.append(m21_note)
+    if part_state.pedal_start and m21_note not in part_state.pedal_notes:
+        part_state.pedal_notes.append(m21_note)
 
     return m21_note
 
@@ -137,20 +189,278 @@ def _add_key_signature_to_measure(measure, key_signature_item, current_ts):
     measure.insert(offset, m21_key)
 
 
-def to_mxl(filepath, score):
-    """
-    Convert a score to a MusicXML file.
+def _find_max_measure_number(score):
+    """Find the maximum measure number in the score."""
+    return max(
+        note.measure_number for note in score.notes if note.measure_number is not None
+    )
 
-    Args:
-        filepath: Path to save the MusicXML file
-        score: Score object containing notes, chords, time signatures, etc.
-    """
+
+def _create_time_sig_map(score, max_measure):
+    """Create a time signature map and calculate measure durations for all measures."""
+    time_sig_map = _get_time_sig_map(score.time_signatures, max_measure)
+
+    # Calculate duration for each measure
+    measure_durations = {}
+    for measure_num in range(1, max_measure + 1):
+        current_ts = time_sig_map[measure_num]
+        measure_durations[measure_num] = 4 * current_ts[0] / current_ts[1]
+
+    return time_sig_map, measure_durations
+
+
+def _create_all_measures(score, parts, max_measure, time_sig_map, measure_durations):
+    """Create measures for all parts and populate them with notes."""
+    first_instrument_measures = {}
+    all_measures = {}
+    first_voice_of_track = {track_name: True for track_name, _ in parts.keys()}
+
+    idx = -1
+    for (track_name, voice_name), part in parts.items():
+        idx += 1
+        # Create part state to track ongoing musical elements
+        part_state = PartState()
+
+        # Process time signatures, tempo markings, and key signatures
+        time_sigs = sorted(score.time_signatures, key=lambda ts: ts.time)
+        current_ts = time_sigs[0].time_signature if time_sigs else (4, 4)
+
+        tempos = sorted(score.tempos, key=lambda t: t.time)
+        current_tempo_idx = 0
+
+        key_signatures = sorted(
+            score.key_signatures, key=lambda ks: (ks.time, ks.measure_number)
+        )
+        current_key_sig_idx = 0
+
+        # Create measures for this part
+        _create_measures_for_part(
+            score,
+            part,
+            track_name,
+            voice_name,
+            part_state,
+            max_measure,
+            time_sig_map,
+            measure_durations,
+            first_instrument_measures,
+            all_measures,
+            idx,
+            key_signatures,
+            current_key_sig_idx,
+            tempos,
+            current_tempo_idx,
+            first_voice_of_track,
+        )
+
+        # Mark this voice as processed
+        first_voice_of_track[track_name] = False
+
+    return first_instrument_measures, all_measures
+
+
+def _create_measures_for_part(
+    score,
+    part,
+    track_name,
+    voice_name,
+    part_state,
+    max_measure,
+    time_sig_map,
+    measure_durations,
+    first_instrument_measures,
+    all_measures,
+    part_idx,
+    key_signatures,
+    current_key_sig_idx,
+    tempos,
+    current_tempo_idx,
+    first_voice_of_track,
+):
+    """Create and populate measures for a specific part."""
+    for measure_num in range(1, max_measure + 1):
+        current_ts = time_sig_map[measure_num]
+        # Create measure with time signature
+        measure = m21.stream.Measure(number=measure_num, timeSignature=current_ts)
+
+        # Store measure in collections
+        all_measures[measure_num] = all_measures.get(measure_num, []) + [measure]
+        if part_idx == 0:
+            first_instrument_measures[measure_num] = measure
+
+        # Add key signatures if this is the first voice of this track
+        if first_voice_of_track[track_name]:
+            current_key_sig_idx = _add_key_signatures_to_measure(
+                measure, key_signatures, current_key_sig_idx, measure_num, current_ts
+            )
+
+            # Add tempo markings if this is the first voice and tempo changes
+            current_tempo_idx = _add_tempo_markings_to_measure(
+                measure, tempos, current_tempo_idx, measure_num
+            )
+
+        # Add notes for this voice and measure
+        _add_notes_to_measure(
+            score,
+            measure,
+            track_name,
+            voice_name,
+            measure_num,
+            current_ts,
+            part_state,
+            measure_durations,
+        )
+
+        # Add measure to part
+        part.append(measure)
+
+
+def _add_key_signatures_to_measure(
+    measure, key_signatures, current_key_sig_idx, measure_num, current_ts
+):
+    """Add key signatures to a measure if they occur in this measure."""
+    while (
+        current_key_sig_idx < len(key_signatures)
+        and key_signatures[current_key_sig_idx].measure_number == measure_num
+    ):
+        key_sig = key_signatures[current_key_sig_idx]
+        _add_key_signature_to_measure(measure, key_sig, current_ts)
+        current_key_sig_idx += 1
+        if current_key_sig_idx >= len(key_signatures):
+            break
+    return current_key_sig_idx
+
+
+def _add_tempo_markings_to_measure(measure, tempos, current_tempo_idx, measure_num):
+    """Add tempo markings to a measure if they occur in this measure."""
+    while (
+        current_tempo_idx < len(tempos)
+        and tempos[current_tempo_idx].measure_number == measure_num
+        and tempos[current_tempo_idx].beat == 1.0
+    ):
+        tempo = tempos[current_tempo_idx]
+        m21_tempo = m21.tempo.MetronomeMark(
+            number=tempo.tempo, referent=m21.note.Note(type="quarter")
+        )
+        measure.insert(0, m21_tempo)
+        current_tempo_idx += 1
+        if current_tempo_idx >= len(tempos):
+            break
+    return current_tempo_idx
+
+
+def _add_notes_to_measure(
+    score,
+    measure,
+    track_name,
+    voice_name,
+    measure_num,
+    current_ts,
+    part_state,
+    measure_durations,
+):
+    """Add notes to a measure for a specific voice."""
+    # Get notes for this voice and measure
+    measure_notes = [
+        note
+        for note in score.notes
+        if note.track_name == track_name
+        and note.voice_name == voice_name
+        and note.measure_number == measure_num
+    ]
+
+    # If no notes, add a full measure rest
+    if len(measure_notes) == 0:
+        m21_note = m21.note.Rest()
+        m21_note.quarterLength = measure_durations[measure_num]
+        measure.append(m21_note)
+        return
+
+    # Process each note in order
+    for note in sorted(measure_notes, key=lambda n: n.time):
+        _add_note_to_measure(
+            score, note, measure, current_ts, part_state, track_name, voice_name
+        )
+
+
+def _add_note_to_measure(
+    score, note, measure, current_ts, part_state, track_name, voice_name
+):
+    """Create and add a music21 note object to a measure."""
+    # Convert duration to fraction
+    duration = _to_fraction(note.duration, current_ts)
+
+    # Create note or rest
+    if note.is_silence:
+        m21_note = m21.note.Rest()
+        m21_note.quarterLength = duration
+    elif note.is_continuation:
+        # Handle continuation notes (tied notes)
+        m21_note = deepcopy(
+            part_state.ref_note.get((note.track_name, note.voice_name), None)
+        )
+        if m21_note is None:
+            return
+        m21_note.tie = m21.tie.Tie("stop")
+        m21_note.articulations = []
+        m21_note.duration = m21.duration.Duration(duration)
+    else:
+        # Create new note or chord
+        m21_note = _create_new_note(note, duration)
+
+        # Check if this note is tied to the next note
+        next_notes = [
+            n
+            for n in score.notes
+            if n.track_name == note.track_name
+            and n.voice_name == note.voice_name
+            and n.time == note.time + note.duration
+            and n.is_continuation
+        ]
+
+        if next_notes:
+            m21_note.tie = m21.tie.Tie("start")
+            part_state.ref_note[(note.track_name, note.voice_name)] = m21_note
+
+    # Apply techniques
+    m21_note = _apply_techniques(note, m21_note, measure, part_state, current_ts)
+
+    # Insert note at the correct offset
+    offset = _get_offset(note.beat, current_ts)
+    measure.insert(offset, m21_note)
+
+    # Add text comment if present
+    if note.text_comment is not None:
+        _add_text_comment(measure, note.text_comment, offset)
+
+
+def _create_new_note(note, duration):
+    """Create a new music21 note or chord object."""
+    if isinstance(note.pitch, list):
+        # Create chord
+        m21_note = m21.chord.Chord(note.pitch)
+        m21_note.quarterLength = duration
+    else:
+        # Create single note
+        m21_note = m21.note.Note(note.pitch)
+        m21_note.quarterLength = duration
+    return m21_note
+
+
+def _add_text_comment(measure, text, offset):
+    """Add a text comment to a measure."""
+    text_expression = m21.expressions.TextExpression(text)
+    text_expression.positionVertical = 20  # Position above the staff
+    text_expression.style.fontStyle = "italic"  # Make it italic
+    measure.insert(offset, text_expression)
+
+
+def _init_m21_score(score):
     # Create a music21 score
     m21_score = m21.stream.Score()
     m21_score.insert(0, m21.metadata.Metadata())
     # Set the title and composer using music 21 framework
     # Set the title and composer
-
     m21_score.metadata.title = score.title
     m21_score.metadata.composer = score.composer
 
@@ -195,179 +505,11 @@ def to_mxl(filepath, score):
             part.append(voice)
         # Add part to score
         m21_score.insert(0, part)
-        # m21_score.append(part)
 
-    first_instrument_measures = {}
-    all_measures = {}
-    # Add measures to parts
-    if score.notes:
-        max_measure = max(
-            note.measure_number
-            for note in score.notes
-            if note.measure_number is not None
-        )
+    return m21_score, parts
 
-        # Create measures for each part
-        idx = -1
-        current_ts = None
-        measure_durations = {}
-        for measure_num in range(1, max_measure + 1):
-            for ts in score.time_signatures:
-                if ts.measure_number == measure_num:
-                    current_ts = ts.time_signature
-                    break
-            measure_durations[measure_num] = 4 * current_ts[0] / current_ts[1]
-        time_sig_map = _get_time_sig_map(score.time_signatures, max_measure)
 
-        first_voice_of_track = {track_name: True for track_name, _ in parts.keys()}
-        for (track_name, voice_name), part in parts.items():
-            idx += 1
-            # Get time signatures for this part
-            time_sigs = sorted(score.time_signatures, key=lambda ts: ts.time)
-            current_ts = time_sigs[0].time_signature if time_sigs else (4, 4)
-
-            # Get tempo markings
-            tempos = sorted(score.tempos, key=lambda t: t.time)
-            current_tempo_idx = 0
-
-            # Get key signatures
-            key_signatures = sorted(
-                score.key_signatures, key=lambda ks: (ks.time, ks.measure_number)
-            )
-            current_key_sig_idx = 0
-            # Initialize part state
-            part_state = PartState()
-            all_notes = []
-            # Create measures
-            for measure_num in range(1, max_measure + 1):
-                current_ts = time_sig_map[measure_num]
-                measure = m21.stream.Measure(
-                    number=measure_num, timeSignature=current_ts
-                )
-
-                all_measures[measure_num] = all_measures.get(measure_num, []) + [
-                    measure
-                ]
-                if idx == 0:
-                    first_instrument_measures[measure_num] = measure
-
-                while (
-                    current_key_sig_idx < len(key_signatures)
-                    and first_voice_of_track[track_name]
-                    and key_signatures[current_key_sig_idx].measure_number
-                    == measure_num
-                ):
-                    key_sig = key_signatures[current_key_sig_idx]
-                    _add_key_signature_to_measure(measure, key_sig, current_ts)
-                    current_key_sig_idx += 1
-                    if current_key_sig_idx >= len(key_signatures):
-                        break
-
-                # Add tempo marking if it changes at this measure
-                while (
-                    current_tempo_idx < len(tempos)
-                    and first_voice_of_track[track_name]
-                    and tempos[current_tempo_idx].measure_number == measure_num
-                    and tempos[current_tempo_idx].beat == 1.0
-                ):
-                    tempo = tempos[current_tempo_idx]
-                    m21_tempo = m21.tempo.MetronomeMark(
-                        number=tempo.tempo, referent=m21.note.Note(type="quarter")
-                    )
-                    measure.insert(0, m21_tempo)
-                    current_tempo_idx += 1
-                    if current_tempo_idx >= len(tempos):
-                        break
-
-                # Add notes for this voice and measure
-                measure_notes = [
-                    note
-                    for note in score.notes
-                    if note.track_name == track_name
-                    and note.voice_name == voice_name
-                    and note.measure_number == measure_num
-                ]
-
-                if len(measure_notes) == 0:
-                    m21_note = m21.note.Rest()
-                    m21_note.quarterLength = measure_durations[measure_num]
-                    measure.append(m21_note)
-
-                for note in sorted(measure_notes, key=lambda n: n.time):
-                    # Convert duration to fraction
-                    duration = _to_fraction(note.duration, current_ts)
-                    # Create note or rest
-                    if note.is_silence:
-                        m21_note = m21.note.Rest()
-                        m21_note.quarterLength = duration
-                    elif note.is_continuation:
-                        # Skip continuation notes as they're handled with ties
-                        m21_note = deepcopy(
-                            part_state.ref_note.get(
-                                (note.track_name, note.voice_name), None
-                            )
-                        )
-                        m21_note.tie = m21.tie.Tie("stop")
-                        m21_note.articulations = []
-                        m21_note.duration = m21.duration.Duration(duration)
-                        if m21_note is None:
-                            continue
-
-                    else:
-                        # Handle single pitch or chord
-                        if isinstance(note.pitch, list):
-                            # Create chord
-                            m21_note = m21.chord.Chord(note.pitch)
-                            m21_note.quarterLength = duration
-                        else:
-                            # Create single note
-                            m21_note = m21.note.Note(note.pitch)
-                            m21_note.quarterLength = duration
-
-                        # Check if this note is tied to the next note
-                        next_notes = [
-                            n
-                            for n in score.notes
-                            if n.track_name == track_name
-                            and n.voice_name == voice_name
-                            and n.time == note.time + note.duration
-                            and n.is_continuation
-                        ]
-
-                        if next_notes:
-                            m21_note.tie = m21.tie.Tie("start")
-                            part_state.ref_note[(note.track_name, note.voice_name)] = (
-                                m21_note
-                            )
-                            # Add continuation notes
-
-                    # Apply techniques and update part state
-                    m21_note = _apply_techniques(
-                        note, m21_note, measure, part_state, current_ts
-                    )
-
-                    # Insert note at the correct offset within the measure
-                    # Calculate offset based on beat position
-                    offset = _get_offset(note.beat, current_ts)
-                    measure.insert(offset, m21_note)
-
-                    # Add text comment if present
-                    if note.text_comment is not None:
-                        text_expression = m21.expressions.TextExpression(
-                            note.text_comment
-                        )
-                        text_expression.positionVertical = (
-                            20  # Position above the staff
-                        )
-                        text_expression.style.fontStyle = "italic"  # Make it italic
-                        measure.insert(offset, text_expression)
-
-                    all_notes.append(m21_note)
-
-                # Add measure to part
-                part.append(measure)
-                first_voice_of_track[track_name] = False
-
+def _write_comments_and_harmony(score, time_sig_map, first_instrument_measures):
     last_key = None
     for chord in score.chords:
         if chord.measure_number in first_instrument_measures:
@@ -383,6 +525,8 @@ def to_mxl(filepath, score):
                 current_ts=time_sig_map[chord.measure_number],
             )
 
+
+def _apply_events(score, time_sig_map, first_instrument_measures):
     for event in score.events:
         if event.event_type == "tempo":
             # Find the measure where the tempo event should be placed
@@ -397,13 +541,6 @@ def to_mxl(filepath, score):
                 offset = _get_offset(event.beat, current_ts)
                 # Insert tempo mark at the correct offset within the measure
                 measure.insert(offset, tempo_mark)
-
-    _apply_time_signatures(m21_score, score, all_measures, first_instrument_measures)
-    
-    _apply_clefs(m21_score, score)
-
-    # m21_score.write("musicxml", filepath)
-    _increment_and_compress(m21_score, filepath)
 
 
 def _apply_time_signatures(m21_score, score, all_measures, first_instrument_measures):
@@ -508,24 +645,19 @@ def _get_time_sig_map(time_signatures, max_measure):
     return time_sig_map
 
 
-def _increment_and_compress(m21_score, filepath):
-    import shutil
-    import tempfile
-    import os
-
-    final_filepath = filepath
+def _correct_xml_and_compress(m21_score, filepath):
     with tempfile.NamedTemporaryFile(delete=False, suffix=".musicxml") as temp_file:
         m21_score.write("musicxml", temp_file.name)
-        increment_voices(
+        correct_xml_file(
             temp_file.name
         )  # TEMP : To fix 0-indexed voice issue in musescore, is there a better solution ?
-        if final_filepath.endswith(".mxl"):
+        if filepath.endswith(".mxl"):
             new_filepath = convert_musicxml_to_mxl(temp_file.name)
         else:
             new_filepath = temp_file.name
 
     # Copy the new file to the final filepath
-    shutil.copy(new_filepath, final_filepath)
+    shutil.copy(new_filepath, filepath)
     if os.path.exists(temp_file.name):
         os.remove(temp_file.name)
     if os.path.exists(new_filepath):

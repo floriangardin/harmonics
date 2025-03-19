@@ -11,6 +11,12 @@ def test_to_ern():
     to_ern("tests/data/items.ern", score)
 
 
+def test_full_to_mxl():
+    HarmonicsParser().parse_to_mxl(
+        "tests/data/full_test.ern", "tests/data/full_test.mxl"
+    )
+
+
 def test_from_mxl():
     HarmonicsParser().parse_to_mxl(
         "tests/data/base_test.ern", "tests/data/base_test.mxl"

@@ -4,16 +4,106 @@ import zipfile
 import shutil
 
 
-def increment_voices(musicxml_file):
+def correct_xml_file(musicxml_file):
+    """
+    Correct the file by replacing the pedal direction with the correct one.
+    """
+    tree = ET.parse(musicxml_file)
+    root = tree.getroot()
+    _replace_pedal_direction(root)
+    _increment_voices(root)
+    # Write the modified XML back to the same file
+    tree.write(musicxml_file, encoding="utf-8", xml_declaration=True)
+
+
+def _replace_pedal_direction(root):
+    """
+    Replace this element :
+    <direction>
+        <direction-type>
+          <words enclosure="none" font-style="italic">$pedal_start</words>
+        </direction-type>
+      </direction>
+
+    With this one :
+    <direction placement="below">
+        <direction-type>
+          <pedal type="start" sign="yes" line="no"/>
+        </direction-type>
+    </direction>
+
+    And this one :
+    <direction>
+        <direction-type>
+          <words enclosure="none" font-style="italic">$pedal_stop</words>
+        </direction-type>
+    </direction>
+
+    By this one :
+    <direction placement="below">
+        <direction-type>
+          <pedal type="stop" sign="yes" line="no"/>
+        </direction-type>
+    </direction>
+
+    Do this with the comment name '$pedal_start' and '$pedal_stop'
+    """
+    # Find all measures in the score
+    for part in root.findall(".//part"):
+        for measure in part.findall("./measure"):
+            # Find and process all direction elements within this measure
+            directions_to_remove = []
+            for i, child in enumerate(measure):
+                if child.tag == "direction":
+                    words_elem = child.find(".//words")
+                    if words_elem is not None and words_elem.text is not None:
+                        if words_elem.text.strip() == "$pedal_start":
+                            # Create new direction element with proper pedal marking
+                            new_direction = ET.Element(
+                                "direction", {"placement": "below"}
+                            )
+                            direction_type = ET.SubElement(
+                                new_direction, "direction-type"
+                            )
+                            ET.SubElement(
+                                direction_type,
+                                "pedal",
+                                {"type": "start", "sign": "yes", "line": "no"},
+                            )
+
+                            # Store the index to replace it later
+                            directions_to_remove.append((i, new_direction))
+
+                        elif words_elem.text.strip() == "$pedal_stop":
+                            # Create new direction element with proper pedal marking
+                            new_direction = ET.Element(
+                                "direction", {"placement": "below"}
+                            )
+                            direction_type = ET.SubElement(
+                                new_direction, "direction-type"
+                            )
+                            ET.SubElement(
+                                direction_type,
+                                "pedal",
+                                {"type": "stop", "sign": "yes", "line": "no"},
+                            )
+
+                            # Store the index to replace it later
+                            directions_to_remove.append((i, new_direction))
+
+            # Now replace the directions (in reverse order to not upset the indices)
+            for index, new_elem in sorted(directions_to_remove, reverse=True):
+                measure.remove(measure[index])
+                measure.insert(index, new_elem)
+
+
+def _increment_voices(root):
     """
     Increment all <voice> tag values by 1 in a MusicXML file.
 
     Args:
         musicxml_file (str): Path to the MusicXML file to modify
     """
-    # Parse the XML file
-    tree = ET.parse(musicxml_file)
-    root = tree.getroot()
 
     # Find all voice elements in the XML
     for voice_elem in root.findall(".//voice"):
@@ -24,9 +114,6 @@ def increment_voices(musicxml_file):
         except (ValueError, TypeError):
             # Skip if the voice value is not a valid integer
             print(f"Warning: Found non-integer voice value: {voice_elem.text}")
-
-    # Write the modified XML back to the same file
-    tree.write(musicxml_file, encoding="utf-8", xml_declaration=True)
 
 
 def convert_musicxml_to_mxl(musicxml_file):

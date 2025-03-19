@@ -184,9 +184,15 @@ def map_spanner_type_to_technique(spanner_type):
 
 def process_measures(part, part_idx, track_name, state):
     """Process all measures in a part."""
+    current_ts = None
     for measure in part.recurse().getElementsByClass("Measure"):
         measure_notes = []
         measure_number = measure.number if measure.number is not None else 1
+        if measure.timeSignature is not None:
+            current_ts = (
+                measure.timeSignature.numerator,
+                measure.timeSignature.denominator,
+            )
 
         # Process key signatures (only process once per measure, on the first part)
         if part_idx == 0:
@@ -199,7 +205,7 @@ def process_measures(part, part_idx, track_name, state):
         process_time_signatures(measure, measure_number, state)
 
         # Process tempo markings
-        process_tempo_markings(measure, measure_number, state)
+        process_tempo_markings(measure, measure_number, state, current_ts)
 
         # Process voices and notes
         measure_notes = process_voices(measure, measure_number, track_name, state)
@@ -289,19 +295,27 @@ def process_time_signatures(measure, measure_number, state):
         state.time_signatures.append(time_signature)
 
 
-def process_tempo_markings(measure, measure_number, state):
+def _get_beat_from_offset(offset, current_ts):
+    ratio_beat = Fraction(4, current_ts[1])
+    return (offset / ratio_beat) + 1
+
+
+def process_tempo_markings(measure, measure_number, state, current_ts):
     """Process tempo markings in a measure."""
     for tempo_mark in measure.getElementsByClass("MetronomeMark"):
+
         real_tempo = (
             tempo_mark.number
             if tempo_mark.number is not None
             else tempo_mark._numberSounding
         )
+        offset = tempo_mark.offset
+        beat = _get_beat_from_offset(offset, current_ts)
         tempo = models.TempoItem(
             time=0,  # We don't care about time
             tempo=real_tempo,
             measure_number=measure_number,
-            beat=1.0,  # Default to first beat if not specified
+            beat=beat,
             figure=tempo_mark.referent.type,
         )
         state.tempos.append(tempo)
@@ -310,7 +324,7 @@ def process_tempo_markings(measure, measure_number, state):
         event = models.EventItem(
             time=0,  # We don't care about time
             measure_number=measure_number,
-            beat=1.0,  # Default to first beat
+            beat=beat,
             event_type="tempo",
             event_value=real_tempo,
         )
@@ -345,10 +359,6 @@ def refactor_voices(notes):
     Refactor the voices to start with v1 and be contiguous.
     This grouping of voices is done grouped by track_name.
     """
-    """
-    Refactor the voices to start with v1 and be contiguous.
-    This grouping of voices is done grouped by track_name.
-    """
     # Group notes by track_name
     notes_by_track = {}
     for note in notes:
@@ -367,7 +377,6 @@ def refactor_voices(notes):
         # Apply the mapping to all notes in this track
         for note in track_notes:
             note.voice_name = voice_mapping[note.voice_name]
-
     return notes
 
 

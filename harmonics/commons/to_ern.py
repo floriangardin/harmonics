@@ -250,6 +250,9 @@ def _generate_clef_changes(measure_number, clef_items):
         track_name = clef_item.track_name
         beat = clef_item.beat
 
+        if measure_number == 1 and beat == 1.0:
+            continue
+
         # Format clef with octave change if necessary
         formatted_clef = clef_item.clef_name
         if clef_item.octave_change:
