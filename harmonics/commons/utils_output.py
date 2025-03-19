@@ -13,6 +13,7 @@ def correct_xml_file(musicxml_file):
     _replace_pedal_direction(root)
     _increment_voices(root)
     _add_sound_pizzicato(root)
+    _add_sound_arco(root)
     # Write the modified XML back to the same file
     tree.write(musicxml_file, encoding="utf-8", xml_declaration=True)
 
@@ -43,6 +44,43 @@ def _add_sound_pizzicato(root):
             if sound_elem is None:
                 # Add sound element with pizzicato="yes" attribute
                 sound_elem = ET.Element("sound", {"pizzicato": "yes"})
+                direction.append(sound_elem)
+
+                # Also ensure direction has placement="above" attribute if not already specified
+                if "placement" not in direction.attrib:
+                    direction.set("placement", "above")
+
+                # If words element doesn't have relative-y, add it
+                if "relative-y" not in words_elem.attrib:
+                    words_elem.set("relative-y", "10")
+
+
+def _add_sound_arco(root):
+    """
+    In element with text "arco" add the sound element :
+    <direction placement="above">
+        <direction-type>
+          <words relative-y="10">pizz.</words>
+          </direction-type>
+        <sound pizzicato="no"/>
+    </direction>
+    """
+    # Find all direction elements in the score that might contain pizz. notation
+    for direction in root.findall(".//direction"):
+        # Look for words elements that contain "pizz."
+        words_elem = direction.find(".//words")
+        if (
+            words_elem is not None
+            and words_elem.text is not None
+            and "arco" in words_elem.text.strip()
+        ):
+            # Check if the direction already has a sound element
+            sound_elem = direction.find("sound")
+
+            # If sound element doesn't exist, add it
+            if sound_elem is None:
+                # Add sound element with pizzicato="yes" attribute
+                sound_elem = ET.Element("sound", {"pizzicato": "no"})
                 direction.append(sound_elem)
 
                 # Also ensure direction has placement="above" attribute if not already specified
