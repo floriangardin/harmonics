@@ -20,6 +20,7 @@ tempo_line: "Tempo:" WS* TEMPO_NUMBER NEWLINE  // Tempo number in QPM
 instrument_line: "Instrument:" WS TRACK_NAME WS* "=" WS* GM_INSTRUMENT_NAME ("," WS* TRACK_NAME WS* "=" WS* GM_INSTRUMENT_NAME)* NEWLINE
 clef_line: ( "(" WS*  "m" MEASURE_NUMBER WS* ")" WS*)? "Clef:" WS+ TRACK_NAME WS* "=" WS* clef_type NEWLINE
 key_signature_line: ( "(" WS*  "m" MEASURE_NUMBER WS* ")" WS*)? "Signature:" WS+ key_signature NEWLINE
+// To group tracks together (For example for a piano score)
 groups_line: "Groups:" WS+ GROUP_NAME WS* "=" WS* "[" WS* TRACK_NAME ("," WS* TRACK_NAME)* WS* "]" NEWLINE
 GROUP_NAME: /[a-zA-Z_][a-zA-Z0-9_]+/
 
