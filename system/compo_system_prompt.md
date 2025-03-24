@@ -90,6 +90,7 @@ metadata_line: composer_line
              | tempo_line
              | instrument_line
              | clef_line
+             | groups_line
              
 
 composer_line: "Composer:" WS REST_LINE NEWLINE
@@ -99,6 +100,9 @@ tempo_line: "Tempo:" WS* TEMPO_NUMBER NEWLINE  // Tempo number in QPM
 instrument_line: "Instrument:" WS TRACK_NAME WS* "=" WS* GM_INSTRUMENT_NAME ("," WS* TRACK_NAME WS* "=" WS* GM_INSTRUMENT_NAME)* NEWLINE
 clef_line: ( "(" WS*  "m" MEASURE_NUMBER WS* ")" WS*)? "Clef:" WS+ TRACK_NAME WS* "=" WS* clef_type NEWLINE
 key_signature_line: ( "(" WS*  "m" MEASURE_NUMBER WS* ")" WS*)? "Signature:" WS+ key_signature NEWLINE
+// To group tracks together (For example for a piano score)
+groups_line: "Groups:" WS+ GROUP_NAME WS* "=" WS* "[" WS* TRACK_NAME ("," WS* TRACK_NAME)* WS* "]" NEWLINE
+GROUP_NAME: /[a-zA-Z_][a-zA-Z0-9_]+/
 
 TRACK_NAME: "T" DIGIT+
 // Potentially multiple voices per track (a voice is not necessarily monophonic though)
@@ -211,14 +215,13 @@ PHRASE_BOUNDARY: WS "||" WS?
 
 clef_change_line: MEASURE_INDICATOR (WS+ TRACK_NAME)? WS+ BEAT_INDICATOR WS+ "clef" WS+ clef_type NEWLINE
 clef_type: CLEF_NAME (WS* CLEF_OCTAVE_CHANGE)?
-CLEF_NAME: "treble" | "bass" | "alto" | "tenor" | "soprano" | "mezzo-soprano" | "baritone" | "sub-bass" | "french" | "G" | "F" | "C"
+CLEF_NAME: "treble" | "bass" | "alto" | "tenor" | "soprano" | "mezzo-soprano" | "baritone" | "sub-bass" | "french" | "G" | "F" | "C" | "treble8vb" | "bass8vb"
 CLEF_OCTAVE_CHANGE: ("+" | "-") DIGIT+
 
 WS: (" " | /\t/)+
 CR: /\r/
 LF: /\n/
 NEWLINE: WS* (CR? LF)+
-
 
 ### Composition Guidelines
 
@@ -280,6 +283,8 @@ Tempo: 120
 Note: A Debussy-style prelude with impressionist harmonies and flowing textures
 
 Instrument: T1=piano, T2=piano
+Groups: piano=[T1,T2]
+
 Note: T1 = melody, T2 = accompaniment
 
 e1 b1 tempo(120) b1 velocity(mp)
@@ -311,10 +316,7 @@ Time Signature: 4/4
 Signature: bbb
 Tempo: 120
 Instrument: T1=piano, T2=piano, T3=violin, T4=violoncello
-(m1) Clef: T1=treble
-(m1) Clef: T2=bass
-(m1) Clef: T3=treble
-(m1) Clef: T4=bass
+Groups: piano=[T1,T2]
 
 m1 b1 c: i
 m1 T2.v1 b1 "p" C3 Eb3 [trill]
