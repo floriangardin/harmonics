@@ -45,6 +45,7 @@ from harmonics.models import (
     ClefChange,
     KeySignature,
     TextComment,
+    StaffGroup,
 )
 from .score import ScoreDocument
 
@@ -163,9 +164,20 @@ def transform_metadata_line(node: Tree) -> MetadataLine:
         return transform_instrument_line(child)
     elif child.data == "clef_line":
         return transform_clef_line(child)
+    elif child.data == "groups_line":
+        return transform_groups_line(child)
     else:
         raise ValueError(f"Unknown metadata_line type: {child.data}")
 
+def transform_groups_line(node: Tree) -> StaffGroup:
+    group_name = ""
+    track_names = []
+    for child in node.children:
+        if isinstance(child, Token) and child.type == "GROUP_NAME":
+            group_name = transform_token(child)
+        elif isinstance(child, Token) and child.type == "TRACK_NAME":
+            track_names.append(transform_token(child))
+    return StaffGroup(group_name=group_name, track_names=track_names)
 
 # ------------------------------
 # Chord and related transformers
@@ -390,6 +402,7 @@ def transform_measure_line(
         measure_number=measure_number,
         beat_items=beat_items,
         phrase_boundary=phrase_boundary,
+        line_number=context["line_number"],
     )
 
 
@@ -795,6 +808,8 @@ def transform_statement_line(
 ) -> StatementLine:
     # statement_line: measure_line | pedal_line | form_line | note_line | repeat_line | melody_line | accompaniment_line
     child = node.children[0]
+    line = child.meta.line
+    context["line_number"] = line
     if child.data == "measure_line":
         return transform_measure_line(child, context)
     elif child.data == "pedal_line":

@@ -11,7 +11,7 @@ Harmonics follows a context-free grammar (CFG) and an Extended Backus-Naur Form 
 #### File Format
 - A document consists of metadata lines, statement lines, and events
 - Metadata provides general information about the piece (composer, tempo, key, etc.)
-- Statements define harmony, melody, and accompaniment
+- Statements define harmony and notes
 - Events modify performance parameters dynamically
 
 ### Metadata Format
@@ -20,6 +20,7 @@ Each metadata line starts with a keyword followed by a value:
 - `Piece: <Title>`
 - `Time Signature: <Numerator/Denominator>`
 - `Tempo: <QPM>` (Quarter notes per minute)
+- `Signature: <Key Signature>` (Number of sharps or flats eg: `bbb` for 3 flats, `#` for 1 sharp)
 - `Instrument: <Voice>=<GM_INSTRUMENT_NAME>, ...` (Mapping voices to MIDI instruments, GM standard name lowercase python case (french_horn))
 
 ### Beats.
@@ -57,51 +58,21 @@ in 6/8: 1, 2, 3, 4, 5, 6 # Six eighth (8) notes in a bar
   m1 T1 b1 E5 b1.5 R b2 A5 C6
   Note: Here E5 lasts an eighth note, A5/C6 chord lasts until the end of the bar (half note).
   ```
-- You specify the voice index for each line (T1, T2, ..., T8, ...).
-
----
-
-### Accompaniment Rules (m<index>)
-- Defines voice participation per beat, useful when accompaniment is pretty standard
-- Uses SATB notation (`1 = Bass, 2 = Tenor, 3 = Alto, 4 = Soprano`)
-- You precise the instrument used for the accompaniment (T1, T2, ..., T8)
-- You can use several instruments per bar for the accompaniment (recommended for symphonic music)
-- Example:
-  ```
-  m1 T1 b1 1 b2 234 b3 1 b4 234
-  m1 T2 b1 234 b4.75 234
-  ```
+- You specify the track index for each line (T1, T2, ..., T8, ...) with optional voice index (T1.v1, T1.v2, ..., T1.v8, ...).
+- Voices are reserved for independant melodic lines in the same track, a chord can usually be played by one voice. 
 
 ---
 
 ### Event Rules (e<index>)
-- Modifies tempo, velocity, crescendos, ritardandos, etc.
+- Modifies tempo
 - Example:
   ```
-  e1 b1 tempo(120) b1 velocity(mf)
+  e1 b1 tempo(120)
   e2 b1 start_accelerando(120) b4 end_accelerando(127)
-  e3 b1 start_crescendo(mf)
-  e4 b1 end_crescendo(ff)
+  e3 b1 start_ritardando(127)
+  e4 b1 end_ritardando(120)
   ```
 All event functions have arguments.
-
-#### Techniques Rules
-
-- Modifies how instrument plays on a range of measures. Stop at the end beat (not included).
-- Techniques are declared with `tech <voice_list> <measure_range> : <technique_list>`.
-- For example : `tech [T1, T2] (m1 b1 - m8 b1) : staccato,accent`
-- Or : `tech T1 (m1 b1 - m8 b1) : marcato`
-- When not specified, no technic are applied (legato playing).
-
-Here is the list of global techniques :
-- staccato
-- accent
-- marcato
-- legato
-- glissando
-- arpeggio
-- staccatissimo
-- tremolo
 
 ---
 
@@ -265,12 +236,13 @@ NEWLINE: WS* (CR? LF)+
 - Avoid repetitive rhythms for more than 2 bars
 - Use accompaniment voices as instruments, don't hesitate to use several instruments for an accompaniment
 - Use sixteenth notes, eighth notes, quarter notes, half notes, whole notes, n-uplets, and syncopation for expressiveness
-- Sometimes use thirty second notes for trills
 - Use passing and neighbor tones for expressiveness
 - Rests are very important to make the music breathe. (Use `R` or `r` for rests)
+- Use trills, mordents, accents and other ornaments to add expressiveness to the melody.
 
 #### Harmony
 - Avoid overusing I-IV-V; incorporate secondary dominants, modal interchange, borrowed chords, inversions, and alterations
+- Use the harmonic language of the era/composer you are writing for.
 - Ensure proper voice leading and smooth resolutions
 - Use clear phrase boundaries (`||`). Use silences between phrases
 
@@ -311,8 +283,6 @@ Instrument: T1=piano, T2=piano
 Note: T1 = melody, T2 = accompaniment
 
 e1 b1 tempo(120) b1 velocity(mp)
-tech [T1] (m1 b1 - m4 b4) : legato
-tech [T2] (m1 b1 - m4 b4) : staccato
 
 // A Section (measures 1-4)
 
@@ -320,15 +290,15 @@ m1 b1 a: V
 m1 T1 b2 B4 b2.25 A4 b2.5 G#4 b2.75 A4
 
 m2 b1 i
-m2 T1 b1 C5 b1.5 R b2 D5 b2.25 C5 b2.5 B4 b2.75 C5
-m2 T2 b1 A3 b1.5 C4 E4 b2 C4 E4 b2.5 C4 E4
+m2 T1 b1 C5 [slur] b1.5 R b2 D5 b2.25 C5 b2.5 B4 b2.75 C5
+m2 T2 b1 A3 [staccato] b1.5 C4 E4 [staccato] b2 C4 E4 [staccato] b2.5 C4 E4 [staccato] 
 
 m3 b1 i
-m3 T1 b1 E5 b1.5 R b2 F5 b2.25 E5 b2.5 D#5 b2.75 E5
+m3 T1 b1 E5 [!slur] b1.5 R b2 F5 [slur] b2.25 E5 b2.5 D#5 b2.75 E5
 m3 T2 b1 A3 b1.5 C4 E4 b2 C4 E4 b2.5 C4 E4
 
 m4 b1 i
-m4 T1 b1 B5 b1.25 A5 b1.5 G#5 b1.75 A5 b2 B5 b2.25 A5 b2.5 G#5 b2.75 A5
+m4 T1 b1 B5 b1.25 A5 b1.5 G#5 b1.75 A5 b2 B5 b2.25 A5 b2.5 G#5 b2.75 A5 [!slur]
 m4 T2 b1 A3 b1.5 C4 E4 b2 A3 b2.5 C4 E4
 ```
 
@@ -347,33 +317,33 @@ Instrument: T1=piano, T2=piano, T3=violin, T4=violoncello
 (m1) Clef: T4=bass
 
 m1 b1 c: i
-m1 T2.v7 b1 C3 Eb3
-m1 T3.v1 b1 C4 b2 D4 b3 Eb4 b4 C4 b4.5 B3
-m1 T4.v3 b1 C3 Eb3
+m1 T2.v1 b1 "p" C3 Eb3 [trill]
+m1 T3.v1 b1 "p" C4 b2 D4 b3 Eb4 b4 C4 b4.5 B3
+m1 T4.v1 b1 "p" C3 Eb3 [trill]
 
 m2 b1 iv
-m2 T1.v1 b1 C4 b2 Ab4 b3 G4 b4 F4
-m2 T2.v6 b1 F3 b2 C3 b2.5 D3 b3 Eb3
-m2 T2.v7 b1 Ab2 b3 C3 b4 D3
+m2 T1.v1 b1 "f" C4 b2 Ab4 b3 G4 b4 F4 [mordent]
+m2 T2.v1 b1 F3 b2 C3 b2.5 D3 b3 Eb3
+m2 T2.v2 b1 Ab2 b3 C3 b4 D3
 m2 T3.v1 b1 C4 b2 Ab4 b3 G4 b4 F4
-m2 T4.v2 b1 F3 b2 C3 b2.5 D3 b3 Eb3
-m2 T4.v3 b1 Ab2 b3 C3 b4 D3
+m2 T4.v1 b1 F3 b2 C3 b2.5 D3 b3 Eb3
+m2 T4.v2 b1 Ab2 b3 C3 b4 D3
 
 m3 b1 V
-m3 T1.v1 b1 D5 b2 C5 b2.5 B4 b3 C5 b4 D5
-m3 T2.v6 b1 G3 b2 Ab3 b2.5 G3 b3 Ab3
-m3 T2.v7 b1 Eb3 b3 F3
+m3 T1.v1 b1 D5 [accent] b2 C5 b2.5 B4 b3 C5 b4 D5
+m3 T2.v1 b1 G3 b2 Ab3 b2.5 G3 b3 Ab3
+m3 T2.v2 b1 Eb3 b3 F3
 m3 T3.v1 b1 D5 b2 C5 b2.5 B4 b3 C5 b4 D5
-m3 T4.v2 b1 G3 b2 Ab3 b2.5 G3 b3 Ab3
-m3 T4.v3 b1 Eb3 b3 F3
+m3 T4.v1 b1 G3 b2 Ab3 b2.5 G3 b3 Ab3
+m3 T4.v2 b1 Eb3 b3 F3
 
 m4 b1 i b4 V/III
 m4 T1.v1 b1 G4 b3 G4 b4 C5
-m4 T2.v6 b1 B3 b3 C4 b4 Bb3 b4.5 C4
-m4 T2.v7 b1 Eb3 b2 D3 b3 Eb3
+m4 T2.v1 b1 B3 b3 C4 b4 Bb3 b4.5 C4
+m4 T2.v2 b1 Eb3 b2 D3 b3 Eb3
 m4 T3.v1 b1 G4 b3 G4 b4 C5
-m4 T4.v2 b1 B3 b3 C4 b4 Bb3 b4.5 C4
-m4 T4.v3 b1 Eb3 b2 D3 b3 Eb3[trill]
+m4 T4.v1 b1 B3 b3 C4 b4 Bb3 b4.5 C4
+m4 T4.v2 b1 Eb3 b2 D3 b3 Eb3 [trill]
 ```
 
 **Example 3: All features in a short example**
@@ -396,8 +366,8 @@ tech [T1] (m1 b1 - m4 b3) : staccato
 // You can specify the octave (here -1) for the clef, useful for choirs for example.
 (m2) Clef: T2=treble-1
 
-m1 b1 a: V7[add9] "Allegro con brio."       
-m1 T1 b2 C5 E5. [pp, accelerando,accent] b3 L b4 E5[trill, fff, !accelerando,marcato,diminuendo, !diminuendo]
+m1 b1 a: V7[add9]
+m1 T1 b2  "Allegro con brio." C5 E5. [pp, accelerando,accent] b3 L b4 E5[trill, fff, !accelerando,marcato,diminuendo, !diminuendo]
 m1 T2 b1 C4 [p,crescendo] b2 C4 [legato] b3 D4 b4 C4 [!legato]
 
 (m2) Time Signature: 4/4

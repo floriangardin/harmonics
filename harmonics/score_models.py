@@ -12,6 +12,7 @@ class ChordItem(BaseModel):
     new_key: Optional[bool] = False
     time_signature: Optional[Tuple[int, int]] = None
     pitches: Optional[List[str]] = None
+    line_number: Optional[int] = None
 
 
 class NoteItem(BaseModel):
@@ -53,6 +54,7 @@ class InstrumentItem(BaseModel):
     track_index: Optional[int] = None
     gm_number: int
     name: str
+    staff_group: Optional[str] = None
 
 
 class EventItem(BaseModel):

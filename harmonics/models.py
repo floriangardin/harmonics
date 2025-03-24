@@ -1,18 +1,32 @@
 from typing import List, Optional, Union, Tuple, Any, Dict, Set
 
-from pydantic import BaseModel as RawBaseModel
+from pydantic import BaseModel as RawBaseModel, Field
 from .notes_utils import getPitchFromIntervalFromMinimallyModifiedScale
+
+# Base model for all classes
+class BaseModel(RawBaseModel):
+    def __hash__(self):  # make hashable BaseModel subclass
+        return hash(self.model_dump_json())
+
+# ==============================
+# Base Line Classes
+# ==============================
+
+class Line(BaseModel):
+    """Base class for all lines in the document"""
+    line_number: Optional[int] = Field(default=None)
+
+class MetadataLine(Line):
+    """Base class for all metadata lines"""
+    pass
+
+class StatementLine(Line):
+    """Base class for all statement lines"""
+    pass
 
 # ==============================
 # Melody Lines
 # ==============================
-
-
-class BaseModel(RawBaseModel):
-
-    def __hash__(self):  # make hashable BaseModel subclass
-        return hash(self.model_dump_json())
-
 
 class MelodyNote(BaseModel):
     beat: float
@@ -60,7 +74,7 @@ class AccompanimentBeat(MelodyNote):
     voices: List[AccompanimentVoice]
 
 
-class Melody(BaseModel):
+class Melody(StatementLine):
     measure_number: int
     notes: List[MelodyNote]
     track_name: str = "T1"
@@ -68,46 +82,48 @@ class Melody(BaseModel):
 
 
 # ==================================
-# Metadata Lines
+# Metadata Line Classes
 # ==================================
 
-
-class Composer(BaseModel):
+class Composer(MetadataLine):
     composer: str
 
 
-class Title(BaseModel):
+class Title(MetadataLine):
     title: str
 
 
-class Analyst(BaseModel):
+class Analyst(MetadataLine):
     analyst: str
 
 
-class Proofreader(BaseModel):
+class Proofreader(MetadataLine):
     proofreader: str
 
 
-class Movement(BaseModel):
+class Movement(MetadataLine):
     movement: str
 
 
-class TimeSignature(BaseModel):
+class TimeSignature(MetadataLine):
     numerator: int
     denominator: int
     measure_number: Optional[int] = None
 
+class StaffGroup(MetadataLine):
+    group_name: str
+    track_names: List[str]
 
-class Tempo(BaseModel):
+class Tempo(MetadataLine):
     tempo: int
 
 
-class KeySignature(BaseModel):
+class KeySignature(StatementLine):  # Changed to StatementLine based on its usage
     key_signature: str
     measure_number: Optional[int] = None
 
 
-class MinorMode(BaseModel):
+class MinorMode(MetadataLine):
     minor_mode: str
 
 
@@ -118,12 +134,12 @@ class Event(BaseModel):
     event_value: Any
 
 
-class Events(BaseModel):
+class Events(StatementLine):
     events: List[Event]
     measure_number: int
 
 
-class Instruments(BaseModel):
+class Instruments(MetadataLine):
     instruments: List[Instrument]
 
 
@@ -133,13 +149,13 @@ class ClefType(BaseModel):
     octave_change: Optional[int] = None  # +1, -1, etc. for octave displacement
 
 
-class Clef(BaseModel):
+class Clef(MetadataLine):
     track_name: str
     clef_type: ClefType
     measure_number: Optional[int] = None
 
 
-class ClefChange(BaseModel):
+class ClefChange(StatementLine):
     measure_number: int
     beat: float
     track_name: str
@@ -154,30 +170,15 @@ class TechniqueRange(BaseModel):
     end_beat: float
 
 
-class Technique(BaseModel):
+class Technique(StatementLine):
     track_names: List[str]
     technique_range: TechniqueRange
     techniques: List[str]
 
 
-# A metadata line is one of the above types.
-MetadataLine = Union[
-    Composer,
-    Title,
-    Analyst,
-    Proofreader,
-    Movement,
-    TimeSignature,
-    MinorMode,
-    Tempo,
-    Instruments,
-    Clef,
-]
-
 # ==============================
 # Chord-related models
 # ==============================
-
 
 class Key(BaseModel):
     key: str
@@ -197,12 +198,11 @@ class Chord(BaseModel):
 
 
 # In a measure line we have a sequence of beat "items" which can be a beat_chord OR a key_change:
-BeatItem = Union[Chord, Key]
+BeatItem = Chord | Key  # Updated syntax for Python 3.10+
 
 # ==============================
-# Statement Lines
+# Statement Line Classes
 # ==============================
-
 
 class BeatAndPitchClasses(BaseModel):
     beat: float
@@ -211,7 +211,7 @@ class BeatAndPitchClasses(BaseModel):
     key_name: str
 
 
-class Measure(BaseModel):
+class Measure(StatementLine):
     # measure_line: MEASURE_INDICATOR (chord_beat_1)? (beat_chord | key_change)+ PHRASE_BOUNDARY? NEWLINE
     measure_number: int
     beat_items: List[BeatItem]
@@ -223,7 +223,7 @@ class MeasureRange(BaseModel):
     measures: List[str]
 
 
-class Repeat(BaseModel):
+class Repeat(StatementLine):
     # repeat_line: measure_range WS "=" WS measure_range NEWLINE
     start_range: MeasureRange
     equals: str
@@ -242,18 +242,18 @@ class PedalEntry(BaseModel):
     beat_indicator: str
 
 
-class Pedal(BaseModel):
+class Pedal(StatementLine):
     # pedal_line: "Pedal:" WS note WS pedal_entries NEWLINE
     note: Note
     pedal_entries: List[PedalEntry]
 
 
-class Form(BaseModel):
+class Form(StatementLine):
     # form_line: "Form:" WS REST_LINE NEWLINE
     form: str
 
 
-class Comment(BaseModel):
+class Comment(StatementLine):
     # note_line: "Note:" WS REST_LINE NEWLINE
     comment: str
 
@@ -262,8 +262,7 @@ class Comment(BaseModel):
 # Accompaniment Models
 # ------------------------------
 
-
-class VariableDeclaration(BaseModel):
+class VariableDeclaration(StatementLine):
     variable_name: str
     variable_value: str
 
@@ -271,20 +270,7 @@ class VariableDeclaration(BaseModel):
 class VariableCalling(BaseModel):
     variable_name: str
 
-
-# A statement line can be any of the following:
-StatementLine = Union[
-    Measure,
-    Repeat,
-    Pedal,
-    Form,
-    Comment,
-    Melody,
-    Events,
-    VariableDeclaration,
-    Technique,
-    ClefChange,
-    KeySignature,
-]
-
-Line = Union[MetadataLine, StatementLine]
+# The Union types are no longer needed as we're using inheritance
+# All StatementLine subclasses are now StatementLine
+# All MetadataLine subclasses are now MetadataLine
+# A Line can be either a MetadataLine or StatementLine

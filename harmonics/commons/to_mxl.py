@@ -8,7 +8,7 @@ import shutil
 import tempfile
 from harmonics.commons import utils_techniques
 from harmonics.commons.utils_output import correct_xml_file, convert_musicxml_to_mxl
-
+from harmonics.commons.utils_beat import to_quarter_fraction
 
 class PartState:
     """Class to track the state of a part during MusicXML conversion."""
@@ -123,7 +123,7 @@ def _apply_techniques(note, m21_note, measure, part_state, ts):
                     slur.addSpannedElements(part_state.slur_notes)
                     measure.insert(0, slur)
                     part_state.slur_notes = []
-            elif technique.replace("!", "") == "pedal":
+            elif technique.replace("!", "") in ["pedal", "ped", "sustain"]:
                 if not technique.startswith("!"):
                     # Add pedal down marking (as a text comment)
                     text = m21.expressions.TextExpression("$pedal_start")
@@ -221,13 +221,6 @@ def _create_all_measures(score, parts, max_measure, time_sig_map, measure_durati
         # Create part state to track ongoing musical elements
         part_state = PartState()
 
-        # Process time signatures, tempo markings, and key signatures
-        time_sigs = sorted(score.time_signatures, key=lambda ts: ts.time)
-        current_ts = time_sigs[0].time_signature if time_sigs else (4, 4)
-
-        tempos = sorted(score.tempos, key=lambda t: t.time)
-        current_tempo_idx = 0
-
         key_signatures = sorted(
             score.key_signatures, key=lambda ks: (ks.time, ks.measure_number)
         )
@@ -248,8 +241,6 @@ def _create_all_measures(score, parts, max_measure, time_sig_map, measure_durati
             idx,
             key_signatures,
             current_key_sig_idx,
-            tempos,
-            current_tempo_idx,
             first_voice_of_track,
         )
 
@@ -273,8 +264,6 @@ def _create_measures_for_part(
     part_idx,
     key_signatures,
     current_key_sig_idx,
-    tempos,
-    current_tempo_idx,
     first_voice_of_track,
 ):
     """Create and populate measures for a specific part."""
@@ -294,10 +283,6 @@ def _create_measures_for_part(
                 measure, key_signatures, current_key_sig_idx, measure_num, current_ts
             )
 
-            # Add tempo markings if this is the first voice and tempo changes
-            current_tempo_idx = _add_tempo_markings_to_measure(
-                measure, tempos, current_tempo_idx, measure_num
-            )
 
         # Add notes for this voice and measure
         _add_notes_to_measure(
@@ -329,24 +314,6 @@ def _add_key_signatures_to_measure(
         if current_key_sig_idx >= len(key_signatures):
             break
     return current_key_sig_idx
-
-
-def _add_tempo_markings_to_measure(measure, tempos, current_tempo_idx, measure_num):
-    """Add tempo markings to a measure if they occur in this measure."""
-    while (
-        current_tempo_idx < len(tempos)
-        and tempos[current_tempo_idx].measure_number == measure_num
-        and tempos[current_tempo_idx].beat == 1.0
-    ):
-        tempo = tempos[current_tempo_idx]
-        m21_tempo = m21.tempo.MetronomeMark(
-            number=tempo.tempo, referent=m21.note.Note(type="quarter")
-        )
-        measure.insert(0, m21_tempo)
-        current_tempo_idx += 1
-        if current_tempo_idx >= len(tempos):
-            break
-    return current_tempo_idx
 
 
 def _add_notes_to_measure(
@@ -388,7 +355,7 @@ def _add_note_to_measure(
 ):
     """Create and add a music21 note object to a measure."""
     # Convert duration to fraction
-    duration = _to_fraction(note.duration, current_ts)
+    duration = to_quarter_fraction(note.duration, current_ts)
 
     # Create note or rest
     if note.is_silence:
@@ -427,7 +394,8 @@ def _add_note_to_measure(
 
     # Insert note at the correct offset
     offset = _get_offset(note.beat, current_ts)
-    measure.insert(offset, m21_note)
+    if m21_note.duration.quarterLength != 0:
+        measure.insert(offset, m21_note)
 
     # Add text comment if present
     if note.text_comment is not None:
@@ -469,14 +437,16 @@ def _init_m21_score(score):
 
     # Create a dictionary to store parts by voice name
     parts = {}
+    
 
+    # Add instrument to part
+    #instrument = score.instruments[0]
+
+    
     # Create instruments and parts
-    for instrument in score.instruments:
+    for idx, instrument in enumerate(score.instruments):
         # Create a part for each voice
-        part = m21.stream.Part()
-        # part.id = instrument.track_name
-
-        # Add instrument to part
+        part = m21.stream.PartStaff()
         m21_instrument = m21.instrument.Instrument()
         m21_instrument.midiProgram = (
             instrument.gm_number - 1
@@ -505,6 +475,37 @@ def _init_m21_score(score):
             part.append(voice)
         # Add part to score
         m21_score.insert(0, part)
+
+    # Group instruments by staff_group
+    staff_group_map = {}
+    for idx, instrument in enumerate(score.instruments):
+        if instrument.staff_group is None:
+            continue
+        if instrument.staff_group not in staff_group_map:
+            staff_group_map[instrument.staff_group] = []
+        staff_group_map[instrument.staff_group].append(idx)
+    
+    # Create staff groups and add them to the score
+    for group_name, part_indices in staff_group_map.items():
+        if not part_indices:
+            continue
+        
+        # Get the parts that belong to this group
+        group_parts = []
+        for idx in part_indices:
+            if idx < len(m21_score.parts):
+                group_parts.append(m21_score.parts[idx])
+        
+        if group_parts:
+            # Create a staff group with appropriate symbol (brace for piano/keyboard, bracket for others)
+            symbol = "brace" if len(group_parts) == 2 else "bracket"
+            staff_group = m21.layout.StaffGroup(
+                group_parts, 
+                name=f"Group {group_name}", 
+                symbol=symbol,
+                barTogether=True
+            )
+            m21_score.insert(0, staff_group)
 
     return m21_score, parts
 
@@ -686,49 +687,8 @@ def _write_comment(measure, beat, key=None, chord=None, current_ts=None):
 
 
 def _get_offset(beat, current_ts):
-    return _to_beat_fraction(beat - 1.0, current_ts)
-
-
-def _to_beat_fraction(beat, current_ts):
-    ratio_beat = Fraction(4, current_ts[1])
-    if beat == int(beat):
-        return int(beat) * ratio_beat
-    else:
-        fractional_part = beat - int(beat)
-        fraction = _to_fraction(fractional_part, (4, 4))
-        return (int(beat) + fraction) * ratio_beat
-
-
-def _to_fraction(duration, current_ts):
-    """Convert a float duration to a Fraction for better MusicXML representation."""
-    # Handle common durations
-    threshold = 0.015
-    ratio_beat = Fraction(4, current_ts[1])
-    if abs(duration - 0.25) < threshold:
-        return 0.25 * ratio_beat  # Sixteenth note
-    elif abs(duration - 0.5) < threshold:
-        return 0.5 * ratio_beat  # Eighth note
-    elif abs(duration - 0.75) < threshold:
-        return 0.75 * ratio_beat  # Dotted eighth note
-    elif abs(duration - 1.0) < threshold:
-        return 1.0 * ratio_beat  # Quarter note
-    elif abs(duration - 1.5) < threshold:
-        return 1.5 * ratio_beat  # Dotted quarter note
-    elif abs(duration - 2.0) < threshold:
-        return 2.0 * ratio_beat  # Half note
-    elif abs(duration - 3.0) < threshold:
-        return 3.0 * ratio_beat  # Dotted half note
-    elif abs(duration - 4.0) < threshold:
-        return 4.0 * ratio_beat  # Whole note
-
-    # For triplets and other complex rhythms
-    if abs(duration - 1 / 3) < threshold:
-        return Fraction(1, 3) * ratio_beat
-    elif abs(duration - 2 / 3) < threshold:
-        return Fraction(2, 3) * ratio_beat
-
-    # For other durations, convert to fraction
-    return Fraction(duration).limit_denominator(64) * ratio_beat
+    offset = to_quarter_fraction(beat - 1.0, current_ts)
+    return offset
 
 
 def _create_technique(technique):

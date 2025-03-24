@@ -4,15 +4,6 @@ dotenv.load_dotenv()
 import argparse
 
 from harmonics import HarmonicsParser
-from harmonics.commons import to_audio
-
-file = "data/bach_1.erntxt"
-
-text2 = """
-Time Signature: 4/4
-Form: Ternary
-m1   b1 d: I
-"""
 
 
 if __name__ == "__main__":
@@ -34,11 +25,6 @@ if __name__ == "__main__":
     output_file = args.output
     parser = HarmonicsParser()
 
-    # tree = parser.parse(text)
-    # melody = tree.melody
-    # print(tree)
-    # print(melody)
-
     output_type = output_file.split(".")[-1]
     input_type = file.split(".")[-1]
     if input_type in ["mxl", "musicxml"]:
@@ -56,5 +42,3 @@ if __name__ == "__main__":
             parser.parse_to_audio(text, output_file)
         else:
             raise ValueError(f"Invalid output type: {output_type}")
-    #   tree = parser.parse_to_mxl(text, "test.mxl")
-    # print(tree)

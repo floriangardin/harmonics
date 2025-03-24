@@ -6,6 +6,7 @@ from .notes_utils import getPitchFromIntervalFromMinimallyModifiedScale
 import harmonics.models as models
 import harmonics.exceptions as exceptions
 import harmonics.commons.utils_techniques as utils_techniques
+from harmonics.commons.utils_beat import to_beat_fraction
 
 from harmonics.score_models import (
     NoteItem,
@@ -143,6 +144,13 @@ def get_data(self) -> ScoreData:
     key_signatures = []
     title = ""
     composer = ""
+    groups = {}
+
+    for line in self.lines:
+        if isinstance(line, models.StaffGroup):
+            groups[line.group_name] = line.track_names
+    # Invert the dict to have a dict of track_name -> group_name
+    groups_inv = {track_name: group_name for group_name, track_names in groups.items() for track_name in track_names}
 
     for line in self.lines:
         if isinstance(line, models.Measure):
@@ -162,12 +170,13 @@ def get_data(self) -> ScoreData:
                     ChordItem(
                         time=beat_start_time + bar_start_time,
                         measure_number=line.measure_number,
-                        beat=beat_item.beat,
+                        beat=to_beat_fraction(beat_item.beat),
                         duration=duration,
                         chord=beat_item.chord,
                         time_signature=current_time_signature,
                         key=current_key,
                         new_key=beat_item.key is not None,
+                        line_number=line.line_number,
                     )
                 )
             current_time_signature = next_current_time_signature
@@ -197,6 +206,7 @@ def get_data(self) -> ScoreData:
                         track_index=track_index,
                         gm_number=instrument.gm_number,
                         name=instrument.name,
+                        staff_group=groups_inv.get(instrument.track_name, None),
                     )
                 )
         elif isinstance(line, models.Tempo):
@@ -338,7 +348,7 @@ class ScoreDocument(BaseModel):
                             chord="NC",
                             time_signature=current_time_signature,
                             key=None,
-                            beat=note.beat,
+                            beat=to_beat_fraction(note.beat),
                             measure_number=line.measure_number,
                         )
 
@@ -361,7 +371,7 @@ class ScoreDocument(BaseModel):
                             techniques=note.techniques,
                             global_techniques=global_techniques,
                             measure_number=line.measure_number,
-                            beat=note.beat,
+                            beat=to_beat_fraction(note.beat),
                             text_comment=note.text_comment,
                         )
                     )
@@ -370,7 +380,7 @@ class ScoreDocument(BaseModel):
                         bar_notes[i].duration = (
                             bar_notes[i + 1].beat - bar_notes[i].beat
                         )
-                    bar_notes[-1].duration = (
+                    bar_notes[-1].duration = to_beat_fraction(
                         bar_duration_in_beats(current_time_signature)
                         - bar_notes[-1].beat
                         + 1
@@ -384,6 +394,19 @@ class ScoreDocument(BaseModel):
         results = []
         bar_start_time = 0  # In quarter (not in beat !)
         measure_map = get_measure_map(self.lines)
+        # Add first tempo to events
+        first_tempo = self.data.tempos[0] if len(self.data.tempos) > 0 else None
+        if first_tempo is not None:
+            results.append(
+                EventItem(
+                    time=first_tempo.time,
+                measure_number=first_tempo.measure_number,
+                beat=1.0,
+                event_type="tempo",
+                    event_value=first_tempo.tempo,
+                )
+            )
+
         for line in self.lines:
             if isinstance(line, models.Events):
                 bar_start_time, bar_end_time, current_time_signature = measure_map[
@@ -399,7 +422,7 @@ class ScoreDocument(BaseModel):
                         EventItem(
                             time=time,
                             measure_number=event.measure_number,
-                            beat=event.beat,
+                            beat=to_beat_fraction(event.beat),
                             event_type=event.event_type,
                             event_value=event.event_value,
                         )
@@ -514,7 +537,7 @@ class ScoreDocument(BaseModel):
                         clef_name=line.clef_type.name,
                         octave_change=line.clef_type.octave_change,
                         measure_number=line.measure_number,
-                        beat=line.beat,
+                        beat=to_beat_fraction(line.beat),
                     )
                 )
 
