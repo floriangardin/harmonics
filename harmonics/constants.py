@@ -454,3 +454,39 @@ ALL_INSTRUMENTS = [
     APPLAUSE,
     GUNSHOT,
 ]
+
+
+TECHNIQUE_DICT = {
+    ".": ["staccato"],
+    "!": ["staccatissimo"],
+    "-": ["tenuto"],
+    "^": ["marcato"],
+    ">": ["accent"],
+    "_": ["slur", "legato"],
+    "tr": ["trill"],
+    "~": ["turn"],
+    "i~": ["inverted_turn"],
+    "/~": ["mordent"],
+    "i/~": ["inverted_mordent"],
+    "*": ["pedal", "ped", "ped.", "pedal."],
+}
+
+POST_TECHNIQUE_DICT = {}
+for k, v in TECHNIQUE_DICT.items():
+    for tech in v:
+        POST_TECHNIQUE_DICT[tech] = k
+
+END_PLAYING_STYLE_DICT = {
+    "*": "!pedal",
+    "_": "!slur",
+}
+# Pre technique dict
+PRE_TECHNIQUE_DICT = {
+    "!legato": "_",
+    "!slur": "_",
+    "!pedal.": "*",
+    "!ped": "*",
+    "!pedal.": "*",
+    "!pedal": "*",
+    "!ped": "*",
+}

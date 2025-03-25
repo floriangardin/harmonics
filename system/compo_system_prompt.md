@@ -109,165 +109,139 @@ All event functions have arguments.
 ---
 
 ### Full EBNF Grammar
-
 ?start: document
 
-document: (NEWLINE)* line*
-line: metadata_line
-     | statement_line
-
-metadata_line: composer_line
-             | title_line
-             | time_signature_line
-             | tempo_line
-             | instrument_line
-             | clef_line
-             | groups_line
-             
-
-composer_line: "Composer:" WS REST_LINE NEWLINE
-title_line: "Piece:" WS REST_LINE NEWLINE
-time_signature_line: ( "(" WS*  "m" MEASURE_NUMBER WS* ")" WS*)? "Time Signature" WS* ":" WS* time_signature NEWLINE
-tempo_line: "Tempo:" WS* TEMPO_NUMBER NEWLINE  // Tempo number in QPM
-instrument_line: "Instrument:" WS TRACK_NAME WS* "=" WS* GM_INSTRUMENT_NAME ("," WS* TRACK_NAME WS* "=" WS* GM_INSTRUMENT_NAME)* NEWLINE
-clef_line: ( "(" WS*  "m" MEASURE_NUMBER WS* ")" WS*)? "Clef:" WS+ TRACK_NAME WS* "=" WS* clef_type NEWLINE
-key_signature_line: ( "(" WS*  "m" MEASURE_NUMBER WS* ")" WS*)? "Signature:" WS+ key_signature NEWLINE
-// To group tracks together (For example for a piano score)
-groups_line: "Groups:" WS+ GROUP_NAME WS* "=" WS* "[" WS* TRACK_NAME ("," WS* TRACK_NAME)* WS* "]" NEWLINE
-GROUP_NAME: /[a-zA-Z_][a-zA-Z0-9_]+/
+// ======== TERMINAL DEFINITIONS ========
 
 TRACK_NAME: "T" DIGIT+
-// Potentially multiple voices per track (a voice is not necessarily monophonic though)
 VOICE_NAME: "v" DIGIT+
 GM_INSTRUMENT_NAME: /[a-zA-Z_1-9]+/
+GROUP_NAME: /[a-zA-Z_][a-zA-Z0-9_]+/
 TEMPO_NUMBER: DIGIT+
-key_signature: ACCIDENTAL*
-
-statement_line: measure_line
-              | note_line
-              | melody_line
-              | event_line
-              | variable_declaration_line
-              | technique_line
-              | clef_change_line
-              | key_signature_line
-
-technique_line: "tech" WS (voice_list_for_technique | single_voice_for_technique) WS+ measure_range_with_beats WS* ":" WS* technique_list NEWLINE
-voice_list_for_technique: "[" WS* TRACK_NAME ("," WS* TRACK_NAME)* WS* "]"
-single_voice_for_technique: TRACK_NAME
-measure_range_with_beats: "(" MEASURE_INDICATOR WS+ BEAT_INDICATOR WS+ "-" WS MEASURE_INDICATOR WS+ BEAT_INDICATOR ")"
-technique_list: TECHNIQUE_NAME ("," WS* TECHNIQUE_NAME)*
-// Example : "[ped]" or "[!ped,fff]"
 TECHNIQUE_NAME: STOP_TECHNIQUE? /[a-zA-Z_][a-zA-Z0-9_]*/
-
-variable_declaration_line: VARIABLE_NAME WS* "=" WS* variable_content NEWLINE
-variable_content: ( melody_line_content | measure_line_content)
-VARIABLE_NAME: /[_a-zA-Z][_a-zA-Z0-9]*/
-VARIABLE_VALUE: REST_LINE
-VARIABLE_CALLING: "@" VARIABLE_NAME
-
-event_line: "e" MEASURE_NUMBER WS* event_content+ NEWLINE
-event_content: BEAT_INDICATOR WS* EVENT_FUNCTION_NAME + "(" + EVENT_ARGUMENT + ")"
+STOP_TECHNIQUE: "!" 
 EVENT_FUNCTION_NAME: "tempo" | "velocity" | "start_crescendo" | "end_crescendo" | "start_diminuendo" | "end_diminuendo" | "start_accelerando" | "end_accelerando" | "start_ritardando" | "end_ritardando"
 EVENT_ARGUMENT: TEMPO_NUMBER | VELOCITY_VALUE
-VELOCITY_VALUE: "pppp" | "ppp" | "pp" | "p" | "mp" | "mf" | "f" | "ff" | "fff" | "ffff"
-
-measure_line: MEASURE_INDICATOR (measure_line_content|VARIABLE_CALLING) NEWLINE
-measure_line_content: (chord_beat_1)? (beat_chord | key_change)* PHRASE_BOUNDARY?
-chord_beat_1: (WS key)? WS chord
-beat_chord: WS BEAT_INDICATOR (WS key)? WS chord
-key_change: WS key
-key: KEY
-
-
-note: NOTELETTER ACCIDENTAL?
+VELOCITY_VALUE: "ffff" | "fff" | "ff" | "f" | "mf" | "mp" | "p" | "pp" | "ppp" | "pppp"
 NOTELETTER: /[A-Ga-g]/
-
-note_line: "Note:" WS REST_LINE NEWLINE
-
-chord: ( chord_component ( "/" tonality_component )* )
-chord_component: ( special_chord | standard_chord ) chord_alteration*
-tonality_component: [chord_accidental] numeral
-special_chord: SPECIAL_CHORD [ inversion ]
-standard_chord: [ chord_accidental ] numeral [ CHORD_QUALITY ] [ inversion ]
-numeral: ROMAN_NUMERAL
-chord_accidental: ACCIDENTAL
-CHORD_QUALITY: "o" | "+" | "%" | "ø" | "°"
-chord_alteration: "[" alteration_content "]"
-omit_alteration: "no"
-add_alteration: "add"
-alteration_content: (( omit_alteration | add_alteration )? ACCIDENTAL? DIGITS)
-
-voice_list: (ALTERATION? VOICE OCTAVE?)+
+CHORD_QUALITY: "°" | "ø" | "%" | "+" | "o"
 VOICE: /[1-4]/
-// Delta octave
 OCTAVE: "o" SIGNED_INT 
-// Delta alteration (semitones)
 ALTERATION: ("+" | "-")+
-
-melody_line: MEASURE_INDICATOR (WS+ TRACK_NAME ("." VOICE_NAME)? )? (melody_line_content | VARIABLE_CALLING) NEWLINE
-melody_line_content: (first_beat_note)? (beat_note)*
-first_beat_note: WS+ (BEAT_INDICATOR WS+)? (TEXT_COMMENT WS+)? (absolute_note+ | SILENCE | CONTINUATION | voice_list) note_techniques?
-beat_note: WS+ BEAT_INDICATOR WS (TEXT_COMMENT WS+)? (absolute_note+ | SILENCE | CONTINUATION | voice_list) note_techniques?
-note_techniques: "[" WS* TECHNIQUE_NAME ("," WS* TECHNIQUE_NAME)* WS* "]"
-TEXT_COMMENT: "\"" /[^"]+/ "\""
-// For example to stop the crescendo (!crescendo)
-STOP_TECHNIQUE: "!" 
-SILENCE: "r" | "R"
+SILENCE: "R" | "r"
 CONTINUATION: "L" | "l"
-absolute_note: END_TIE? NOTELETTER_CAPITALIZED (ACCIDENTAL)? ABSOLUTE_OCTAVE (PLAYING_STYLE)*
 NOTELETTER_CAPITALIZED: /[A-G]/
 ABSOLUTE_OCTAVE: DIGIT+
-PLAYING_STYLE: STACCATO | STACCATISSIMO | TENUTO | MARCATO | ACCENT | START_TIE | TREMOLO | TURN | INVERTED_TURN | MORDENT | INVERTED_MORDENT
+PLAYING_STYLE: STACCATISSIMO | STACCATO | MARCATO | ACCENT | TENUTO | START_TIE | TREMOLO | TURN | INVERTED_TURN | MORDENT | INVERTED_MORDENT
 STACCATO: "."
 STACCATISSIMO: "!"
 TENUTO: "-"
 MARCATO: "^"
 ACCENT: ">"
 START_TIE: "_"
+END_PLAYING_STYLE: END_TIE | END_PEDAL
 END_TIE: "_"
+END_PEDAL: "*"
 TREMOLO: "tr"
 TURN: "~"
 INVERTED_TURN: "i~"
 MORDENT: "/~"
 INVERTED_MORDENT: "i/~"
-
 MEASURE_INDICATOR: "m" MEASURE_NUMBER
 MEASURE_NUMBER: DIGIT+ (LETTER+ | "var" DIGIT+)? 
 BEAT_INDICATOR: "b" BEAT_NUMBER
 BEAT_NUMBER: DIGIT+ ("." DIGIT+)?
+SIGNED_INT: ("+"|"-")? DIGIT+
+KEY: /[A-Ga-g](#{1,}|b{1,})?:/
+ROMAN_NUMERAL: "Ger" | "Fr" | "It" | "Cad" | "NC" | "N" | "R" | "r" |"VII" | "III" | "IV" | "VI" | "II" | "V" | "It" | "I"
+             | "vii" | "iii" | "iv" | "vi" | "ii" | "v" | "i"
+ACCIDENTAL: /#{1,}|b{1,}/
+INVERSION_STANDARD: "6/4" | "6/3" | "65" | "6/5" | "4/3" | "4/2" | "42" | "43" | "64" | "13" | "11" | "9" | "7" | "6" | "2"
+DIGIT: /[0-9]/
+DIGITS: DIGIT+
+LETTER: /[a-z]+/
+REST_LINE: /.+/
+PHRASE_BOUNDARY: "||"
+CLEF_NAME: "mezzo-soprano" | "treble8vb" | "bass8vb" | "treble" | "soprano" | "baritone" | "sub-bass" | "french" | "tenor" | "alto" | "bass" | "G" | "F" | "C"
+CLEF_OCTAVE_CHANGE: ("+" | "-") DIGIT+
+TEXT_COMMENT: "\"" /[^"]+/ "\""
+
+// ======== NON-TERMINAL RULES ========
+
+document: (line NEWLINE)*
+line: composer_line
+             | title_line
+             | time_signature_line
+             | tempo_line
+             | instrument_line
+             | clef_line
+             | groups_line
+             | measure_line
+             | COMMENT
+             | melody_line
+             | event_line
+             | technique_line
+             | clef_change_line
+             | key_signature_line
+             
+composer_line: "Composer:" REST_LINE
+title_line: "Piece:" REST_LINE
+time_signature_line: ( "(" "m" MEASURE_NUMBER ")" )? "Time Signature" ":" time_signature
+tempo_line: "Tempo:" TEMPO_NUMBER  // Tempo number in QPM
+instrument_line: "Instrument:" TRACK_NAME "=" GM_INSTRUMENT_NAME ("," TRACK_NAME "=" GM_INSTRUMENT_NAME)*
+clef_line: ( "(" "m" MEASURE_NUMBER ")" )? "Clef:" TRACK_NAME "=" clef_type
+key_signature_line: ( "(" "m" MEASURE_NUMBER ")" )? "Signature:" key_signature
+// To group tracks together (For example for a piano score)
+groups_line: "Groups:" GROUP_NAME "=" "[" TRACK_NAME ("," TRACK_NAME)* "]"
+key_signature: ACCIDENTAL*
+
+technique_line: "tech" (voice_list_for_technique | single_voice_for_technique) measure_range_with_beats ":" technique_list
+voice_list_for_technique: "[" TRACK_NAME ("," TRACK_NAME)* "]"
+single_voice_for_technique: TRACK_NAME
+measure_range_with_beats: "(" MEASURE_INDICATOR BEAT_INDICATOR "-" MEASURE_INDICATOR BEAT_INDICATOR ")"
+technique_list: TECHNIQUE_NAME ("," TECHNIQUE_NAME)*
+
+event_line: "e" MEASURE_NUMBER event_content+
+event_content: BEAT_INDICATOR EVENT_FUNCTION_NAME "(" EVENT_ARGUMENT ")"
+
+measure_line: MEASURE_INDICATOR measure_line_content
+measure_line_content: (beat_chord | key_change)+ PHRASE_BOUNDARY?
+beat_chord: BEAT_INDICATOR key? chord
+key_change: key
+key: KEY
+
+note: NOTELETTER ACCIDENTAL?
+
+COMMENT: ("Note:" | "//" ) REST_LINE
+
+chord: chord_component ( "/" tonality_component )*
+chord_component: standard_chord chord_alteration*
+tonality_component: chord_accidental? numeral
+standard_chord: chord_accidental? numeral CHORD_QUALITY? inversion?
+numeral: ROMAN_NUMERAL
+chord_accidental: ACCIDENTAL
+chord_alteration: "[" alteration_content "]"
+omit_alteration: "no"
+add_alteration: "add"
+alteration_content: (omit_alteration | add_alteration)? ACCIDENTAL? DIGITS
+
+voice_list: (ALTERATION? VOICE OCTAVE?)+
+
+melody_line: MEASURE_INDICATOR (TRACK_NAME ("." VOICE_NAME)? )? melody_line_content
+melody_line_content: beat_note+
+beat_note: BEAT_INDICATOR TEXT_COMMENT? (absolute_note+ | SILENCE | CONTINUATION | voice_list) note_techniques?
+note_techniques: "[" TECHNIQUE_NAME ("," TECHNIQUE_NAME)* "]"
+absolute_note: END_PLAYING_STYLE? NOTELETTER_CAPITALIZED ACCIDENTAL? ABSOLUTE_OCTAVE PLAYING_STYLE*
 
 time_signature: numerator "/" denominator
 numerator: DIGIT+
 denominator: DIGIT+
-SIGNED_INT: ("+"|"-")? DIGIT+
-
-KEY: /[A-Ga-g](#{1,}|b{1,})?:/
-SPECIAL_CHORD: "Ger" | "It" | "Fr" | "N" | "Cad" | "NC" | "R" | "r"
-ROMAN_NUMERAL: "I" | "II" | "III" | "IV" | "V" | "VI" | "VII"
-             | "i" | "ii" | "iii" | "iv" | "v" | "vi" | "vii"
-ACCIDENTAL: /#{1,}|b{1,}/
 
 inversion: INVERSION_STANDARD | inversion_free
-INVERSION_STANDARD: "6" | "64" | "6/3" | "6/4" | "7" | "6/5" | "65" | "4/3" | "43" | "2" | "42" | "4/2" | "9" | "11" | "13"
 inversion_free: ACCIDENTAL? DIGIT+
 
-DIGIT: /[0-9]/
-DIGITS: DIGIT+
-LETTER: /[a-z]+/
-
-REST_LINE: /.+/
-PHRASE_BOUNDARY: WS "||" WS?
-
-clef_change_line: MEASURE_INDICATOR (WS+ TRACK_NAME)? WS+ BEAT_INDICATOR WS+ "clef" WS+ clef_type NEWLINE
-clef_type: CLEF_NAME (WS* CLEF_OCTAVE_CHANGE)?
-CLEF_NAME: "treble" | "bass" | "alto" | "tenor" | "soprano" | "mezzo-soprano" | "baritone" | "sub-bass" | "french" | "G" | "F" | "C" | "treble8vb" | "bass8vb"
-CLEF_OCTAVE_CHANGE: ("+" | "-") DIGIT+
-
-WS: (" " | /\t/)+
-CR: /\r/
-LF: /\n/
-NEWLINE: WS* (CR? LF)+
+clef_change_line: MEASURE_INDICATOR TRACK_NAME? BEAT_INDICATOR "clef" clef_type
+clef_type: CLEF_NAME CLEF_OCTAVE_CHANGE?
 
 ### Composition Guidelines
 
@@ -432,4 +406,84 @@ e2 b1 tempo(75)
 m2 b1 i
 m2 T1 b1 E4 b1.33 B4 b1.66 Bb4 [mf] b2 F4
 m2 T2 b1 C4 [!crescendo] b2 C4 [f] b3 C4 b4 C4
+```
+
+**Example 4: A more complex example : Chopin Nocturne**
+
+```ern
+Composer: Frederic Chopin
+Piece: Nocturne in E minor, Op. 9, No. 2
+Time Signature: 3/4
+Signature: #
+Tempo: 60
+Instrument: T1=piano, T2=piano
+Groups: piano=[T1, T2]
+Clef: T1=treble
+Clef: T2=bass
+
+e1 b1 tempo(60)
+
+m1 b1 e: i b3 V7/iv
+m1 T1.v1 b1 "dolce e legato" B4_* b1.5 E5 [crescendo,mp] b2 G5 b2.5 _B5 b3 G#5./~ [!crescendo] b3.5 B5. [f]
+m1 T2.v1 b1 B2* b1.75 E3 b2 G3 b2.25 B3 b2.5 E4 b3 E2 b3.5 B2 b3.75 D3
+
+m2 b1 iv b3 V
+m2 T1.v1 b1 A5 [f] b1.5 C6 b2 A5 [diminuendo] b2.25 F5 b2.5 E5 [!diminuendo] b3 F#5~ [crescendo,p] b3.5 B5 [!crescendo]
+m2 T2.v1 b1 A2 b1.5 E3 b1.67 A3 b1.75 C4 b2 A3 b2.25 C4 b2.5 E4 b3 B2 b3.33 F#3 b3.67 B3
+
+m3 b1 i b3 VI
+m3 T1.v1 b1 *G5* [mf] b1.5 B5 b1.75 C6 b2 E5 b2.5 G5 b3 E5 [diminuendo] b3.5 C5 [!diminuendo]
+m3 T2.v1 b1 *E3* b1.5 B3 b1.67 E4 b1.83 G4 b2 B3 b2.25 E4 b2.5 G4 b3 C3 b3.33 G3 b3.67 C4 b3.83 E4
+
+m4 b1 iv6 b2 V b3 i
+m4 T1.v1 b1 *A5* [p] b1.5 E5 b1.83 A5 b2 D#5 [crescendo] b2.5 F#5 [!crescendo] b3 B4 [trill,mf] b3.25 A4 b3.5 B4 b3.83 C5 [diminuendo,!diminuendo]
+m4 T2.v1 b1 *C3* b1.33 A3 b1.67 E4 b2 B2 b2.33 F#3 b2.67 D#4 b3 E3 b3.33 B3 b3.67 G4
+
+m5 b1 i b3 V43/VI
+m5 T1.v1 b1 E5* [mf] b1.5 G5 b1.83 B5 b2 B5 [crescendo] b2.5 E6 [!crescendo] b3 F5 [f] b3.33 D5 b3.5 G5 b3.67 F5
+m5 T2.v1 b1 E3* b1.33 B3 b1.67 E4 b2 G4 b2.25 B4 b2.5 E4 b3 D3 b3.33 B3 b3.67 F4 b3.83 G4
+
+m6 b1 VI b2 iiø65 b3 V7
+m6 T1.v1 b1 *E5* [diminuendo,f] b1.5 G5 b1.75 C6 [!diminuendo] b2 F#5/~ [mf] b2.25 G5 b2.5 E5 b3 D#5 [crescendo] b3.33 E5 b3.5 F#5 b3.75 A5 [!crescendo]
+m6 T2.v1 b1 *C3* b1.33 G3 b1.67 C4 b1.83 E4 b2 A2 b2.33 C3 b2.67 F#3 b2.83 A3 b3 B2 b3.33 F#3 b3.5 A3 b3.75 D#4
+
+m7 b1 i b3 V65/iv
+m7 T1.v1 b1 *E5* [p] b1.33 D5 b1.5 B4 b1.83 C5 b2 G4~ [crescendo] b2.25 A4 b2.5 E5 [!crescendo] b3 D5 [f] b3.33 C5 b3.5 B4 b3.75 D5
+m7 T2.v1 b1 *E2* b1.33 B2 b1.67 E3 b2 G3 b2.33 E3 b2.5 B3 b2.75 G4 b3 G#2 b3.33 E3 b3.67 B3 b3.83 D4
+
+m8 b1 iv b2 V7 b3 V
+m8 T1.v1 b1 *C5* [mp] b1.25 D5 b1.5 A4 b1.83 C5 b2 A4 b2.25 G4 b2.5 F#4 b3 B4 b3.08 C5 b3.17 D#5 b3.25 E5 b3.33 F#5 b3.42 G5 b3.5 F#5 b3.58 E5 b3.67 D#5 b3.75 C#5 b3.83 B4 b3.92 A4
+m8 T2.v1 b1 *A2* b1.33 E3 b1.67 A3 b1.83 C4 b2 B2 b2.33 F#3 b2.67 A3 b2.83 C4 b3 B2 b3.33 F#3 b3.5 B3 b3.67 D#4 b3.83 L
+
+m9 b1 i b2 viio7/V b3 V
+m9 T1.v1 b1 "con agitazione e passione" *B4* [diminuendo,f] b1.33 E5 b1.5 G5 b1.83 B5 [!diminuendo] b2 C#5>^ [crescendo,mp] b2.25 E5 b2.5 G4 b2.83 B4 [!crescendo] b3 B4 [f] b3.25 D#5 b3.5 F#5 b3.75 A5
+m9 T2.v1 b1 *E3* b1.25 B3 b1.5 G4 b1.75 B4 b2 A#2 b2.25 E3 b2.5 G3 b2.75 C#4 b3 B2 b3.25 F#3 b3.5 D#4 b3.75 F#4
+
+m10 b1 viio7/iv b2 iv b3 viio43
+m10 T1.v1 b1 *B4* [diminuendo,mf] b1.25 A4 b1.5 F4 b1.75 D5 [!diminuendo] b2 A4> [crescendo,mp] b2.25 C5 b2.5 E5 b2.83 A5 [!crescendo] b3 F#4 [diminuendo,f] b3.25 A4 b3.5 D#5 b3.67 C5 b3.83 F#5 [!diminuendo]
+m10 T2.v1 b1 *G#3* b1.25 B3 b1.5 D4 b1.75 F4 b2 A3 b2.25 E4 b2.5 C4 b2.75 A4 b3 A3 b3.25 C4 b3.5 F#4 b3.75 D#5
+
+m11 b1 i6 b2 viio65/V b3 viio7/vi
+m11 T1.v1 b1 *G4* [crescendo,mp] b1.25 F#4 b1.5 B4 b1.83 E5 [!crescendo] b2 G4~ [mf] b2.25 F#4 b2.5 E5 b2.75 G5 b3 D#5> [crescendo] b3.25 C#5 b3.5 F#5 b3.67 A5 b3.83 D#6 [!crescendo]
+m11 T2.v1 b1 *G3* b1.25 B3 b1.5 E4 b1.75 B3 b2 C#3 b2.25 G3 b2.5 E4 b2.75 A#3 b3 B#2 b3.25 A3 b3.5 F#4 b3.75 D#5
+
+m12 b1 VI b2 Fr6 b3 V7
+m12 T1.v1 b1 *G5* [diminuendo,ff] b1.33 A5 b1.5 C6 b1.83 G6 [!diminuendo] b2 F#5 [f] b2.25 G5 b2.5 A#5 b2.75 C6 b3 F#5 [diminuendo] b3.25 E5 b3.5 A4 b3.67 C5 b3.83 F#5 [!diminuendo]
+m12 T2.v1 b1 *C3* b1.25 G3 b1.5 E4 b1.75 G4 b2 C3 b2.25 F#4 b2.5 A#4 b2.75 E5 b3 B2 b3.25 F#3 b3.5 D#4 b3.75 A4
+
+m13 b1 i b2 V7/III b3 III
+m13 T1.v1 b1 *E5* [diminuendo,mp] b1.25 D5 b1.5 B4 b1.83 E5 [!diminuendo] b2 F#5> [crescendo,p] b2.25 E5 b2.5 A4 b2.83 C5 [!crescendo,pp] b3 D5 b3.25 C5 b3.5 B4 b3.67 G4 b3.83 D5
+m13 T2.v1 b1 *E3* b1.25 G3 b1.5 B3 b1.75 G4 b2 D3 b2.25 A3 b2.5 C4 b2.75 F#4 b3 G3 b3.25 D4 b3.5 B3 b3.75 G4
+
+m14 b1 viio7/v b2 v b3 viio7
+m14 T1.v1 b1 *C#5* [diminuendo,mf] b1.25 B4 b1.5 G4 b1.83 E5 [!diminuendo] b2 D5> [crescendo,p] b2.25 B4 b2.5 F#4 b2.83 D5 [!crescendo] b3 C5 [diminuendo,mp] b3.25 A4 b3.5 F#4 b3.67 A4 b3.83 C5 [!diminuendo]
+m14 T2.v1 b1 *A#2* b1.25 G3 b1.5 E3 b1.75 G3 b2 B2 b2.25 F#3 b2.5 D4 b2.75 F#4 b3 D#3 b3.25 A3 b3.5 C4 b3.75 F#4
+
+m15 b1 i b2 iiø65 b3 V7
+m15 T1.v1 b1 *B4* [crescendo,p] b1.25 C5 b1.5 G4 b1.83 B4 [!crescendo] b2 C5/~ [mp] b2.25 B4 b2.5 F#4 b2.83 C5 b3 A4 [crescendo] b3.25 B4 b3.5 D#4 b3.67 F#4 b3.83 A4 [!crescendo]
+m15 T2.v1 b1 *E3* b1.25 G3 b1.5 B3 b1.75 G4 b2 A2 b2.25 E3 b2.5 C4 b2.75 F#4 b3 B2 b3.25 F#3 b3.5 A3 b3.75 D#4
+
+m16 b1 V7 b2 viio7/i b3 V7
+m16 T1.v1 b1 *A4* [mf] b1.25 G#4 b1.5 F#4 b1.83 A4 b2 A4 [trill,crescendo] b2.25 B4 b2.5 C5 b2.83 A4 [!crescendo] b3 A4 [f] b3.08 B4 b3.17 C5 b3.25 D5 b3.33 E5 b3.42 F#5 b3.5 G5 b3.58 A5 b3.67 G5 b3.75 F#5 b3.83 E5 b3.92 C5
+m16 T2.v1 b1 *B2* b1.25 F#3 b1.5 D#4 b1.75 A4 b2 D#3 b2.25 F#3 b2.5 A3 b2.75 C4 b3 B2 b3.25 F#3 b3.5 D#4 b3.75 A4
 ```

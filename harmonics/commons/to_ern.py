@@ -1,4 +1,5 @@
 from .utils_beat import beat_to_ern
+from harmonics.constants import TECHNIQUE_DICT, POST_TECHNIQUE_DICT, PRE_TECHNIQUE_DICT
 
 
 def to_ern(filepath, score):
@@ -267,14 +268,14 @@ def _generate_clef_changes(measure_number, clef_items):
             else:
                 formatted_clef += f"{clef_item.octave_change}"
 
-        if beat == 1.0:
-            # Beginning of measure clef change
-            lines.append(f"(m{measure_number}) Clef: {track_name}={formatted_clef}")
-        else:
-            # Mid-measure clef change
-            lines.append(
-                f"m{measure_number} {track_name} {beat_to_ern(beat)} clef {formatted_clef}"
-            )
+        # if beat == 1.0:
+        # Beginning of measure clef change
+        lines.append(f"(m{measure_number}) Clef: {track_name}={formatted_clef}")
+        # else:
+        #     # Mid-measure clef change
+        #     lines.append(
+        #         f"m{measure_number} {track_name} {beat_to_ern(beat)} clef {formatted_clef}"
+        #     )
 
     return lines
 
@@ -374,6 +375,17 @@ def _generate_melody_line(measure_number, track_name, voice_name, notes):
         melody_line = f"m{measure_number} {track_name}.{voice_name}"
 
     for note in notes:
+        techniques = list(note.techniques)
+        post_technics = ""
+        pre_technics = ""
+        for tech in list(techniques):
+            if tech in POST_TECHNIQUE_DICT:
+                post_technics += POST_TECHNIQUE_DICT[tech]
+                techniques.remove(tech)
+            elif tech in PRE_TECHNIQUE_DICT:
+                pre_technics += PRE_TECHNIQUE_DICT[tech]
+                techniques.remove(tech)
+
         text_comment = (
             '"' + note.text_comment + '" ' if note.text_comment is not None else ""
         )
@@ -386,13 +398,13 @@ def _generate_melody_line(measure_number, track_name, voice_name, notes):
         elif isinstance(note.pitch, list):
             # Handle chord
             pitches = " ".join(note.pitch)
-            melody_line += f" {beat_to_ern(note.beat)} {text_comment}{pitches}"
+            melody_line += f" {beat_to_ern(note.beat)} {text_comment}{pre_technics}{pitches}{post_technics}"
         elif note.pitch:
-            melody_line += f" {beat_to_ern(note.beat)} {text_comment}{note.pitch}"
+            melody_line += f" {beat_to_ern(note.beat)} {text_comment}{pre_technics}{note.pitch}{post_technics}"
 
         # Add techniques
-        if note.techniques:
-            melody_line += f" [{','.join(note.techniques)}]"
+        if techniques:
+            melody_line += f" [{','.join(techniques)}]"
 
     lines.append(melody_line)
 

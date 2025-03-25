@@ -1,0 +1,166 @@
+?start: document
+
+document: (NEWLINE)* line*
+line: metadata_line
+     | statement_line
+
+metadata_line: composer_line
+             | title_line
+             | time_signature_line
+             | tempo_line
+             | instrument_line
+             | clef_line
+             | groups_line
+             
+
+composer_line: "Composer:" WS REST_LINE NEWLINE
+title_line: "Piece:" WS REST_LINE NEWLINE
+time_signature_line: ( "(" WS*  "m" MEASURE_NUMBER WS* ")" WS*)? "Time Signature" WS* ":" WS* time_signature NEWLINE
+tempo_line: "Tempo:" WS* TEMPO_NUMBER NEWLINE  // Tempo number in QPM
+instrument_line: "Instrument:" WS TRACK_NAME WS* "=" WS* GM_INSTRUMENT_NAME ("," WS* TRACK_NAME WS* "=" WS* GM_INSTRUMENT_NAME)* NEWLINE
+clef_line: ( "(" WS*  "m" MEASURE_NUMBER WS* ")" WS*)? "Clef:" WS+ TRACK_NAME WS* "=" WS* clef_type NEWLINE
+key_signature_line: ( "(" WS*  "m" MEASURE_NUMBER WS* ")" WS*)? "Signature:" WS+ key_signature NEWLINE
+// To group tracks together (For example for a piano score)
+groups_line: "Groups:" WS+ GROUP_NAME WS* "=" WS* "[" WS* TRACK_NAME ("," WS* TRACK_NAME)* WS* "]" NEWLINE
+GROUP_NAME: /[a-zA-Z_][a-zA-Z0-9_]+/
+
+TRACK_NAME: "T" DIGIT+
+// Potentially multiple voices per track (a voice is not necessarily monophonic though)
+VOICE_NAME: "v" DIGIT+
+GM_INSTRUMENT_NAME: /[a-zA-Z_1-9]+/
+TEMPO_NUMBER: DIGIT+
+key_signature: ACCIDENTAL*
+
+statement_line: measure_line
+              | note_line
+              | melody_line
+              | event_line
+              | variable_declaration_line
+              | technique_line
+              | clef_change_line
+              | key_signature_line
+
+technique_line: "tech" WS (voice_list_for_technique | single_voice_for_technique) WS+ measure_range_with_beats WS* ":" WS* technique_list NEWLINE
+voice_list_for_technique: "[" WS* TRACK_NAME ("," WS* TRACK_NAME)* WS* "]"
+single_voice_for_technique: TRACK_NAME
+measure_range_with_beats: "(" MEASURE_INDICATOR WS+ BEAT_INDICATOR WS+ "-" WS MEASURE_INDICATOR WS+ BEAT_INDICATOR ")"
+technique_list: TECHNIQUE_NAME ("," WS* TECHNIQUE_NAME)*
+// Example : "[ped]" or "[!ped,fff]"
+TECHNIQUE_NAME: STOP_TECHNIQUE? /[a-zA-Z_][a-zA-Z0-9_]*/
+
+variable_declaration_line: VARIABLE_NAME WS* "=" WS* variable_content NEWLINE
+variable_content: ( melody_line_content | measure_line_content)
+VARIABLE_NAME: /[_a-zA-Z][_a-zA-Z0-9]*/
+VARIABLE_VALUE: REST_LINE
+VARIABLE_CALLING: "@" VARIABLE_NAME
+
+event_line: "e" MEASURE_NUMBER WS* event_content+ NEWLINE
+event_content: BEAT_INDICATOR WS* EVENT_FUNCTION_NAME + "(" + EVENT_ARGUMENT + ")"
+EVENT_FUNCTION_NAME: "tempo" | "velocity" | "start_crescendo" | "end_crescendo" | "start_diminuendo" | "end_diminuendo" | "start_accelerando" | "end_accelerando" | "start_ritardando" | "end_ritardando"
+EVENT_ARGUMENT: TEMPO_NUMBER | VELOCITY_VALUE
+VELOCITY_VALUE: "pppp" | "ppp" | "pp" | "p" | "mp" | "mf" | "f" | "ff" | "fff" | "ffff"
+
+measure_line: MEASURE_INDICATOR (measure_line_content|VARIABLE_CALLING) NEWLINE
+measure_line_content: (chord_beat_1)? (beat_chord | key_change)* PHRASE_BOUNDARY?
+chord_beat_1: (WS key)? WS chord
+beat_chord: WS BEAT_INDICATOR (WS key)? WS chord
+key_change: WS key
+key: KEY
+
+
+note: NOTELETTER ACCIDENTAL?
+NOTELETTER: /[A-Ga-g]/
+
+note_line: "Note:" WS REST_LINE NEWLINE
+
+chord: ( chord_component ( "/" tonality_component )* )
+chord_component: ( special_chord | standard_chord ) chord_alteration*
+tonality_component: [chord_accidental] numeral
+special_chord: SPECIAL_CHORD [ inversion ]
+standard_chord: [ chord_accidental ] numeral [ CHORD_QUALITY ] [ inversion ]
+numeral: ROMAN_NUMERAL
+chord_accidental: ACCIDENTAL
+CHORD_QUALITY: "o" | "+" | "%" | "ø" | "°"
+chord_alteration: "[" alteration_content "]"
+omit_alteration: "no"
+add_alteration: "add"
+alteration_content: (( omit_alteration | add_alteration )? ACCIDENTAL? DIGITS)
+
+voice_list: (ALTERATION? VOICE OCTAVE?)+
+VOICE: /[1-4]/
+// Delta octave
+OCTAVE: "o" SIGNED_INT 
+// Delta alteration (semitones)
+ALTERATION: ("+" | "-")+
+
+melody_line: MEASURE_INDICATOR (WS+ TRACK_NAME ("." VOICE_NAME)? )? (melody_line_content | VARIABLE_CALLING) NEWLINE
+melody_line_content: (first_beat_note)? (beat_note)*
+first_beat_note: WS+ (BEAT_INDICATOR WS+)? (TEXT_COMMENT WS+)? (absolute_note+ | SILENCE | CONTINUATION | voice_list) note_techniques?
+beat_note: WS+ BEAT_INDICATOR WS (TEXT_COMMENT WS+)? (absolute_note+ | SILENCE | CONTINUATION | voice_list) note_techniques?
+note_techniques: "[" WS* TECHNIQUE_NAME ("," WS* TECHNIQUE_NAME)* WS* "]"
+TEXT_COMMENT: "\"" /[^"]+/ "\""
+// For example to stop the crescendo (!crescendo)
+STOP_TECHNIQUE: "!" 
+SILENCE: "r" | "R"
+CONTINUATION: "L" | "l"
+absolute_note: END_PLAYING_STYLE? NOTELETTER_CAPITALIZED (ACCIDENTAL)? ABSOLUTE_OCTAVE (PLAYING_STYLE)*
+NOTELETTER_CAPITALIZED: /[A-G]/
+ABSOLUTE_OCTAVE: DIGIT+
+PLAYING_STYLE: STACCATO | STACCATISSIMO | TENUTO | MARCATO | ACCENT | START_TIE | TREMOLO | TURN | INVERTED_TURN | MORDENT | INVERTED_MORDENT
+STACCATO: "."
+STACCATISSIMO: "!"
+TENUTO: "-"
+MARCATO: "^"
+ACCENT: ">"
+START_TIE: "_"
+END_PLAYING_STYLE: END_TIE | END_PEDAL
+END_TIE: "_"
+END_PEDAL: "*"
+TREMOLO: "tr"
+TURN: "~"
+INVERTED_TURN: "i~"
+MORDENT: "/~"
+INVERTED_MORDENT: "i/~"
+
+MEASURE_INDICATOR: "m" MEASURE_NUMBER
+MEASURE_NUMBER: DIGIT+ (LETTER+ | "var" DIGIT+)? 
+BEAT_INDICATOR: "b" BEAT_NUMBER
+BEAT_NUMBER: DIGIT+ ("." DIGIT+)?
+
+time_signature: numerator "/" denominator
+numerator: DIGIT+
+denominator: DIGIT+
+SIGNED_INT: ("+"|"-")? DIGIT+
+
+KEY: /[A-Ga-g](#{1,}|b{1,})?:/
+SPECIAL_CHORD: "Ger" | "It" | "Fr" | "N" | "Cad" | "NC" | "R" | "r"
+ROMAN_NUMERAL: "I" | "II" | "III" | "IV" | "V" | "VI" | "VII"
+             | "i" | "ii" | "iii" | "iv" | "v" | "vi" | "vii"
+ACCIDENTAL: /#{1,}|b{1,}/
+
+inversion: INVERSION_STANDARD | inversion_free
+INVERSION_STANDARD: "6" | "64" | "6/3" | "6/4" | "7" | "6/5" | "65" | "4/3" | "43" | "2" | "42" | "4/2" | "9" | "11" | "13"
+inversion_free: ACCIDENTAL? DIGIT+
+
+DIGIT: /[0-9]/
+DIGITS: DIGIT+
+LETTER: /[a-z]+/
+
+REST_LINE: /.+/
+PHRASE_BOUNDARY: WS "||" WS?
+
+clef_change_line: MEASURE_INDICATOR (WS+ TRACK_NAME)? WS+ BEAT_INDICATOR WS+ "clef" WS+ clef_type NEWLINE
+clef_type: CLEF_NAME (WS* CLEF_OCTAVE_CHANGE)?
+CLEF_NAME: "treble" | "bass" | "alto" | "tenor" | "soprano" | "mezzo-soprano" | "baritone" | "sub-bass" | "french" | "G" | "F" | "C" | "treble8vb" | "bass8vb"
+CLEF_OCTAVE_CHANGE: ("+" | "-") DIGIT+
+
+WS: (" " | /\t/)+
+CR: /\r/
+LF: /\n/
+NEWLINE: WS* (CR? LF)+
+
+%ignore NEWLINE
+%ignore CR
+%ignore LF
+%ignore PHRASE_BOUNDARY
+%ignore WS

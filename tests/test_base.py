@@ -1,10 +1,9 @@
 from harmonics import HarmonicsParser
 
-text = r"""
-Time Signature: 4/4
+text = r"""Time Signature: 4/4
 Note: test
 m1 b1 c: #vi6[add9][add##11]/V/##ii b3 Ger65/i
-m2 b2 C: I/II b3 It
+m2 b1 C: I/II b3 It6 b4 Ger b4.5 VII
 """
 
 
@@ -18,35 +17,17 @@ def test_no_beat_one():
     text = r"""
     Time Signature: 4/4
     Note: test
-    m1 c: I
+    m1 b1 c: I
     """
     tree = parser.parse(text)
-
-
-text_with_variable = r"""
-Time Signature: 4/4
-Note: test
-my_var = c: I b3 V
-my_var_mel = b1 C5
-my_var_acc = b1 1234
-m1 @my_var
-m1 T1 @my_var_mel
-m1 T2 @my_var_acc
-"""
-
-
-def test_variable():
-    parser = HarmonicsParser()
-    tree = parser.parse(text_with_variable)
-    assert tree is not None
 
 
 text_with_events = r"""
 Time Signature: 4/4
 Note: test
 e1 b1 tempo(110)
-m1 c: I
-m2 c: V
+m1 b1 c: I
+m2 b1 c: V
 """
 
 
@@ -73,9 +54,9 @@ def test_instruments():
 text_with_continuation = r"""
 Time Signature: 4/4
 Note: test
-m1 c: I
+m1 b1 c: I
 m1 b1 C5
-m2 c: V
+m2 b1 c: V
 m2 b1 L
 """
 

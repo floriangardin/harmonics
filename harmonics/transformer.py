@@ -11,8 +11,6 @@ from harmonics.models import (
     TimeSignature,
     KeySignature,
     MinorMode,
-    MetadataLine,
-    StatementLine,
     Line,
     Key,
     Chord,
@@ -55,7 +53,7 @@ def transform_token(token: Token) -> str:
 
 
 # ------------------------------
-# Metadata lines transformer
+# Metadata lines transformers
 # ------------------------------
 
 
@@ -74,100 +72,94 @@ def transform_key_signature_line(node: Tree) -> KeySignature:
     return KeySignature(key_signature=key_signature, measure_number=measure_number)
 
 
-def transform_metadata_line(node: Tree) -> MetadataLine:
-    # node.data == "metadata_line"
-    # It has a single child telling which type it is.
-    child = node.children[0]
-    if child.data == "composer_line":
-        # composer_line: "Composer:" WS REST_LINE NEWLINE
-        value = ""
-        for token in child.children:
-            if isinstance(token, Token) and token.type == "REST_LINE":
-                value = transform_token(token).strip()
-                break
-        return Composer(composer=value)
-    elif child.data == "title_line":
-        value = ""
-        for token in child.children:
-            if isinstance(token, Token) and token.type == "REST_LINE":
-                value = transform_token(token).strip()
-                break
-        return Title(title=value)
-    elif child.data == "analyst_line":
-        value = ""
-        for token in child.children:
-            if isinstance(token, Token) and token.type == "REST_LINE":
-                value = transform_token(token).strip()
-                break
-        return Analyst(analyst=value)
-    elif child.data == "proofreader_line":
-        value = ""
-        for token in child.children:
-            if isinstance(token, Token) and token.type == "REST_LINE":
-                value = transform_token(token).strip()
-                break
-        return Proofreader(proofreader=value)
-    elif child.data == "movement_line":
-        for token in child.children:
-            if isinstance(token, Token) and token.type == "MEASURE_NUMBER":
-                return Movement(movement=transform_token(token))
-        return Movement(movement="")
-    elif child.data == "time_signature_line":
-        numerator = 4
-        denominator = 4
-        measure_number = None
+def transform_composer_line(node: Tree) -> Composer:
+    # composer_line: "Composer:" WS REST_LINE NEWLINE
+    value = ""
+    for token in node.children:
+        if isinstance(token, Token) and token.type == "REST_LINE":
+            value = transform_token(token).strip()
+            break
+    return Composer(composer=value)
 
-        for token in child.children:
-            if isinstance(token, Token) and token.type == "MEASURE_NUMBER":
-                measure_number = int(token.value)
-            elif isinstance(token, Tree) and token.data == "time_signature":
 
-                for subchild in token.children:
+def transform_title_line(node: Tree) -> Title:
+    # title_line: "Piece:" WS REST_LINE NEWLINE
+    value = ""
+    for token in node.children:
+        if isinstance(token, Token) and token.type == "REST_LINE":
+            value = transform_token(token).strip()
+            break
+    return Title(title=value)
 
-                    if isinstance(subchild, Tree) and subchild.data == "numerator":
-                        digits = ""
-                        for subsubchild in subchild.children:
-                            if (
-                                isinstance(subsubchild, Token)
-                                and subsubchild.type == "DIGIT"
-                            ):
-                                digits += subsubchild.value
-                        numerator = int(digits)
-                    elif isinstance(subchild, Tree) and subchild.data == "denominator":
-                        digits = ""
-                        for subsubchild in subchild.children:
-                            if (
-                                isinstance(subsubchild, Token)
-                                and subsubchild.type == "DIGIT"
-                            ):
-                                digits += subsubchild.value
-                        denominator = int(digits)
-        return TimeSignature(
-            numerator=numerator, denominator=denominator, measure_number=measure_number
-        )
-    elif child.data == "key_signature_line":
-        for token in child.children:
-            if isinstance(token, Token) and token.type == "SIGNED_INT":
-                return KeySignature(key_signature=transform_token(token))
-        return KeySignature(key_signature="")
-    elif child.data == "minor_mode_line":
-        for token in child.children:
-            if isinstance(token, Token) and token.type == "MINOR_MODE_OPTION":
-                return MinorMode(minor_mode=transform_token(token))
-        return MinorMode(minor_mode="")
-    elif child.data == "tempo_line":
-        for token in child.children:
-            if isinstance(token, Token) and token.type == "TEMPO_NUMBER":
-                return Tempo(tempo=int(token.value))
-        return Tempo(tempo=120)
-    elif child.data == "instrument_line":
-        return transform_instrument_line(child)
-    elif child.data == "clef_line":
-        return transform_clef_line(child)
-    elif child.data == "groups_line":
-        return transform_groups_line(child)
-    else:
-        raise ValueError(f"Unknown metadata_line type: {child.data}")
+
+def transform_analyst_line(node: Tree) -> Analyst:
+    # analyst_line: "Analyst:" WS REST_LINE NEWLINE
+    value = ""
+    for token in node.children:
+        if isinstance(token, Token) and token.type == "REST_LINE":
+            value = transform_token(token).strip()
+            break
+    return Analyst(analyst=value)
+
+
+def transform_proofreader_line(node: Tree) -> Proofreader:
+    # proofreader_line: "Proofreader:" WS REST_LINE NEWLINE
+    value = ""
+    for token in node.children:
+        if isinstance(token, Token) and token.type == "REST_LINE":
+            value = transform_token(token).strip()
+            break
+    return Proofreader(proofreader=value)
+
+
+def transform_movement_line(node: Tree) -> Movement:
+    # movement_line: "Movement:" WS MEASURE_NUMBER NEWLINE
+    for token in node.children:
+        if isinstance(token, Token) and token.type == "MEASURE_NUMBER":
+            return Movement(movement=transform_token(token))
+    return Movement(movement="")
+
+
+def transform_time_signature_line(node: Tree) -> TimeSignature:
+    # time_signature_line: ( "(" WS*  "m" MEASURE_NUMBER WS* ")" WS*)? "Time Signature" WS* ":" WS* time_signature NEWLINE
+    numerator = 4
+    denominator = 4
+    measure_number = None
+
+    for token in node.children:
+        if isinstance(token, Token) and token.type == "MEASURE_NUMBER":
+            measure_number = int(token.value)
+        elif isinstance(token, Tree) and token.data == "time_signature":
+            for subchild in token.children:
+                if isinstance(subchild, Tree) and subchild.data == "numerator":
+                    digits = ""
+                    for subsubchild in subchild.children:
+                        if (
+                            isinstance(subsubchild, Token)
+                            and subsubchild.type == "DIGIT"
+                        ):
+                            digits += subsubchild.value
+                    numerator = int(digits)
+                elif isinstance(subchild, Tree) and subchild.data == "denominator":
+                    digits = ""
+                    for subsubchild in subchild.children:
+                        if (
+                            isinstance(subsubchild, Token)
+                            and subsubchild.type == "DIGIT"
+                        ):
+                            digits += subsubchild.value
+                    denominator = int(digits)
+    return TimeSignature(
+        numerator=numerator, denominator=denominator, measure_number=measure_number
+    )
+
+
+def transform_minor_mode_line(node: Tree) -> MinorMode:
+    # minor_mode_line: "Minor Sixth / Minor Seventh:" WS MINOR_MODE_OPTION NEWLINE
+    for token in node.children:
+        if isinstance(token, Token) and token.type == "MINOR_MODE_OPTION":
+            return MinorMode(minor_mode=transform_token(token))
+    return MinorMode(minor_mode="")
 
 
 def transform_groups_line(node: Tree) -> StaffGroup:
@@ -515,21 +507,7 @@ def transform_repeat_line(node: Tree) -> Repeat:
 
 
 def transform_absolute_note(node: Tree, beat: float) -> AbsoluteMelodyNote:
-    TECHNIQUE_DICT = {
-        ".": "staccato",
-        "!": "staccatissimo",
-        "-": "tenuto",
-        "^": "marcato",
-        ">": "accent",
-        "_": "slur",
-        "tr": "tremolo",
-        "~": "turn",
-        "i~": "inverted_turn",
-        "/~": "mordent",
-        "i/~": "inverted_mordent",
-        "*": "pedal_start",
-        "!*": "pedal_end",
-    }
+    from harmonics.constants import TECHNIQUE_DICT, END_PLAYING_STYLE_DICT
 
     noteletter = ""
     accidental = ""
@@ -543,9 +521,9 @@ def transform_absolute_note(node: Tree, beat: float) -> AbsoluteMelodyNote:
         elif isinstance(child, Token) and child.type == "ABSOLUTE_OCTAVE":
             absolute_octave = transform_token(child)
         elif isinstance(child, Token) and child.type == "PLAYING_STYLE":
-            techniques.append(TECHNIQUE_DICT[transform_token(child)])
-        elif isinstance(child, Token) and child.type == "END_TIE":
-            techniques.append("!slur")
+            techniques.append(TECHNIQUE_DICT[transform_token(child)][0])
+        elif isinstance(child, Token) and child.type == "END_PLAYING_STYLE":
+            techniques.append(END_PLAYING_STYLE_DICT[transform_token(child)])
 
     return AbsoluteMelodyNote(
         note=noteletter + accidental + absolute_octave, beat=beat, techniques=techniques
@@ -700,10 +678,10 @@ def transform_accompaniment_line_content(
 
 def transform_tempo_line(node: Tree) -> Tempo:
     # tempo_line: "Tempo:" WS TEMPO_NUMBER NEWLINE
-    tempo = 0
-    for child in node.children:
-        if isinstance(child, Token) and child.type == "TEMPO_NUMBER":
-            tempo = int(child.value)
+    tempo = 120  # Default tempo
+    for token in node.children:
+        if isinstance(token, Token) and token.type == "TEMPO_NUMBER":
+            tempo = int(token.value)
     return Tempo(tempo=tempo)
 
 
@@ -844,9 +822,9 @@ def transform_technique_line(node: Tree) -> Technique:
 
 def transform_statement_line(
     node: Tree, context: Dict[str, List[AccompanimentBeat]]
-) -> StatementLine:
+) -> Line:
     # statement_line: measure_line | pedal_line | form_line | note_line | repeat_line | melody_line | accompaniment_line
-    child = node.children[0]
+    child = node
     line = child.meta.line
     context["line_number"] = line
     if child.data == "measure_line":
@@ -871,25 +849,35 @@ def transform_statement_line(
         return transform_clef_change_line(child)
     elif child.data == "key_signature_line":
         return transform_key_signature_line(child)
+    elif child.data == "composer_line":
+        return transform_composer_line(child)
+    elif child.data == "title_line":
+        return transform_title_line(child)
+    elif child.data == "analyst_line":
+        return transform_analyst_line(child)
+    elif child.data == "proofreader_line":
+        return transform_proofreader_line(child)
+    elif child.data == "movement_line":
+        return transform_movement_line(child)
+    elif child.data == "time_signature_line":
+        return transform_time_signature_line(child)
+    elif child.data == "minor_mode_line":
+        return transform_minor_mode_line(child)
+    elif child.data == "tempo_line":
+        return transform_tempo_line(child)
+    elif child.data == "instrument_line":
+        return transform_instrument_line(child)
+    elif child.data == "clef_line":
+        return transform_clef_line(child)
+    elif child.data == "groups_line":
+        return transform_groups_line(child)
     else:
-        raise ValueError(f"Unknown statement_line type: {child.data}")
+        raise ValueError(f"Unknown line type: {child.data}")
 
 
 # ------------------------------
 # New Function to Populate Properties
 # ------------------------------
-
-"""
-class Event(BaseModel):
-    measure_number: int
-    beat: float
-    event_type: str
-    event_value: str
-
-class Events(BaseModel):
-    events: List[Event]
-    measure_number: int 
-"""
 
 
 def transform_event_line(node: Tree) -> Events:
@@ -1040,13 +1028,10 @@ def transform_document(tree: Tree) -> ScoreDocument:
         if isinstance(child, Token):
             pass
         elif child.data == "line":
-            for subchild in child.children:
-                if subchild.data == "metadata_line":
-                    lines.append(transform_metadata_line(subchild))
-                elif subchild.data == "statement_line":
-                    result = transform_statement_line(subchild, context)
-                    if result is not None:
-                        lines.append(result)
+            subchild = child.children[0]
+            result = transform_statement_line(subchild, context)
+            if result is not None:
+                lines.append(result)
 
     document = ScoreDocument(lines=lines)
     return document

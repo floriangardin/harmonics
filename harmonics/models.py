@@ -10,27 +10,10 @@ class BaseModel(RawBaseModel):
         return hash(self.model_dump_json())
 
 
-# ==============================
-# Base Line Classes
-# ==============================
-
-
 class Line(BaseModel):
     """Base class for all lines in the document"""
 
     line_number: Optional[int] = Field(default=None)
-
-
-class MetadataLine(Line):
-    """Base class for all metadata lines"""
-
-    pass
-
-
-class StatementLine(Line):
-    """Base class for all statement lines"""
-
-    pass
 
 
 # ==============================
@@ -84,7 +67,7 @@ class AccompanimentBeat(MelodyNote):
     voices: List[AccompanimentVoice]
 
 
-class Melody(StatementLine):
+class Melody(Line):
     measure_number: int
     notes: List[MelodyNote]
     track_name: str = "T1"
@@ -96,47 +79,47 @@ class Melody(StatementLine):
 # ==================================
 
 
-class Composer(MetadataLine):
+class Composer(Line):
     composer: str
 
 
-class Title(MetadataLine):
+class Title(Line):
     title: str
 
 
-class Analyst(MetadataLine):
+class Analyst(Line):
     analyst: str
 
 
-class Proofreader(MetadataLine):
+class Proofreader(Line):
     proofreader: str
 
 
-class Movement(MetadataLine):
+class Movement(Line):
     movement: str
 
 
-class TimeSignature(MetadataLine):
+class TimeSignature(Line):
     numerator: int
     denominator: int
     measure_number: Optional[int] = None
 
 
-class StaffGroup(MetadataLine):
+class StaffGroup(Line):
     group_name: str
     track_names: List[str]
 
 
-class Tempo(MetadataLine):
+class Tempo(Line):
     tempo: int
 
 
-class KeySignature(StatementLine):  # Changed to StatementLine based on its usage
+class KeySignature(Line):  # Changed to Line based on its usage
     key_signature: str
     measure_number: Optional[int] = None
 
 
-class MinorMode(MetadataLine):
+class MinorMode(Line):
     minor_mode: str
 
 
@@ -147,12 +130,12 @@ class Event(BaseModel):
     event_value: Any
 
 
-class Events(StatementLine):
+class Events(Line):
     events: List[Event]
     measure_number: int
 
 
-class Instruments(MetadataLine):
+class Instruments(Line):
     instruments: List[Instrument]
 
 
@@ -162,13 +145,13 @@ class ClefType(BaseModel):
     octave_change: Optional[int] = None  # +1, -1, etc. for octave displacement
 
 
-class Clef(MetadataLine):
+class Clef(Line):
     track_name: str
     clef_type: ClefType
     measure_number: Optional[int] = None
 
 
-class ClefChange(StatementLine):
+class ClefChange(Line):
     measure_number: int
     beat: float
     track_name: str
@@ -183,7 +166,7 @@ class TechniqueRange(BaseModel):
     end_beat: float
 
 
-class Technique(StatementLine):
+class Technique(Line):
     track_names: List[str]
     technique_range: TechniqueRange
     techniques: List[str]
@@ -226,7 +209,7 @@ class BeatAndPitchClasses(BaseModel):
     key_name: str
 
 
-class Measure(StatementLine):
+class Measure(Line):
     # measure_line: MEASURE_INDICATOR (chord_beat_1)? (beat_chord | key_change)+ PHRASE_BOUNDARY? NEWLINE
     measure_number: int
     beat_items: List[BeatItem]
@@ -238,7 +221,7 @@ class MeasureRange(BaseModel):
     measures: List[str]
 
 
-class Repeat(StatementLine):
+class Repeat(Line):
     # repeat_line: measure_range WS "=" WS measure_range NEWLINE
     start_range: MeasureRange
     equals: str
@@ -258,18 +241,18 @@ class PedalEntry(BaseModel):
     beat_indicator: str
 
 
-class Pedal(StatementLine):
+class Pedal(Line):
     # pedal_line: "Pedal:" WS note WS pedal_entries NEWLINE
     note: Note
     pedal_entries: List[PedalEntry]
 
 
-class Form(StatementLine):
+class Form(Line):
     # form_line: "Form:" WS REST_LINE NEWLINE
     form: str
 
 
-class Comment(StatementLine):
+class Comment(Line):
     # note_line: "Note:" WS REST_LINE NEWLINE
     comment: str
 
@@ -279,7 +262,7 @@ class Comment(StatementLine):
 # ------------------------------
 
 
-class VariableDeclaration(StatementLine):
+class VariableDeclaration(Line):
     variable_name: str
     variable_value: str
 
@@ -289,6 +272,6 @@ class VariableCalling(BaseModel):
 
 
 # The Union types are no longer needed as we're using inheritance
-# All StatementLine subclasses are now StatementLine
-# All MetadataLine subclasses are now MetadataLine
-# A Line can be either a MetadataLine or StatementLine
+# All Line subclasses are now Line
+# All Line subclasses are now Line
+# A Line can be either a Line or Line
