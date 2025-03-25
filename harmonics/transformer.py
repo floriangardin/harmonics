@@ -506,7 +506,9 @@ def transform_repeat_line(node: Tree) -> Repeat:
 # ------------------------------
 
 
-def transform_absolute_note(node: Tree, beat: float) -> AbsoluteMelodyNote:
+def transform_absolute_note(
+    node: Tree, beat: float, is_exact: bool
+) -> AbsoluteMelodyNote:
     from harmonics.constants import TECHNIQUE_DICT, END_PLAYING_STYLE_DICT
 
     noteletter = ""
@@ -526,7 +528,10 @@ def transform_absolute_note(node: Tree, beat: float) -> AbsoluteMelodyNote:
             techniques.append(END_PLAYING_STYLE_DICT[transform_token(child)])
 
     return AbsoluteMelodyNote(
-        note=noteletter + accidental + absolute_octave, beat=beat, techniques=techniques
+        note=noteletter + accidental + absolute_octave,
+        beat=beat,
+        techniques=techniques,
+        is_exact=is_exact,
     )
 
 
@@ -535,22 +540,46 @@ def transform_beat_note(node: Tree, notes: List[MelodyNote]) -> BeatItem:
     all_notes = []
     techniques = []
     text_comment = None
+    is_exact = False
+    from fractions import Fraction
 
     for token in node.children:
         if isinstance(token, Token):
             if token.type == "BEAT_INDICATOR":
-                beat = float(token.value[1:])
+                if "+" in token.value:
+                    integer_part, fractional_part = token.value[1:].split("+")
+                    integer_part = int(integer_part)
+                    num, den = fractional_part.split("/")
+                    beat = integer_part + Fraction(int(num), int(den))
+                    is_exact = True
+                elif "." not in token.value:
+                    beat = int(token.value[1:])
+                    is_exact = True
+                elif Fraction(token.value[1:]).denominator in [2, 3, 4, 5, 6, 8, 10]:
+                    beat = Fraction(token.value[1:]).limit_denominator(10)
+                    is_exact = True
+                elif token.value[1:].split(".")[-1] in ["33", "66", "67"]:
+                    beat = Fraction(token.value[1:]).limit_denominator(3)
+                    is_exact = True
+                else:
+                    from harmonics.commons.utils_beat import to_beat_fraction
+
+                    beat = to_beat_fraction(float(token.value[1:]), is_exact)
             elif token.type == "TEXT_COMMENT":
                 text_comment = token.value[1:-1]
             elif token.type == "SILENCE":
-                return [Silence(beat=beat, text_comment=text_comment)]
+                return [
+                    Silence(beat=beat, text_comment=text_comment, is_exact=is_exact)
+                ]
             elif token.type == "CONTINUATION":
-                return [Continuation(beat=beat, text_comment=text_comment)]
+                return [
+                    Continuation(
+                        beat=beat, text_comment=text_comment, is_exact=is_exact
+                    )
+                ]
         elif isinstance(token, Tree) and token.data == "absolute_note":
-            note = transform_absolute_note(token, beat)
+            note = transform_absolute_note(token, beat, is_exact)
             all_notes.append(note)
-        elif isinstance(token, Tree) and token.data == "voice_list":
-            return [transform_voice_list(token, beat)]
         elif isinstance(token, Tree) and token.data == "note_techniques":
             techniques += transform_note_techniques(token)
 
@@ -570,6 +599,7 @@ def transform_beat_note(node: Tree, notes: List[MelodyNote]) -> BeatItem:
                 notes=all_notes,
                 techniques=techniques,
                 text_comment=text_comment,
+                is_exact=is_exact,
             )
         ]
 
@@ -639,41 +669,6 @@ def transform_melody_line(
 # ------------------------------
 # Statement line transformer
 # ------------------------------
-
-
-def transform_voice_list(node: Tree, beat) -> List[AccompanimentVoice]:
-    voices: List[AccompanimentVoice] = []
-    total_alteration = 0
-    for subchild in node.children:
-        if isinstance(subchild, Token) and subchild.type == "VOICE":
-            voices.append(
-                AccompanimentVoice(
-                    voice=int(subchild.value), alteration=total_alteration
-                )
-            )
-            total_alteration = 0
-        elif isinstance(subchild, Token) and subchild.type == "OCTAVE":
-            octave = int(subchild.value[1:])
-            voices[-1].octave = octave
-        elif isinstance(subchild, Token) and subchild.type == "ALTERATION":
-            total_alteration = subchild.value.count("+") - subchild.value.count("-")
-    return AccompanimentBeat(beat=beat, voices=voices)
-
-
-def transform_accompaniment_line_content(
-    node: Tree, context: Dict[str, str]
-) -> List[AccompanimentBeat]:
-    beats: List[AccompanimentBeat] = []
-    beat = 1
-    for child in node.children:
-        if isinstance(child, Token) and child.type == "BEAT_INDICATOR":
-            beat = float(child.value[1:])
-        elif isinstance(child, Tree) and child.data == "voice_list":
-            voices = transform_voice_list(child, beat)
-            beats.append(voices)
-        elif isinstance(child, Token) and child.type == "SILENCE":
-            beats.append(AccompanimentBeat(beat=beat, voices=[]))
-    return beats
 
 
 def transform_tempo_line(node: Tree) -> Tempo:

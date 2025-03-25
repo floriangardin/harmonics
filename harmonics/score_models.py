@@ -31,6 +31,7 @@ class NoteItem(BaseModel):
     global_techniques: Optional[List[str]] = None
     measure_number: Optional[int] = None
     beat: Optional[Fraction] = None
+    is_exact: bool = False
     text_comment: Optional[str] = None  # Add text comment field
 
 

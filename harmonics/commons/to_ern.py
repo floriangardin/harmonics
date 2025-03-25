@@ -249,6 +249,38 @@ def _generate_event_lines(score):
     return lines
 
 
+def _decompose_fraction(fraction):
+    """
+    Decompose a fraction into three elements : integer part, numerator and denominator.
+    """
+    integer_part = int(fraction)
+    fractional_part = fraction - integer_part
+    if fractional_part == 0:
+        return integer_part, 0, 0
+    numerator, denominator = fractional_part.numerator, fractional_part.denominator
+    return integer_part, int(numerator), int(denominator)
+
+
+def _represent_beat_fraction(beat):
+    """
+    Represent a beat fraction as a string.
+    """
+    integer_part, numerator, denominator = _decompose_fraction(beat)
+    # Find common simplifications of fractional part (1/2=.5)
+    if numerator == 0:
+        return f"b{integer_part}"
+    if denominator in [2, 4, 5, 8, 10]:
+        beat_float = integer_part + numerator / denominator
+        return f"b{beat_float}"
+    elif denominator == 3:
+        if numerator == 1:
+            return f"b{integer_part}.33"
+        elif numerator == 2:
+            return f"b{integer_part}.66"
+
+    return f"b{integer_part}+{numerator}/{denominator}"
+
+
 def _generate_clef_changes(measure_number, clef_items):
     """Generate clef change lines for the ern file."""
     lines = []
@@ -391,16 +423,16 @@ def _generate_melody_line(measure_number, track_name, voice_name, notes):
         )
         # Skip continuation notes as they're part of the previous note's duration
         if note.is_continuation:
-            melody_line += f" {beat_to_ern(note.beat)} {text_comment}L"
+            melody_line += f" {_represent_beat_fraction(note.beat)} {text_comment}L"
         # Handle text comments
         elif note.is_silence:
-            melody_line += f" {beat_to_ern(note.beat)} {text_comment}R"
+            melody_line += f" {_represent_beat_fraction(note.beat)} {text_comment}R"
         elif isinstance(note.pitch, list):
             # Handle chord
             pitches = " ".join(note.pitch)
-            melody_line += f" {beat_to_ern(note.beat)} {text_comment}{pre_technics}{pitches}{post_technics}"
+            melody_line += f" {_represent_beat_fraction(note.beat)} {text_comment}{pre_technics}{pitches}{post_technics}"
         elif note.pitch:
-            melody_line += f" {beat_to_ern(note.beat)} {text_comment}{pre_technics}{note.pitch}{post_technics}"
+            melody_line += f" {_represent_beat_fraction(note.beat)} {text_comment}{pre_technics}{note.pitch}{post_technics}"
 
         # Add techniques
         if techniques:

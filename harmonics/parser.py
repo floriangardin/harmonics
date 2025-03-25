@@ -47,7 +47,7 @@ class HarmonicsParser:
         tree = self.parser.parse(clean_input)
         document = transform_document(tree)
         end_time = time.time()
-        print(f"Document transformed in {end_time - start_time} seconds")
+        print(f"Document parsed and transformed in {end_time - start_time} seconds")
         return document
 
     def parse_to_score(self, input_string):
@@ -69,8 +69,17 @@ class HarmonicsParser:
 
     def _parse_to_score_string(self, input_string):
         document = self.parse(input_string)
+        import time
+
+        start_time = time.time()
         data = document.data
+        end_time = time.time()
+        print(f"Data extracted in {end_time - start_time} seconds")
+        start_time = time.time()
         notes = document.notes
+        end_time = time.time()
+        print(f"Notes extracted in {end_time - start_time} seconds")
+        start_time = time.time()
         events = document.events
         score = Score(
             chords=data.chords,

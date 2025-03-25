@@ -8,7 +8,7 @@ import shutil
 import tempfile
 from harmonics.commons import utils_techniques
 from harmonics.commons.utils_output import correct_xml_file, convert_musicxml_to_mxl
-from harmonics.commons.utils_beat import to_quarter_fraction
+from harmonics.commons.utils_beat import get_ratio_beat
 
 
 class PartState:
@@ -343,7 +343,7 @@ def _add_note_to_measure(
 ):
     """Create and add a music21 note object to a measure."""
     # Convert duration to fraction
-    duration = to_quarter_fraction(note.duration, current_ts)
+    duration = note.duration * get_ratio_beat(current_ts)
 
     # Create note or rest
     if note.is_silence:
@@ -383,7 +383,7 @@ def _add_note_to_measure(
 
     # Insert note at the correct offset
     offset = _get_offset(note.beat, current_ts)
-    if m21_note.duration.quarterLength != 0:
+    if m21_note.duration.quarterLength > 0:
         measure.insert(offset, m21_note)
 
     # Add text comment if present
@@ -733,7 +733,7 @@ def _write_comment(measure, beat, key=None, chord=None, current_ts=None):
 
 
 def _get_offset(beat, current_ts):
-    offset = to_quarter_fraction(beat - 1.0, current_ts)
+    offset = (beat - 1) * get_ratio_beat(current_ts)
     return offset
 
 

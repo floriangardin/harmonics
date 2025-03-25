@@ -309,6 +309,8 @@ class ScoreDocument(BaseModel):
 
     @property
     def notes(self) -> List[NoteItem]:
+        import time as tt
+
         results = []
         chords = self.chords
         current_chord = None
@@ -319,13 +321,11 @@ class ScoreDocument(BaseModel):
                 bar_start_time, bar_end_time, current_time_signature = measure_map[
                     line.measure_number
                 ]
-                current_bar_index = line.measure_number
                 bar_notes = []
                 for note in line.notes:
                     beat_start_time = beat_to_quarter(note.beat, current_time_signature)
                     duration = 0
                     time = beat_start_time + bar_start_time
-                    previous_current_chord = current_chord
                     current_chord = get_current_chord_from_time(time, chords)
                     voices = None
                     is_silence = False
@@ -352,13 +352,13 @@ class ScoreDocument(BaseModel):
                             chord="NC",
                             time_signature=current_time_signature,
                             key=None,
-                            beat=to_beat_fraction(note.beat),
+                            beat=note.beat,
                             measure_number=line.measure_number,
                         )
-
-                    global_techniques = self.get_techniques_for_note(
-                        time, line.track_name, self.techniques
-                    )
+                    # global_techniques = self.get_techniques_for_note(
+                    #     time, line.track_name, self.techniques
+                    # )
+                    global_techniques = []
                     bar_notes.append(
                         NoteItem(
                             time=beat_start_time + bar_start_time,
@@ -375,21 +375,35 @@ class ScoreDocument(BaseModel):
                             techniques=note.techniques,
                             global_techniques=global_techniques,
                             measure_number=line.measure_number,
-                            beat=to_beat_fraction(note.beat),
+                            beat=note.beat,
+                            is_exact=note.is_exact,
                             text_comment=note.text_comment,
                         )
                     )
                 if len(bar_notes) > 0:
                     for i in range(len(bar_notes) - 1):
-                        bar_notes[i].duration = to_beat_fraction(
-                            bar_notes[i + 1].beat - bar_notes[i].beat
+                        if bar_notes[i].is_exact and bar_notes[i + 1].is_exact:
+                            bar_notes[i].duration = (
+                                bar_notes[i + 1].beat - bar_notes[i].beat
+                            )
+                        else:
+                            bar_notes[i].duration = to_beat_fraction(
+                                bar_notes[i + 1].beat - bar_notes[i].beat
+                            )
+                    if bar_notes[-1].is_exact:
+                        bar_notes[-1].duration = (
+                            bar_duration_in_beats(current_time_signature)
+                            - bar_notes[-1].beat
+                            + 1
                         )
-                    bar_notes[-1].duration = to_beat_fraction(
-                        bar_duration_in_beats(current_time_signature)
-                        - bar_notes[-1].beat
-                        + 1
-                    )
+                    else:
+                        bar_notes[-1].duration = to_beat_fraction(
+                            bar_duration_in_beats(current_time_signature)
+                            - bar_notes[-1].beat
+                            + 1
+                        )
                     results.extend(bar_notes)
+
         return results
 
     @property

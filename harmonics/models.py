@@ -1,5 +1,5 @@
 from typing import List, Optional, Union, Tuple, Any, Dict, Set
-
+from fractions import Fraction
 from pydantic import BaseModel as RawBaseModel, Field
 from .notes_utils import getPitchFromIntervalFromMinimallyModifiedScale
 
@@ -22,9 +22,10 @@ class Line(BaseModel):
 
 
 class MelodyNote(BaseModel):
-    beat: float
+    beat: Fraction
     techniques: List[str] = []
     text_comment: Optional[str] = None
+    is_exact: bool = False
 
 
 class TextComment(MelodyNote):
@@ -40,13 +41,13 @@ class ChordMelodyNote(MelodyNote):
 
 
 class Silence(MelodyNote):
-    beat: float
+    beat: Fraction
     note: str = "R"
     octave: int = 0
 
 
 class Continuation(MelodyNote):
-    beat: float
+    beat: Fraction
     note: str = "L"
     octave: int = 0
 
@@ -125,7 +126,7 @@ class MinorMode(Line):
 
 class Event(BaseModel):
     measure_number: int
-    beat: float
+    beat: Fraction
     event_type: str
     event_value: Any
 
@@ -153,7 +154,7 @@ class Clef(Line):
 
 class ClefChange(Line):
     measure_number: int
-    beat: float
+    beat: Fraction
     track_name: str
     clef_type: ClefType
 

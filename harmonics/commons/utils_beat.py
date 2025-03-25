@@ -15,24 +15,28 @@ def beat_to_ern(beat):
             return f"b{rounded_beat}"
 
 
-def to_beat_fraction(beat):
-    return to_quarter_fraction(beat, (4, 4))
+def to_beat_fraction(beat, is_exact=False):
+    return to_quarter_fraction(beat, (4, 4), is_exact)
 
 
-def to_quarter_fraction(beat, current_ts=(4, 4)):
+def get_ratio_beat(ts):
+    return Fraction(4, ts[1])
+
+
+def to_quarter_fraction(beat, current_ts=(4, 4), is_exact=False):
     ratio_beat = Fraction(4, current_ts[1])
     if beat == int(beat):
         return int(beat) * ratio_beat
     else:
         fractional_part = beat - int(beat)
-        fraction = to_fraction(fractional_part, (4, 4))
+        fraction = to_fraction(fractional_part, (4, 4), is_exact)
         return (int(beat) + fraction) * ratio_beat
 
 
 from fractions import Fraction
 
 
-def to_fraction(duration, current_ts=(4, 4)):
+def to_fraction(duration, current_ts=(4, 4), is_exact=False):
     """Convert a float duration to a Fraction for better MusicXML representation."""
     # Handle common durations
     threshold = 0.015

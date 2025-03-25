@@ -446,10 +446,9 @@ def refactor_voices(notes):
 def process_note(note_element, measure_number, track_name, voice_name, state):
     """Process a single note element."""
     # Calculate beat position (1-indexed)
-    beat = note_element.offset + 1.0
-
+    beat = Fraction(note_element.offset + 1).limit_denominator(20)
     # Get duration
-    duration = float(note_element.quarterLength)
+    duration = Fraction(note_element.quarterLength).limit_denominator(20)
 
     # Check if it's a rest
     is_silence = note_element.isRest
@@ -478,6 +477,7 @@ def process_note(note_element, measure_number, track_name, voice_name, state):
         global_techniques=global_techniques,
         measure_number=measure_number,
         beat=beat,
+        is_exact=True,
     )
 
     return note_item
