@@ -113,3 +113,4 @@ class Score(BaseModel):
     key_signatures: List[KeySignatureItem] = []  # Add key signatures to Score
     title: str
     composer: str
+    staff_groups: Dict[str, List[str]] = {}  # Map group name to list of track names

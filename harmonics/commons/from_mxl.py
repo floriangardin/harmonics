@@ -5,6 +5,11 @@ import re
 from typing import Dict, List, Optional, Set, Tuple
 import logging
 from harmonics.chord_parser import ChordParser
+import shutil
+import copy
+import os
+import tempfile
+from harmonics.commons.utils_output import inverse_correct_xml_file
 
 
 class MxlParserState:
@@ -25,10 +30,25 @@ class MxlParserState:
         self.key_signatures = []
         self.instrument_dict = {}
         self.note_to_techniques_map = {}
+        self.staff_groups = {}  # A dictionary mapping group name to list of track names
 
         # Metadata
         self.title = None
         self.composer = "Unknown"
+
+
+def prepare_mxl(filepath):
+    """
+    Prepare a MusicXML file for parsing by:
+    - Inverting the voice numbering
+    - Removing pedal direction
+    """
+    suffix = "." + filepath.split(".")[-1]
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+        temp_filepath = temp_file.name
+        shutil.copy(filepath, temp_filepath)
+        inverse_correct_xml_file(temp_filepath)
+        return temp_filepath
 
 
 def from_mxl(filepath):
@@ -41,14 +61,23 @@ def from_mxl(filepath):
     Returns:
         models.Score: Score object containing all extracted information
     """
+
+    filepath = prepare_mxl(filepath)
+
     # Parse the MusicXML file using music21
     m21_score = music21.converter.parse(filepath)
+
+    # Remove the temporary file
+    os.remove(filepath)
 
     # Initialize parser state
     state = MxlParserState()
 
     # Extract metadata
     extract_metadata(m21_score, state)
+
+    # Extract staff groups
+    extract_staff_groups(m21_score, state)
 
     # Process each part in the score
     process_parts(m21_score, state)
@@ -351,7 +380,41 @@ def process_voices(measure, measure_number, track_name, state):
                 )
                 measure_notes.append(note)
 
+    # Extract dynamics and attach to nearest notes
+    process_dynamics(measure, measure_notes, track_name)
+
     return measure_notes
+
+
+def process_dynamics(measure, measure_notes, track_name):
+    """Process dynamics in a measure and attach them to the nearest note."""
+    if not measure_notes:
+        return
+
+    for dynamic in measure.getElementsByClass("Dynamic"):
+        # Get the dynamic text
+        dynamic_text = dynamic.value.lower()
+        dynamic_offset = dynamic.offset + 1.0  # Convert to 1-indexed beat
+
+        # Find the nearest note
+        attach_dynamic_to_nearest_note(dynamic_text, dynamic_offset, measure_notes)
+
+
+def attach_dynamic_to_nearest_note(dynamic_text, dynamic_offset, measure_notes):
+    """Attach a dynamic marking to the nearest note in the measure."""
+    nearest_note = None
+    min_distance = float("inf")
+
+    for note in measure_notes:
+        distance = abs(note.beat - dynamic_offset)
+        if distance < min_distance:
+            min_distance = distance
+            nearest_note = note
+
+    if nearest_note and not nearest_note.is_silence:
+        # Add the dynamic to the note's techniques
+        if dynamic_text not in nearest_note.techniques:
+            nearest_note.techniques.append(dynamic_text)
 
 
 def refactor_voices(notes):
@@ -458,16 +521,6 @@ def extract_techniques(note_element, measure_number, beat, track_name, state):
         if technique:
             note_techniques.append(technique)
 
-    # Look for dynamics near this note
-    for dynamic in note_element.getContextByClass("Measure").getElementsByClass(
-        "Dynamic"
-    ):
-        if abs(dynamic.offset - note_element.offset) < 0.1:
-            # This dynamic applies to this note
-            dynamic_text = dynamic.value.lower()
-            if dynamic_text in ["pppp", "ppp", "pp", "p", "mp", "mf", "f", "ff", "fff"]:
-                global_techniques.append(dynamic_text)
-
     # Add techniques from spanners (crescendo, diminuendo, legato)
     note_key = (track_name, measure_number, beat)
     if note_key in state.note_to_techniques_map:
@@ -565,8 +618,32 @@ def attach_comment_to_nearest_note(text, comment_beat, measure_notes):
             min_distance = distance
             nearest_note = note
 
+    if attach_technique_to_note(nearest_note, text):
+        return
+
     if nearest_note:
         nearest_note.text_comment = text
+
+
+def attach_technique_to_note(note, technique):
+    """Attach a technique to a note."""
+    technique_dict = {
+        "$pedal_start": "pedal",
+        "$pedal_stop": "!pedal",
+        # Add common dynamic markings
+        "pianissimo": "pp",
+        "piano": "p",
+        "mezzopiano": "mp",
+        "mezzoforte": "mf",
+        "forte": "f",
+        "fortissimo": "ff",
+        "sforzando": "fz",
+        "fortepiano": "fp",
+    }
+    if technique in technique_dict:
+        note.techniques.append(technique_dict[technique])
+        return True
+    return False
 
 
 def extract_default_clefs(m21_score, state):
@@ -624,9 +701,75 @@ def extract_default_key_signature(m21_score, state):
                 state.key_signatures.append(default_ks_item)
 
 
+def extract_staff_groups(m21_score, state):
+    """
+    Extract staff groups (e.g., piano with treble and bass clefs) from the score.
+
+    Args:
+        m21_score: The music21 score
+        state: The parser state to update
+    """
+    # Check for spanners in the score
+    spanners = m21_score.spannerBundle
+    staff_groups = spanners.getByClass("StaffGroup")
+
+    if not staff_groups:
+        # Try alternative method if no StaffGroup found in spannerBundle
+        staff_groups = m21_score.recurse().getElementsByClass("StaffGroup")
+
+    # Process each staff group
+    for idx, group in enumerate(staff_groups):
+        # Get all parts that are part of this group
+        spanned_parts = group.getSpannedElements()
+
+        # Generate track names for each part in the group
+        track_names = []
+        for part_idx, part in enumerate(m21_score.parts):
+            if part in spanned_parts:
+                track_names.append(f"T{part_idx+1}")
+
+        # Only add the group if there are parts in it
+        if track_names:
+            # Set a default group name if none provided
+            group_name = group.name if group.name else f"group_{idx+1}"
+            # Clean the group name to remove spaces and special characters
+            group_name = group_name.lower().replace(" ", "_").replace("-", "_")
+
+            # Store the staff group in the state
+            state.staff_groups[group_name] = track_names
+
+    # If no staff groups were found but there are exactly two parts, and we recognize
+    # them as typical piano parts (treble and bass clef), create a piano group
+    if not state.staff_groups and len(m21_score.parts) == 2:
+        # Check if the first part has a treble clef and the second has a bass clef
+        part1 = m21_score.parts[0]
+        part2 = m21_score.parts[1]
+
+        if part1 and part2:
+            part1_clef = (
+                part1.recurse().getElementsByClass("Clef")[0]
+                if part1.recurse().getElementsByClass("Clef")
+                else None
+            )
+            part2_clef = (
+                part2.recurse().getElementsByClass("Clef")[0]
+                if part2.recurse().getElementsByClass("Clef")
+                else None
+            )
+
+            # Check if it's a typical piano configuration
+            if (
+                part1_clef
+                and part1_clef.name == "treble"
+                and part2_clef
+                and part2_clef.name == "bass"
+            ):
+                state.staff_groups["piano"] = ["T1", "T2"]
+
+
 def create_score(state):
-    """Create a Score object from the parsed state."""
-    return models.Score(
+    """Create a Score object from the parser state."""
+    score = models.Score(
         chords=state.chords,
         notes=state.notes,
         time_signatures=state.time_signatures,
@@ -636,6 +779,8 @@ def create_score(state):
         techniques=state.techniques,
         clefs=state.clefs,
         key_signatures=state.key_signatures,
-        title=state.title,
-        composer=state.composer,
+        title=state.title or "Untitled",
+        composer=state.composer or "Unknown",
+        staff_groups=state.staff_groups,  # Add staff groups to the Score
     )
+    return score

@@ -63,7 +63,7 @@ def to_mxl(filepath, score):
     _apply_events(score, time_sig_map, first_instrument_measures)
     _apply_time_signatures(m21_score, score, all_measures, first_instrument_measures)
     _apply_clefs(m21_score, score)
-
+    _apply_key_signatures(m21_score, score)
     # Write to file
     _correct_xml_and_compress(m21_score, filepath)
 
@@ -204,7 +204,6 @@ def _add_key_signature_to_measure(measure, key_signature_item, current_ts):
     offset = 0.0
     if key_signature_item.beat is not None and key_signature_item.beat > 1.0:
         offset = _get_offset(key_signature_item.beat, current_ts)
-
     measure.insert(offset, m21_key)
 
 
@@ -233,7 +232,6 @@ def _create_all_measures(score, parts, max_measure, time_sig_map, measure_durati
     first_instrument_measures = {}
     all_measures = {}
     first_voice_of_track = {track_name: True for track_name, _ in parts.keys()}
-
     idx = -1
     for (track_name, voice_name), part in parts.items():
         idx += 1
@@ -258,9 +256,6 @@ def _create_all_measures(score, parts, max_measure, time_sig_map, measure_durati
             first_instrument_measures,
             all_measures,
             idx,
-            key_signatures,
-            current_key_sig_idx,
-            first_voice_of_track,
         )
 
         # Mark this voice as processed
@@ -281,9 +276,6 @@ def _create_measures_for_part(
     first_instrument_measures,
     all_measures,
     part_idx,
-    key_signatures,
-    current_key_sig_idx,
-    first_voice_of_track,
 ):
     """Create and populate measures for a specific part."""
     for measure_num in range(1, max_measure + 1):
@@ -295,12 +287,6 @@ def _create_measures_for_part(
         all_measures[measure_num] = all_measures.get(measure_num, []) + [measure]
         if part_idx == 0:
             first_instrument_measures[measure_num] = measure
-
-        # Add key signatures if this is the first voice of this track
-        if first_voice_of_track[track_name]:
-            current_key_sig_idx = _add_key_signatures_to_measure(
-                measure, key_signatures, current_key_sig_idx, measure_num, current_ts
-            )
 
         # Add notes for this voice and measure
         _add_notes_to_measure(
@@ -316,22 +302,6 @@ def _create_measures_for_part(
 
         # Add measure to part
         part.append(measure)
-
-
-def _add_key_signatures_to_measure(
-    measure, key_signatures, current_key_sig_idx, measure_num, current_ts
-):
-    """Add key signatures to a measure if they occur in this measure."""
-    while (
-        current_key_sig_idx < len(key_signatures)
-        and key_signatures[current_key_sig_idx].measure_number == measure_num
-    ):
-        key_sig = key_signatures[current_key_sig_idx]
-        _add_key_signature_to_measure(measure, key_sig, current_ts)
-        current_key_sig_idx += 1
-        if current_key_sig_idx >= len(key_signatures):
-            break
-    return current_key_sig_idx
 
 
 def _add_notes_to_measure(
@@ -646,6 +616,68 @@ def _apply_clefs(m21_score, score):
 
         # Now add our new clef
         _add_clef_to_measure(measure, clef_item, offset)
+
+
+def _apply_key_signatures(m21_score, score):
+    """
+    Apply key signatures to the appropriate measures in the score.
+    """
+    if not score.key_signatures:
+        return
+
+    # Sort key signatures by time, measure, and beat for consistent application
+    sorted_key_signatures = sorted(
+        score.key_signatures,
+        key=lambda ks: (ks.time, ks.measure_number or 0, ks.beat or 0),
+    )
+
+    # Apply each key signature to the appropriate part and measure
+    for key_sig_item in sorted_key_signatures:
+        for part in m21_score.parts:
+            if not part:
+                continue
+
+            # Skip key signatures without measure numbers
+            if key_sig_item.measure_number is None:
+                continue
+
+            # Find the measure
+            measure = None
+            for m in part.getElementsByClass("Measure"):
+                if m.number == key_sig_item.measure_number:
+                    measure = m
+                    break
+
+            if not measure:
+                continue
+
+            # Calculate offset
+            offset = 0.0
+            if key_sig_item.beat is not None and key_sig_item.beat > 1.0:
+                # Get the current time signature for this measure
+                ts = None
+                for ts_obj in measure.getElementsByClass("TimeSignature"):
+                    ts = (ts_obj.numerator, ts_obj.denominator)
+                    break
+
+                if ts:
+                    offset = _get_offset(key_sig_item.beat, ts)
+
+            # Remove any existing key signatures at the same offset
+            existing_key_sigs = measure.getElementsByClass("KeySignature")
+            key_sigs_to_remove = []
+            for existing_key_sig in existing_key_sigs:
+                if (
+                    abs(existing_key_sig.offset - offset) < 0.001
+                ):  # Small threshold for floating point comparison
+                    key_sigs_to_remove.append(existing_key_sig)
+
+            # Remove the conflicting key signatures
+            for key_sig_to_remove in key_sigs_to_remove:
+                measure.remove(key_sig_to_remove)
+
+            # Now add our new key signature
+            _add_key_signature_to_measure(measure, key_sig_item, offset)
 
 
 def _get_time_sig_map(time_signatures, max_measure):

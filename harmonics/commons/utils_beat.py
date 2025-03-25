@@ -1,4 +1,5 @@
 def beat_to_ern(beat):
+    beat = float(beat)
     if beat == int(beat):
         return f"b{int(beat)}"
     else:

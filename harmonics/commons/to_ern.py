@@ -22,7 +22,7 @@ def to_ern(filepath, score):
     lines.append("")
 
     # Add technique lines
-    lines.extend(_generate_technique_lines(score))
+    # lines.extend(_generate_technique_lines(score))
 
     lines.append("")
 
@@ -158,6 +158,19 @@ def _generate_metadata(score):
         tempo = score.tempos[0].tempo
     lines.append(f"Tempo: {tempo}")
 
+    # Add instrument definitions
+    if score.instruments:
+        instrument_defs = []
+        for instrument in score.instruments:
+            instrument_defs.append(f"{instrument.track_name}={instrument.name}")
+        lines.append(f"Instrument: {', '.join(instrument_defs)}")
+
+    # Add staff groups
+    if score.staff_groups:
+        for group_name, track_names in score.staff_groups.items():
+            if track_names:  # Only add if there are tracks in the group
+                lines.append(f"Groups: {group_name}=[{', '.join(track_names)}]")
+
     # Add clef declarations
     initial_clefs = {}
     for clef in score.clefs:
@@ -166,13 +179,6 @@ def _generate_metadata(score):
             # Only keep the first clef per voice (measure 1, beat 1)
             if track_name not in initial_clefs:
                 initial_clefs[track_name] = clef
-
-    # Add instrument definitions
-    if score.instruments:
-        instrument_defs = []
-        for instrument in score.instruments:
-            instrument_defs.append(f"{instrument.track_name}={instrument.name}")
-        lines.append(f"Instrument: {', '.join(instrument_defs)}")
 
     # Add clef definitions after instrument definitions
     for track_name, clef in initial_clefs.items():
