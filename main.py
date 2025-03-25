@@ -30,7 +30,8 @@ if __name__ == "__main__":
     if input_type in ["mxl", "musicxml"]:
         if output_type == "ern":
             parser.parse_to_ern(file, output_file)
-
+        else:
+            raise ValueError(f"Invalid output type: {output_type}")
     elif input_type in ["ern", "erntxt", "har"]:
         with open(file, "r") as f:
             text = f.read()

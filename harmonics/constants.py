@@ -304,6 +304,14 @@ INSTRUMENTS_DICT["contrabasses"] = (43, 0)
 INSTRUMENTS_DICT["violoncello"] = (42, 0)
 INSTRUMENTS_DICT["alto"] = (41, 0)
 INSTRUMENTS_DICT["altos"] = (41, 0)
+INSTRUMENTS_DICT["double_bass"] = (43, 0)
+INSTRUMENTS_DICT["violin_1"] = (40, 0)
+INSTRUMENTS_DICT["violin_2"] = (40, 0)
+INSTRUMENTS_DICT["choir_tenor"] = (52, 0)
+INSTRUMENTS_DICT["choir_bass"] = (53, 0)
+INSTRUMENTS_DICT["choir_soprano"] = (52, 0)
+INSTRUMENTS_DICT["choir_alto"] = (53, 0)
+
 
 REVERSE_INSTRUMENT_DICT = {val: key for key, val in INSTRUMENTS_DICT.items()}
 

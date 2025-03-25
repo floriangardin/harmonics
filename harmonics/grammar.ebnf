@@ -45,6 +45,7 @@ voice_list_for_technique: "[" WS* TRACK_NAME ("," WS* TRACK_NAME)* WS* "]"
 single_voice_for_technique: TRACK_NAME
 measure_range_with_beats: "(" MEASURE_INDICATOR WS+ BEAT_INDICATOR WS+ "-" WS MEASURE_INDICATOR WS+ BEAT_INDICATOR ")"
 technique_list: TECHNIQUE_NAME ("," WS* TECHNIQUE_NAME)*
+// Example : "[ped]" or "[!ped,fff]"
 TECHNIQUE_NAME: STOP_TECHNIQUE? /[a-zA-Z_][a-zA-Z0-9_]*/
 
 variable_declaration_line: VARIABLE_NAME WS* "=" WS* variable_content NEWLINE
@@ -94,17 +95,30 @@ ALTERATION: ("+" | "-")+
 
 melody_line: MEASURE_INDICATOR (WS+ TRACK_NAME ("." VOICE_NAME)? )? (melody_line_content | VARIABLE_CALLING) NEWLINE
 melody_line_content: (first_beat_note)? (beat_note)*
-first_beat_note: WS+ (BEAT_INDICATOR WS+)? (TEXT_COMMENT WS+)? (ABSOLUTE_NOTE+ | SILENCE | CONTINUATION | voice_list) note_techniques?
-beat_note: WS+ BEAT_INDICATOR WS (TEXT_COMMENT WS+)? (ABSOLUTE_NOTE+ | SILENCE | CONTINUATION | voice_list) note_techniques?
+first_beat_note: WS+ (BEAT_INDICATOR WS+)? (TEXT_COMMENT WS+)? (absolute_note+ | SILENCE | CONTINUATION | voice_list) note_techniques?
+beat_note: WS+ BEAT_INDICATOR WS (TEXT_COMMENT WS+)? (absolute_note+ | SILENCE | CONTINUATION | voice_list) note_techniques?
 note_techniques: "[" WS* TECHNIQUE_NAME ("," WS* TECHNIQUE_NAME)* WS* "]"
 TEXT_COMMENT: "\"" /[^"]+/ "\""
 // For example to stop the crescendo (!crescendo)
 STOP_TECHNIQUE: "!" 
 SILENCE: "r" | "R"
 CONTINUATION: "L" | "l"
-ABSOLUTE_NOTE: NOTELETTER_CAPITALIZED (ACCIDENTAL)? (ABSOLUTE_OCTAVE)?
+absolute_note: END_TIE? NOTELETTER_CAPITALIZED (ACCIDENTAL)? ABSOLUTE_OCTAVE (PLAYING_STYLE)*
 NOTELETTER_CAPITALIZED: /[A-G]/
 ABSOLUTE_OCTAVE: DIGIT+
+PLAYING_STYLE: STACCATO | STACCATISSIMO | TENUTO | MARCATO | ACCENT | START_TIE | TREMOLO | TURN | INVERTED_TURN | MORDENT | INVERTED_MORDENT
+STACCATO: "."
+STACCATISSIMO: "!"
+TENUTO: "-"
+MARCATO: "^"
+ACCENT: ">"
+START_TIE: "_"
+END_TIE: "_"
+TREMOLO: "tr"
+TURN: "~"
+INVERTED_TURN: "i~"
+MORDENT: "/~"
+INVERTED_MORDENT: "i/~"
 
 MEASURE_INDICATOR: "m" MEASURE_NUMBER
 MEASURE_NUMBER: DIGIT+ (LETTER+ | "var" DIGIT+)? 

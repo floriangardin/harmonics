@@ -3,30 +3,40 @@ from typing import List, Optional, Union, Tuple, Any, Dict, Set
 from pydantic import BaseModel as RawBaseModel, Field
 from .notes_utils import getPitchFromIntervalFromMinimallyModifiedScale
 
+
 # Base model for all classes
 class BaseModel(RawBaseModel):
     def __hash__(self):  # make hashable BaseModel subclass
         return hash(self.model_dump_json())
 
+
 # ==============================
 # Base Line Classes
 # ==============================
 
+
 class Line(BaseModel):
     """Base class for all lines in the document"""
+
     line_number: Optional[int] = Field(default=None)
+
 
 class MetadataLine(Line):
     """Base class for all metadata lines"""
+
     pass
+
 
 class StatementLine(Line):
     """Base class for all statement lines"""
+
     pass
+
 
 # ==============================
 # Melody Lines
 # ==============================
+
 
 class MelodyNote(BaseModel):
     beat: float
@@ -85,6 +95,7 @@ class Melody(StatementLine):
 # Metadata Line Classes
 # ==================================
 
+
 class Composer(MetadataLine):
     composer: str
 
@@ -110,9 +121,11 @@ class TimeSignature(MetadataLine):
     denominator: int
     measure_number: Optional[int] = None
 
+
 class StaffGroup(MetadataLine):
     group_name: str
     track_names: List[str]
+
 
 class Tempo(MetadataLine):
     tempo: int
@@ -180,6 +193,7 @@ class Technique(StatementLine):
 # Chord-related models
 # ==============================
 
+
 class Key(BaseModel):
     key: str
 
@@ -203,6 +217,7 @@ BeatItem = Chord | Key  # Updated syntax for Python 3.10+
 # ==============================
 # Statement Line Classes
 # ==============================
+
 
 class BeatAndPitchClasses(BaseModel):
     beat: float
@@ -234,6 +249,7 @@ class Note(BaseModel):
     # note: NOTELETTER ACCIDENTAL?
     noteletter: str
     accidental: Optional[str] = None
+    techniques: List[str] = []
 
 
 class PedalEntry(BaseModel):
@@ -262,6 +278,7 @@ class Comment(StatementLine):
 # Accompaniment Models
 # ------------------------------
 
+
 class VariableDeclaration(StatementLine):
     variable_name: str
     variable_value: str
@@ -269,6 +286,7 @@ class VariableDeclaration(StatementLine):
 
 class VariableCalling(BaseModel):
     variable_name: str
+
 
 # The Union types are no longer needed as we're using inheritance
 # All StatementLine subclasses are now StatementLine

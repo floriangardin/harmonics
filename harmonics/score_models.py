@@ -1,5 +1,6 @@
 from typing import List, Optional, Union, Tuple, Any, Dict, Set
 from .models import BaseModel
+from fractions import Fraction
 
 
 class ChordItem(BaseModel):
@@ -17,7 +18,7 @@ class ChordItem(BaseModel):
 
 class NoteItem(BaseModel):
     time: Optional[float] = 0
-    duration: float
+    duration: Fraction
     chord: Optional[str] = None
     key: Optional[str] = None
     time_signature: Optional[Tuple[int, int]] = None
@@ -29,7 +30,7 @@ class NoteItem(BaseModel):
     techniques: Optional[List[str]] = None  # Add techniques field
     global_techniques: Optional[List[str]] = None
     measure_number: Optional[int] = None
-    beat: Optional[float] = None
+    beat: Optional[Fraction] = None
     text_comment: Optional[str] = None  # Add text comment field
 
 
@@ -39,7 +40,7 @@ class TempoItem(BaseModel):
     figure: Optional[str] = "quarter"
     text: Optional[str] = None
     measure_number: Optional[int] = None
-    beat: Optional[float] = None
+    beat: Optional[Fraction] = None
 
 
 class TimeSignatureItem(BaseModel):

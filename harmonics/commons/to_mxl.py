@@ -10,6 +10,7 @@ from harmonics.commons import utils_techniques
 from harmonics.commons.utils_output import correct_xml_file, convert_musicxml_to_mxl
 from harmonics.commons.utils_beat import to_quarter_fraction
 
+
 class PartState:
     """Class to track the state of a part during MusicXML conversion."""
 
@@ -87,7 +88,12 @@ def _apply_techniques(note, m21_note, measure, part_state, ts):
 
     if techniques:
         for technique in techniques:
-            if technique.replace("!", "") == "crescendo":
+            if technique.replace("!", "") in [
+                "crescendo",
+                "cresc",
+                "cresc.",
+                "crescendo.",
+            ]:
                 if not technique.startswith("!"):
                     part_state.crescendo_start = True
                     part_state.crescendo_notes.append(m21_note)
@@ -98,7 +104,14 @@ def _apply_techniques(note, m21_note, measure, part_state, ts):
                     crescendo.addSpannedElements(part_state.crescendo_notes)
                     measure.insert(0, crescendo)
                     part_state.crescendo_notes = []
-            elif technique.replace("!", "") == "diminuendo":
+            elif technique.replace("!", "") in [
+                "diminuendo",
+                "dim",
+                "decrescendo",
+                "decresc",
+                "decresc.",
+                "dim.",
+            ]:
                 if not technique.startswith("!"):
                     part_state.diminuendo_start = True
                     part_state.diminuendo_notes.append(m21_note)
@@ -123,7 +136,13 @@ def _apply_techniques(note, m21_note, measure, part_state, ts):
                     slur.addSpannedElements(part_state.slur_notes)
                     measure.insert(0, slur)
                     part_state.slur_notes = []
-            elif technique.replace("!", "") in ["pedal", "ped", "sustain"]:
+            elif technique.replace("!", "") in [
+                "pedal",
+                "ped",
+                "sustain",
+                "ped.",
+                "pedal.",
+            ]:
                 if not technique.startswith("!"):
                     # Add pedal down marking (as a text comment)
                     text = m21.expressions.TextExpression("$pedal_start")
@@ -283,7 +302,6 @@ def _create_measures_for_part(
                 measure, key_signatures, current_key_sig_idx, measure_num, current_ts
             )
 
-
         # Add notes for this voice and measure
         _add_notes_to_measure(
             score,
@@ -363,6 +381,7 @@ def _add_note_to_measure(
         m21_note.quarterLength = duration
     elif note.is_continuation:
         # Handle continuation notes (tied notes)
+
         m21_note = deepcopy(
             part_state.ref_note.get((note.track_name, note.voice_name), None)
         )
@@ -381,7 +400,7 @@ def _add_note_to_measure(
             for n in score.notes
             if n.track_name == note.track_name
             and n.voice_name == note.voice_name
-            and n.time == note.time + note.duration
+            and n.beat == note.beat + note.duration
             and n.is_continuation
         ]
 
@@ -437,12 +456,10 @@ def _init_m21_score(score):
 
     # Create a dictionary to store parts by voice name
     parts = {}
-    
 
     # Add instrument to part
-    #instrument = score.instruments[0]
+    # instrument = score.instruments[0]
 
-    
     # Create instruments and parts
     for idx, instrument in enumerate(score.instruments):
         # Create a part for each voice
@@ -484,26 +501,23 @@ def _init_m21_score(score):
         if instrument.staff_group not in staff_group_map:
             staff_group_map[instrument.staff_group] = []
         staff_group_map[instrument.staff_group].append(idx)
-    
+
     # Create staff groups and add them to the score
     for group_name, part_indices in staff_group_map.items():
         if not part_indices:
             continue
-        
+
         # Get the parts that belong to this group
         group_parts = []
         for idx in part_indices:
             if idx < len(m21_score.parts):
                 group_parts.append(m21_score.parts[idx])
-        
+
         if group_parts:
             # Create a staff group with appropriate symbol (brace for piano/keyboard, bracket for others)
             symbol = "brace" if len(group_parts) == 2 else "bracket"
             staff_group = m21.layout.StaffGroup(
-                group_parts, 
-                name=f"Group {group_name}", 
-                symbol=symbol,
-                barTogether=True
+                group_parts, name=f"Group {group_name}", symbol=symbol, barTogether=True
             )
             m21_score.insert(0, staff_group)
 

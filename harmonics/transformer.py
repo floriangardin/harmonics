@@ -169,6 +169,7 @@ def transform_metadata_line(node: Tree) -> MetadataLine:
     else:
         raise ValueError(f"Unknown metadata_line type: {child.data}")
 
+
 def transform_groups_line(node: Tree) -> StaffGroup:
     group_name = ""
     track_names = []
@@ -178,6 +179,7 @@ def transform_groups_line(node: Tree) -> StaffGroup:
         elif isinstance(child, Token) and child.type == "TRACK_NAME":
             track_names.append(transform_token(child))
     return StaffGroup(group_name=group_name, track_names=track_names)
+
 
 # ------------------------------
 # Chord and related transformers
@@ -512,6 +514,44 @@ def transform_repeat_line(node: Tree) -> Repeat:
 # ------------------------------
 
 
+def transform_absolute_note(node: Tree, beat: float) -> AbsoluteMelodyNote:
+    TECHNIQUE_DICT = {
+        ".": "staccato",
+        "!": "staccatissimo",
+        "-": "tenuto",
+        "^": "marcato",
+        ">": "accent",
+        "_": "slur",
+        "tr": "tremolo",
+        "~": "turn",
+        "i~": "inverted_turn",
+        "/~": "mordent",
+        "i/~": "inverted_mordent",
+        "*": "pedal_start",
+        "!*": "pedal_end",
+    }
+
+    noteletter = ""
+    accidental = ""
+    absolute_octave = None
+    techniques = []
+    for child in node.children:
+        if isinstance(child, Token) and child.type == "NOTELETTER_CAPITALIZED":
+            noteletter = transform_token(child)
+        elif isinstance(child, Token) and child.type == "ACCIDENTAL":
+            accidental = transform_token(child)
+        elif isinstance(child, Token) and child.type == "ABSOLUTE_OCTAVE":
+            absolute_octave = transform_token(child)
+        elif isinstance(child, Token) and child.type == "PLAYING_STYLE":
+            techniques.append(TECHNIQUE_DICT[transform_token(child)])
+        elif isinstance(child, Token) and child.type == "END_TIE":
+            techniques.append("!slur")
+
+    return AbsoluteMelodyNote(
+        note=noteletter + accidental + absolute_octave, beat=beat, techniques=techniques
+    )
+
+
 def transform_beat_note(node: Tree, notes: List[MelodyNote]) -> BeatItem:
     beat = 1
     all_notes = []
@@ -524,15 +564,13 @@ def transform_beat_note(node: Tree, notes: List[MelodyNote]) -> BeatItem:
                 beat = float(token.value[1:])
             elif token.type == "TEXT_COMMENT":
                 text_comment = token.value[1:-1]
-            elif token.type == "ABSOLUTE_NOTE":
-                note = token.value.replace("/", "")
-                all_notes.append(
-                    AbsoluteMelodyNote(beat=beat, note=note, text_comment=text_comment)
-                )
             elif token.type == "SILENCE":
                 return [Silence(beat=beat, text_comment=text_comment)]
             elif token.type == "CONTINUATION":
                 return [Continuation(beat=beat, text_comment=text_comment)]
+        elif isinstance(token, Tree) and token.data == "absolute_note":
+            note = transform_absolute_note(token, beat)
+            all_notes.append(note)
         elif isinstance(token, Tree) and token.data == "voice_list":
             return [transform_voice_list(token, beat)]
         elif isinstance(token, Tree) and token.data == "note_techniques":
@@ -543,10 +581,11 @@ def transform_beat_note(node: Tree, notes: List[MelodyNote]) -> BeatItem:
             note.text_comment = text_comment
 
     if len(all_notes) == 1:
-        for note in all_notes:
-            note.techniques = techniques
+        all_notes[0].techniques += techniques
         return all_notes
     else:
+        for note in all_notes:
+            techniques += note.techniques
         return [
             ChordMelodyNote(
                 beat=beat,

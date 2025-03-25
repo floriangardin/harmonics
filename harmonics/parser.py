@@ -94,7 +94,7 @@ class HarmonicsParser:
         return document
 
     def parse_to_score(self, input_string):
-        if input_string.endswith(".mxl"):
+        if input_string.endswith(".mxl") or input_string.endswith(".musicxml"):
             return from_mxl(input_string)
         elif (
             input_string.endswith(".ern")

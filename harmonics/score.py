@@ -150,7 +150,11 @@ def get_data(self) -> ScoreData:
         if isinstance(line, models.StaffGroup):
             groups[line.group_name] = line.track_names
     # Invert the dict to have a dict of track_name -> group_name
-    groups_inv = {track_name: group_name for group_name, track_names in groups.items() for track_name in track_names}
+    groups_inv = {
+        track_name: group_name
+        for group_name, track_names in groups.items()
+        for track_name in track_names
+    }
 
     for line in self.lines:
         if isinstance(line, models.Measure):
@@ -377,7 +381,7 @@ class ScoreDocument(BaseModel):
                     )
                 if len(bar_notes) > 0:
                     for i in range(len(bar_notes) - 1):
-                        bar_notes[i].duration = (
+                        bar_notes[i].duration = to_beat_fraction(
                             bar_notes[i + 1].beat - bar_notes[i].beat
                         )
                     bar_notes[-1].duration = to_beat_fraction(
@@ -386,7 +390,6 @@ class ScoreDocument(BaseModel):
                         + 1
                     )
                     results.extend(bar_notes)
-
         return results
 
     @property
@@ -400,9 +403,9 @@ class ScoreDocument(BaseModel):
             results.append(
                 EventItem(
                     time=first_tempo.time,
-                measure_number=first_tempo.measure_number,
-                beat=1.0,
-                event_type="tempo",
+                    measure_number=first_tempo.measure_number,
+                    beat=1.0,
+                    event_type="tempo",
                     event_value=first_tempo.tempo,
                 )
             )
