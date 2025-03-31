@@ -1,3 +1,4 @@
+from harmonics.commons.utils_beat import get_ratio_beat
 import music21
 import harmonics.score_models as models
 from fractions import Fraction
@@ -324,6 +325,17 @@ def process_time_signatures(measure, measure_number, state):
         state.time_signatures.append(time_signature)
 
 
+def _get_current_ts(measure_number, state):
+    ts_dict = {-1: (4, 4)}
+    for ts in state.time_signatures:
+        ts_dict[ts.measure_number] = ts.time_signature
+    if measure_number not in ts_dict:
+        # Find nearest measure number before with a ts
+        nearest_ts = max([k for k in ts_dict.keys() if k <= measure_number])
+        return ts_dict[nearest_ts]
+    return ts_dict[measure_number]
+
+
 def _get_beat_from_offset(offset, current_ts):
     ratio_beat = Fraction(4, current_ts[1])
     return (offset / ratio_beat) + 1
@@ -446,9 +458,15 @@ def refactor_voices(notes):
 def process_note(note_element, measure_number, track_name, voice_name, state):
     """Process a single note element."""
     # Calculate beat position (1-indexed)
-    beat = Fraction(note_element.offset + 1).limit_denominator(20)
+    current_ts = _get_current_ts(measure_number, state)
+    beat = Fraction(note_element.offset).limit_denominator(20) / get_ratio_beat(
+        current_ts
+    )
+    beat = beat + 1
     # Get duration
-    duration = Fraction(note_element.quarterLength).limit_denominator(20)
+    duration = Fraction(note_element.quarterLength).limit_denominator(
+        20
+    ) / get_ratio_beat(current_ts)
 
     # Check if it's a rest
     is_silence = note_element.isRest

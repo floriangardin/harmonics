@@ -1,0 +1,52 @@
+?start: document
+
+// ======== TERMINAL DEFINITIONS ========
+
+TEMPO_NUMBER: DIGIT+
+NOTELETTER: /[A-Ga-g]/
+OCTAVE: "o" SIGNED_INT 
+ALTERATION: ("+" | "-")+
+SILENCE: "R" | "r"
+CONTINUATION: "L" | "l"
+NOTELETTER_CAPITALIZED: /[A-G]/
+ABSOLUTE_OCTAVE: DIGIT+
+MEASURE_INDICATOR: "m" MEASURE_NUMBER
+MEASURE_NUMBER: DIGIT+ (LETTER+ | "var" DIGIT+)? 
+BEAT_INDICATOR: "b" BEAT_NUMBER
+BEAT_NUMBER: DIGIT+ ("." DIGIT+)? | COMPLEX_BEAT
+COMPLEX_BEAT: DIGIT+  "+" DIGIT+ "/" DIGIT+
+SIGNED_INT: ("+"|"-")? DIGIT+
+ACCIDENTAL: "##" | "bb" | "b" | "#"
+DIGIT: /[0-9]/
+DIGITS: DIGIT+
+LETTER: /[a-z]+/
+REST_LINE: /.+/
+PHRASE_BOUNDARY: "||"
+
+// ======== NON-TERMINAL RULES ========
+
+document: (line NEWLINE?)*
+line: time_signature_line
+    | tempo_line
+    | COMMENT
+    | melody_line
+             
+tempo_line: "Tempo:" TEMPO_NUMBER  // Tempo number in QPM
+time_signature_line: ( "(" "m" MEASURE_NUMBER ")" )? "Time Signature" ":" time_signature
+
+COMMENT: "//" REST_LINE NEWLINE
+
+melody_line: MEASURE_INDICATOR melody_line_content
+melody_line_content: beat_note+
+beat_note: BEAT_INDICATOR (absolute_note+ | SILENCE | CONTINUATION)
+absolute_note: NOTELETTER_CAPITALIZED ACCIDENTAL? ABSOLUTE_OCTAVE
+
+time_signature: numerator "/" denominator
+numerator: DIGIT+
+denominator: DIGIT+
+
+%import common.NEWLINE
+%import common.WS
+
+%ignore WS
+%ignore COMMENT

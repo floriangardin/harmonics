@@ -185,15 +185,10 @@ def transform_standard_chord(node: Tree) -> str:
     chord_quality = ""
     inversion = ""
     for child in node.children:
-        if isinstance(child, Tree) and child.data == "numeral":
-            for token in child.children:
-                if isinstance(token, Token) and token.type == "ROMAN_NUMERAL":
-                    numeral = transform_token(token)
-        elif isinstance(child, Tree) and child.data == "chord_accidental":
-            chord_accidental = ""
-            for token in child.children:
-                if isinstance(token, Token) and token.type == "ACCIDENTAL":
-                    chord_accidental += transform_token(token)
+        if isinstance(child, Token) and child.type == "ROMAN_NUMERAL":
+            numeral = transform_token(child)
+        elif isinstance(child, Token) and child.type == "ACCIDENTAL":
+            chord_accidental = transform_token(child)
         elif isinstance(child, Token):
             if child.type == "CHORD_QUALITY":
                 chord_quality = transform_token(child)
@@ -280,34 +275,33 @@ def transform_chord_component(node: Tree) -> str:
 
 
 def transform_tonality_component(node: Tree) -> str:
-    # tonality_component: [chord_accidental] numeral
-    chord_accidental = ""
-    numeral = ""
+    # tonality_component: accidental_with_numeral | plain_numeral | key_name_component
     for child in node.children:
-        if isinstance(child, Tree) and child.data == "numeral":
-            for token in child.children:
-                if isinstance(token, Token) and token.type == "ROMAN_NUMERAL":
-                    numeral = transform_token(token)
-        elif isinstance(child, Tree) and child.data == "chord_accidental":
-            chord_accidental = ""
-            for token in child.children:
-                if isinstance(token, Token) and token.type == "ACCIDENTAL":
-                    chord_accidental += transform_token(token)
-    return chord_accidental + numeral
+        if isinstance(child, Token) and child.type == "ACCIDENTAL_WITH_NUMERAL":
+            return transform_token(child), None
+        elif isinstance(child, Token) and child.type == "ROMAN_NUMERAL":
+            return transform_token(child), None
+        elif isinstance(child, Token) and child.type == "KEY_NAME":
+            return None, transform_token(child)
+    # Default case or if parsing fails
+    return "", None
 
 
 def transform_chord(node: Tree) -> str:
 
     final_str = ""
+    key = None
     for child in node.children:
         if isinstance(child, Tree):
             if child.data == "chord_component":
                 final_str += transform_chord_component(child)
             elif child.data == "tonality_component":
-                final_str += "/" + transform_tonality_component(child)
+                result, key = transform_tonality_component(child)
+                if result is not None:
+                    final_str += "/" + result
     if final_str == "R":
         final_str = "NC"
-    return final_str
+    return final_str, key
 
 
 # ------------------------------
@@ -335,9 +329,12 @@ def transform_beat_chord(node: Tree) -> Chord:
             if child.data == "key":
                 key = transform_key(child)
             elif child.data == "chord":
-                chord = transform_chord(child)
+                chord, new_key = transform_chord(child)
+                if new_key is not None:
+                    key = new_key
     if chord is None:
         raise ValueError("Chord missing chord")
+    print(f"beat_chord: {beat_number} {key} {chord}")
     return Chord(beat=beat_number, key=key, chord=chord)
 
 
@@ -572,15 +569,14 @@ def transform_beat_note(node: Tree, notes: List[MelodyNote]) -> BeatItem:
             elif token.type == "TEXT_COMMENT":
                 text_comment = token.value[1:-1]
             elif token.type == "SILENCE":
-                return [
-                    Silence(beat=beat, text_comment=text_comment, is_exact=is_exact)
-                ]
+                note = Silence(beat=beat, text_comment=text_comment, is_exact=is_exact)
+                all_notes.append(note)
             elif token.type == "CONTINUATION":
-                return [
-                    Continuation(
-                        beat=beat, text_comment=text_comment, is_exact=is_exact
-                    )
-                ]
+                note = Continuation(
+                    beat=beat, text_comment=text_comment, is_exact=is_exact
+                )
+                all_notes.append(note)
+
         elif isinstance(token, Tree) and token.data == "absolute_note":
             note = transform_absolute_note(token, beat, is_exact)
             all_notes.append(note)

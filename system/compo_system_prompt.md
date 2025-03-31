@@ -98,13 +98,18 @@ All event functions have arguments.
   m1 T1 b1 E5i/~
   // Staccatissimo
   m1 T1 b1 E5!
-  // Pedal
-  m1 T1 b1 E5 [ped]  b3 D6 [!ped,ped] b4 C6 [!ped]
+  // Pedal (Start at b1 E5, ends at b3 D6 AND restarts right away, then ends at b4 C6)
+  m1 T1 b1 E5*  b3 *D6* b4 *C6
+  // Is equivalent to
+  m1 T1 b1 E5 [ped] b3 D6 [!ped, ped] b4 C6 [!ped]
   // Crescendos
   m1 T1 b1 E5 [mp,crescendo] b3.5 A5 [!crescendo] b4 B5 [f]
   // Diminuendos
   m1 T1 b1 E5 [mp,diminuendo] b3.5 A5 [!diminuendo] b4 B5 [f]
   ```
+- * Used at the left of a note STOP the pedal (Eg: *E4)
+- * Used at the right of a note START the pedal (Eg: E4*)
+- * Used both at the left and right of a note to STOP and RESTART the pedal right away (Eg: *C4*)
 
 ---
 
@@ -129,8 +134,8 @@ CHORD_QUALITY: "°" | "ø" | "%" | "+" | "o"
 VOICE: /[1-4]/
 OCTAVE: "o" SIGNED_INT 
 ALTERATION: ("+" | "-")+
-SILENCE: "R" | "r"
-CONTINUATION: "L" | "l"
+SILENCE: (END_PEDAL)? ("R" | "r") (START_PEDAL)?
+CONTINUATION: (END_PEDAL)? ("L" | "l") (START_PEDAL)?
 NOTELETTER_CAPITALIZED: /[A-G]/
 ABSOLUTE_OCTAVE: DIGIT+
 PLAYING_STYLE: STACCATISSIMO | STACCATO | MARCATO | ACCENT | TENUTO | START_TIE | TREMOLO | TURN | INVERTED_TURN | MORDENT | INVERTED_MORDENT | START_PEDAL
@@ -155,29 +160,24 @@ BEAT_INDICATOR: "b" BEAT_NUMBER
 BEAT_NUMBER: DIGIT+ ("." DIGIT+)? | COMPLEX_BEAT
 SIGNED_INT: ("+"|"-")? DIGIT+
 KEY: /[A-Ga-g](#{1,}|b{1,})?:/
-KEY_NAME: /[A-Ga-g](#{1,}|b{1,})?(?![IVivx])/
-ROMAN_NUMERAL: "Ger" | "Fr" | "It" | "it" | "ger" | "fr" | "cad" | "Cad" | "NC" | "N" | "R" | "r" |"VII" | "III" | "IV" | "VI" | "II" | "V" | "It" | "I"
+KEY_NAME: /[A-Ga-g](#{1,}|b{1,})?/
+ROMAN_NUMERAL: "Ger" | "Fr" | "It" | "Cad" | "NC" | "N" | "R" | "r" |"VII" | "III" | "IV" | "VI" | "II" | "V" | "It" | "I"
              | "vii" | "iii" | "iv" | "vi" | "ii" | "v" | "i"
-ACCIDENTAL: /#{1,}|b{1,}|x{1,}/
+ACCIDENTAL: "##" | "bb" | "b" | "#"
+ACCIDENTAL_WITH_NUMERAL: ACCIDENTAL ROMAN_NUMERAL
 INVERSION_STANDARD: "6/4" | "6/3" | "65" | "6/5" | "4/3" | "4/2" | "42" | "43" | "64" | "13" | "11" | "9" | "7" | "6" | "2"
 DIGIT: /[0-9]/
 DIGITS: DIGIT+
 LETTER: /[a-z]+/
 REST_LINE: /.+/
-MEASURE_BOUNDARY_START: END_PHRASE | REPEAT_START | FIRST_TIME |SECOND_TIME
-MEASURE_BOUNDARY_END: END_PHRASE | REPEAT_END | FIRST_TIME | SECOND_TIME
-END_PHRASE: "|"
-REPEAT_END: ":|"
-REPEAT_START: "|:"
-FIRST_TIME: "1"
-SECOND_TIME: "2"
+PHRASE_BOUNDARY: "||"
 CLEF_NAME: "mezzo-soprano" | "treble8vb" | "bass8vb" | "treble" | "soprano" | "baritone" | "sub-bass" | "french" | "tenor" | "alto" | "bass" | "G" | "F" | "C"
 CLEF_OCTAVE_CHANGE: ("+" | "-") DIGIT+
 TEXT_COMMENT: "\"" /[^"]+/ "\""
 
 // ======== NON-TERMINAL RULES ========
 
-document: (line NEWLINE)*
+document: (line NEWLINE?)*
 line: composer_line
              | title_line
              | time_signature_line
@@ -185,11 +185,12 @@ line: composer_line
              | instrument_line
              | clef_line
              | groups_line
-             | measure_line
+             | harmony_line
              | COMMENT
              | melody_line
              | event_line
              | technique_line
+             | clef_change_line
              | key_signature_line
              
 composer_line: "Composer:" REST_LINE
@@ -198,7 +199,6 @@ time_signature_line: ( "(" "m" MEASURE_NUMBER ")" )? "Time Signature" ":" time_s
 tempo_line: "Tempo:" TEMPO_NUMBER  // Tempo number in QPM
 instrument_line: "Instrument:" TRACK_NAME "=" GM_INSTRUMENT_NAME ("," TRACK_NAME "=" GM_INSTRUMENT_NAME)*
 clef_line: ( "(" "m" MEASURE_NUMBER ")" )? "Clef:" TRACK_NAME "=" clef_type
-clef_type: CLEF_NAME CLEF_OCTAVE_CHANGE?
 key_signature_line: ( "(" "m" MEASURE_NUMBER ")" )? "Signature:" key_signature
 // To group tracks together (For example for a piano score)
 groups_line: "Groups:" GROUP_NAME "=" "[" TRACK_NAME ("," TRACK_NAME)* "]"
@@ -213,36 +213,30 @@ technique_list: TECHNIQUE_NAME ("," TECHNIQUE_NAME)*
 event_line: "e" MEASURE_NUMBER event_content+
 event_content: BEAT_INDICATOR EVENT_FUNCTION_NAME "(" EVENT_ARGUMENT ")"
 
-measure_line: MEASURE_INDICATOR measure_line_content
-measure_line_content: (beat_chord | key_change)+ MEASURE_BOUNDARY_END?
+harmony_line: "h" MEASURE_NUMBER harmony_line_content
+harmony_line_content: (beat_chord | key_change)+ PHRASE_BOUNDARY?
 beat_chord: BEAT_INDICATOR key? chord
 key_change: key
 key: KEY
 
 note: NOTELETTER ACCIDENTAL?
 
-COMMENT: ("Note:" | "//" ) REST_LINE
+COMMENT: "//" REST_LINE NEWLINE
+
+melody_line: MEASURE_INDICATOR (TRACK_NAME ("." VOICE_NAME)? )? melody_line_content
+melody_line_content: beat_note+
+beat_note: BEAT_INDICATOR TEXT_COMMENT? (absolute_note+ | SILENCE | CONTINUATION) note_techniques?
+note_techniques: "[" TECHNIQUE_NAME ("," TECHNIQUE_NAME)* "]"
+absolute_note: END_PLAYING_STYLE? NOTELETTER_CAPITALIZED ACCIDENTAL? ABSOLUTE_OCTAVE PLAYING_STYLE*
 
 chord: chord_component ( "/" tonality_component )*
 chord_component: standard_chord chord_alteration*
-tonality_component: accidental_with_numeral | plain_numeral | key_name_component
-accidental_with_numeral: chord_accidental numeral
-plain_numeral: numeral
-key_name_component: KEY_NAME
-standard_chord: chord_accidental? numeral CHORD_QUALITY? inversion?
-numeral: ROMAN_NUMERAL
-chord_accidental: ACCIDENTAL
+tonality_component: ACCIDENTAL_WITH_NUMERAL | ROMAN_NUMERAL | KEY_NAME
+standard_chord: ACCIDENTAL? ROMAN_NUMERAL CHORD_QUALITY? inversion?
 chord_alteration: "[" alteration_content "]"
 omit_alteration: "no"
 add_alteration: "add"
 alteration_content: (omit_alteration | add_alteration)? ACCIDENTAL? DIGITS
-
-
-melody_line: MEASURE_INDICATOR (TRACK_NAME ("." VOICE_NAME)? )? MEASURE_BOUNDARY_START* melody_line_content MEASURE_BOUNDARY_END*
-melody_line_content: beat_note+
-beat_note: BEAT_INDICATOR TEXT_COMMENT? (absolute_note+ | SILENCE | CONTINUATION) note_techniques?
-note_techniques: "[" TECHNIQUE_NAME ("," TECHNIQUE_NAME)* "]"
-absolute_note: END_PLAYING_STYLE* NOTELETTER_CAPITALIZED ACCIDENTAL? ABSOLUTE_OCTAVE PLAYING_STYLE*
 
 time_signature: numerator "/" denominator
 numerator: DIGIT+
@@ -250,6 +244,9 @@ denominator: DIGIT+
 
 inversion: INVERSION_STANDARD | inversion_free
 inversion_free: ACCIDENTAL? DIGIT+
+
+clef_change_line: MEASURE_INDICATOR TRACK_NAME? BEAT_INDICATOR "clef" clef_type
+clef_type: CLEF_NAME CLEF_OCTAVE_CHANGE?
 
 %import common.NEWLINE
 %import common.WS
@@ -292,12 +289,6 @@ inversion_free: ACCIDENTAL? DIGIT+
 #### Techniques
 - Use technics to give more expressiveness to the music
 - Use different technics for different instruments to add contrast
-
-#### Variables
-- Variables are declared with `@<name> = <value>`
-- Variables can be used in harmonic lines, melody lines, and accompaniment lines
-- Variables must be declared before they are used
-- Variables can be used to declare (1 bar) accompaniments, melodies, and harmonies
 
 #### Voices
 - Voices are specified with `T<number>.v<number>`

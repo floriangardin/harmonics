@@ -358,12 +358,15 @@ def _add_note_to_measure(
         m21_note.quarterLength = duration
     elif note.is_continuation:
         # Handle continuation notes (tied notes)
-
-        m21_note = deepcopy(
-            part_state.ref_note.get((note.track_name, note.voice_name), None)
+        m21_note_original = part_state.ref_note.get(
+            (note.track_name, note.voice_name), None
         )
+        m21_note = deepcopy(m21_note_original)
         if m21_note is None:
             return
+
+        m21_note_original.tie = m21.tie.Tie("start")
+        print("Start tie", m21_note)
         m21_note.tie = m21.tie.Tie("stop")
         m21_note.articulations = []
         m21_note.duration = m21.duration.Duration(duration)
@@ -382,7 +385,6 @@ def _add_note_to_measure(
         ]
 
         if next_notes:
-            m21_note.tie = m21.tie.Tie("start")
             part_state.ref_note[(note.track_name, note.voice_name)] = m21_note
 
     # Apply techniques
@@ -400,6 +402,7 @@ def _add_note_to_measure(
 
 def _create_new_note(note, duration):
     """Create a new music21 note or chord object."""
+
     def replace_flats_to_minus(pitch):
         if isinstance(pitch, list):
             return [replace_flats_to_minus(n) for n in pitch]

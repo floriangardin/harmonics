@@ -41,13 +41,11 @@ class ChordMelodyNote(MelodyNote):
 
 
 class Silence(MelodyNote):
-    beat: Fraction
     note: str = "R"
     octave: int = 0
 
 
 class Continuation(MelodyNote):
-    beat: Fraction
     note: str = "L"
     octave: int = 0
 

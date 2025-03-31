@@ -1,0 +1,53 @@
+?start: document
+
+// ======== TERMINAL DEFINITIONS ========
+
+MEASURE_NUMBER: DIGIT+ (LETTER+ | "var" DIGIT+)? 
+BEAT_INDICATOR: "b" BEAT_NUMBER
+BEAT_NUMBER: DIGIT+ ("." DIGIT+)? | COMPLEX_BEAT
+COMPLEX_BEAT: DIGIT+  "+" DIGIT+ "/" DIGIT+
+SIGNED_INT: ("+"|"-")? DIGIT+
+KEY: /[A-Ga-g](#{1,}|b{1,})?:/
+KEY_NAME: /[A-Ga-g](#{1,}|b{1,})?/
+ROMAN_NUMERAL: "Ger" | "Fr" | "It" | "Cad" | "NC" | "N" | "R" | "r" |"VII" | "III" | "IV" | "VI" | "II" | "V" | "It" | "I"
+             | "vii" | "iii" | "iv" | "vi" | "ii" | "v" | "i"
+ACCIDENTAL: "##" | "bb" | "b" | "#"
+ACCIDENTAL_WITH_NUMERAL: ACCIDENTAL ROMAN_NUMERAL
+INVERSION_STANDARD: "6/4" | "6/3" | "65" | "6/5" | "4/3" | "4/2" | "42" | "43" | "64" | "13" | "11" | "9" | "7" | "6" | "2"
+DIGIT: /[0-9]/
+DIGITS: DIGIT+
+LETTER: /[a-z]+/
+CHORD_QUALITY: "°" | "ø" | "%" | "+" | "o"
+PHRASE_BOUNDARY: "||"
+
+// ======== NON-TERMINAL RULES ========
+
+document: (line NEWLINE?)*
+line: harmony_line | COMMENT
+
+harmony_line: "h" MEASURE_NUMBER harmony_line_content
+harmony_line_content: (beat_chord | key_change)+ PHRASE_BOUNDARY?
+beat_chord: BEAT_INDICATOR key? chord
+key_change: key
+key: KEY
+
+chord: chord_component ( "/" tonality_component )*
+chord_component: standard_chord chord_alteration*
+tonality_component: ACCIDENTAL_WITH_NUMERAL | ROMAN_NUMERAL | KEY_NAME
+standard_chord: ACCIDENTAL? ROMAN_NUMERAL CHORD_QUALITY? inversion?
+chord_alteration: "[" alteration_content "]"
+omit_alteration: "no"
+add_alteration: "add"
+alteration_content: (omit_alteration | add_alteration)? ACCIDENTAL? DIGITS
+
+inversion: INVERSION_STANDARD | inversion_free
+inversion_free: ACCIDENTAL? DIGIT+
+
+COMMENT: "//" REST_LINE NEWLINE
+REST_LINE: /.+/
+
+%import common.NEWLINE
+%import common.WS
+
+%ignore WS
+%ignore COMMENT

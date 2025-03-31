@@ -18,11 +18,11 @@ CHORD_QUALITY: "°" | "ø" | "%" | "+" | "o"
 VOICE: /[1-4]/
 OCTAVE: "o" SIGNED_INT 
 ALTERATION: ("+" | "-")+
-SILENCE: "R" | "r"
-CONTINUATION: "L" | "l"
+SILENCE: (END_PEDAL)? ("R" | "r") (START_PEDAL)?
+CONTINUATION: (END_PEDAL)? ("L" | "l") (START_PEDAL)?
 NOTELETTER_CAPITALIZED: /[A-G]/
 ABSOLUTE_OCTAVE: DIGIT+
-PLAYING_STYLE: STACCATISSIMO | STACCATO | MARCATO | ACCENT | TENUTO | START_TIE | TREMOLO | TURN | INVERTED_TURN | MORDENT | INVERTED_MORDENT
+PLAYING_STYLE: STACCATISSIMO | STACCATO | MARCATO | ACCENT | TENUTO | START_TIE | TREMOLO | TURN | INVERTED_TURN | MORDENT | INVERTED_MORDENT | START_PEDAL
 STACCATO: "."
 STACCATISSIMO: "!"
 TENUTO: "-"
@@ -31,6 +31,7 @@ ACCENT: ">"
 START_TIE: "_"
 END_PLAYING_STYLE: END_TIE | END_PEDAL
 END_TIE: "_"
+START_PEDAL: "*"
 END_PEDAL: "*"
 TREMOLO: "tr"
 TURN: "~"
@@ -43,9 +44,11 @@ BEAT_INDICATOR: "b" BEAT_NUMBER
 BEAT_NUMBER: DIGIT+ ("." DIGIT+)? | COMPLEX_BEAT
 SIGNED_INT: ("+"|"-")? DIGIT+
 KEY: /[A-Ga-g](#{1,}|b{1,})?:/
+KEY_NAME: /[A-Ga-g](#{1,}|b{1,})?/
 ROMAN_NUMERAL: "Ger" | "Fr" | "It" | "Cad" | "NC" | "N" | "R" | "r" |"VII" | "III" | "IV" | "VI" | "II" | "V" | "It" | "I"
              | "vii" | "iii" | "iv" | "vi" | "ii" | "v" | "i"
-ACCIDENTAL: /#{1,}|b{1,}/
+ACCIDENTAL: "##" | "bb" | "b" | "#"
+ACCIDENTAL_WITH_NUMERAL: ACCIDENTAL ROMAN_NUMERAL
 INVERSION_STANDARD: "6/4" | "6/3" | "65" | "6/5" | "4/3" | "4/2" | "42" | "43" | "64" | "13" | "11" | "9" | "7" | "6" | "2"
 DIGIT: /[0-9]/
 DIGITS: DIGIT+
@@ -112,10 +115,8 @@ absolute_note: END_PLAYING_STYLE? NOTELETTER_CAPITALIZED ACCIDENTAL? ABSOLUTE_OC
 
 chord: chord_component ( "/" tonality_component )*
 chord_component: standard_chord chord_alteration*
-tonality_component: chord_accidental? numeral
-standard_chord: chord_accidental? numeral CHORD_QUALITY? inversion?
-numeral: ROMAN_NUMERAL
-chord_accidental: ACCIDENTAL
+tonality_component: ACCIDENTAL_WITH_NUMERAL | ROMAN_NUMERAL | KEY_NAME
+standard_chord: ACCIDENTAL? ROMAN_NUMERAL CHORD_QUALITY? inversion?
 chord_alteration: "[" alteration_content "]"
 omit_alteration: "no"
 add_alteration: "add"
