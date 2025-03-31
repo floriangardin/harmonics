@@ -334,7 +334,6 @@ def transform_beat_chord(node: Tree) -> Chord:
                     key = new_key
     if chord is None:
         raise ValueError("Chord missing chord")
-    print(f"beat_chord: {beat_number} {key} {chord}")
     return Chord(beat=beat_number, key=key, chord=chord)
 
 

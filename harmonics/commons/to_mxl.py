@@ -366,7 +366,6 @@ def _add_note_to_measure(
             return
 
         m21_note_original.tie = m21.tie.Tie("start")
-        print("Start tie", m21_note)
         m21_note.tie = m21.tie.Tie("stop")
         m21_note.articulations = []
         m21_note.duration = m21.duration.Duration(duration)
