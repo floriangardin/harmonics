@@ -30,20 +30,6 @@ in 6/8: 1, 2, 3, 4, 5, 6 # Six eighth (8) notes in a bar
 
 ---
 
-### Harmony Rules (m<index>)
-- Chords are specified in Roman numeral notation (I, ii, V7, etc.)
-- Secondary dominants, borrowed chords, and inversions are supported (`V65/V`, `V7/V`, `V2/i`, etc.)
-- Optional alterations: `[add#9]`, `[b5]`, `[no3]`
-- Suspended chords can be written using roman numbering (I54 for sus4 and I52 for sus2)
-- A measure begins with `m<number>` and contains beats (`b<number>`)
-- Major tonality are expressed in capital letters, minor tonality in lowercase. You can change tonality at any beat
-- Example:
-  ```ern
-  m1 b1 C: I b2 V6 b3.5 c: iv[add9]
-  ```
-
----
-
 ### Melody Rules (m<index>)
 - Absolute notation: `C5`, `A#4`, `Bb6`
 - Silence: `r` or `R`
@@ -65,8 +51,8 @@ in 6/8: 1, 2, 3, 4, 5, 6 # Six eighth (8) notes in a bar
 - Modifies tempo
 - Example:
   ```
-  e1 b1 tempo(120)
-  e2 b1 start_accelerando(120) b4 end_accelerando(127)
+  e1 b1 tempo(120) b1 start_accelerando(120)
+  e2 b4 end_accelerando(127)
   e3 b1 start_ritardando(127)
   e4 b1 end_ritardando(120)
   ```
@@ -154,12 +140,6 @@ MEASURE_NUMBER: DIGIT+ (LETTER+ | "var" DIGIT+)?
 BEAT_INDICATOR: "b" BEAT_NUMBER
 BEAT_NUMBER: DIGIT+ ("." DIGIT+)? | COMPLEX_BEAT
 SIGNED_INT: ("+"|"-")? DIGIT+
-KEY: /[A-Ga-g](#{1,}|b{1,})?:/
-KEY_NAME: /[A-Ga-g](#{1,}|b{1,})?(?![IVivx])/
-ROMAN_NUMERAL: "Ger" | "Fr" | "It" | "it" | "ger" | "fr" | "cad" | "Cad" | "NC" | "N" | "R" | "r" |"VII" | "III" | "IV" | "VI" | "II" | "V" | "It" | "I"
-             | "vii" | "iii" | "iv" | "vi" | "ii" | "v" | "i"
-ACCIDENTAL: /#{1,}|b{1,}|x{1,}/
-INVERSION_STANDARD: "6/4" | "6/3" | "65" | "6/5" | "4/3" | "4/2" | "42" | "43" | "64" | "13" | "11" | "9" | "7" | "6" | "2"
 DIGIT: /[0-9]/
 DIGITS: DIGIT+
 LETTER: /[a-z]+/
@@ -185,7 +165,6 @@ line: composer_line
              | instrument_line
              | clef_line
              | groups_line
-             | measure_line
              | COMMENT
              | melody_line
              | event_line
@@ -213,30 +192,9 @@ technique_list: TECHNIQUE_NAME ("," TECHNIQUE_NAME)*
 event_line: "e" MEASURE_NUMBER event_content+
 event_content: BEAT_INDICATOR EVENT_FUNCTION_NAME "(" EVENT_ARGUMENT ")"
 
-measure_line: MEASURE_INDICATOR measure_line_content
-measure_line_content: (beat_chord | key_change)+ MEASURE_BOUNDARY_END?
-beat_chord: BEAT_INDICATOR key? chord
-key_change: key
-key: KEY
-
 note: NOTELETTER ACCIDENTAL?
 
 COMMENT: ("Note:" | "//" ) REST_LINE
-
-chord: chord_component ( "/" tonality_component )*
-chord_component: standard_chord chord_alteration*
-tonality_component: accidental_with_numeral | plain_numeral | key_name_component
-accidental_with_numeral: chord_accidental numeral
-plain_numeral: numeral
-key_name_component: KEY_NAME
-standard_chord: chord_accidental? numeral CHORD_QUALITY? inversion?
-numeral: ROMAN_NUMERAL
-chord_accidental: ACCIDENTAL
-chord_alteration: "[" alteration_content "]"
-omit_alteration: "no"
-add_alteration: "add"
-alteration_content: (omit_alteration | add_alteration)? ACCIDENTAL? DIGITS
-
 
 melody_line: MEASURE_INDICATOR (TRACK_NAME ("." VOICE_NAME)? )? MEASURE_BOUNDARY_START* melody_line_content MEASURE_BOUNDARY_END*
 melody_line_content: beat_note+
@@ -247,15 +205,6 @@ absolute_note: END_PLAYING_STYLE* NOTELETTER_CAPITALIZED ACCIDENTAL? ABSOLUTE_OC
 time_signature: numerator "/" denominator
 numerator: DIGIT+
 denominator: DIGIT+
-
-inversion: INVERSION_STANDARD | inversion_free
-inversion_free: ACCIDENTAL? DIGIT+
-
-%import common.NEWLINE
-%import common.WS
-
-%ignore WS
-%ignore COMMENT
 
 
 ### Composition Guidelines
@@ -292,12 +241,6 @@ inversion_free: ACCIDENTAL? DIGIT+
 #### Techniques
 - Use technics to give more expressiveness to the music
 - Use different technics for different instruments to add contrast
-
-#### Variables
-- Variables are declared with `@<name> = <value>`
-- Variables can be used in harmonic lines, melody lines, and accompaniment lines
-- Variables must be declared before they are used
-- Variables can be used to declare (1 bar) accompaniments, melodies, and harmonies
 
 #### Voices
 - Voices are specified with `T<number>.v<number>`

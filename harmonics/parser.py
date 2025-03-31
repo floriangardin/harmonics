@@ -33,9 +33,23 @@ class HarmonicsParser:
     def prepare_input(self, input_string):
         # Basic replacements
         input_string = input_string.replace("`", "").replace("%", "ø").replace("º", "o")
-        input_string = input_string.replace("//", "Note: ")
+        #input_string = input_string.replace("//", "Note: ")
         input_string = input_string.replace("Fr+", "Fr")
-        input_string = "\n".join(input_string.split("\n"))
+        input_string = input_string.replace("♭", "b")
+        input_string = input_string.replace("♯", "#")
+        input_string = input_string.replace("German", "Ger")
+        input_string = input_string.replace("German+", "Ger")
+        if not input_string.endswith("\n"):
+            input_string += "\n"
+        lines = input_string.split("\n")
+        # Remove trailing spaces
+        lines = [line.rstrip() for line in lines]
+        # Remove everything after "//"
+        lines = [line.split("//")[0] for line in lines]
+        # Remove empty lines
+        # lines = [line for line in lines if line]
+        # Join lines
+        input_string = "\n".join(lines)
 
         return input_string + "\n"
 
@@ -92,6 +106,7 @@ class HarmonicsParser:
             title=data.title,
             clefs=data.clefs,
             key_signatures=data.key_signatures,
+            measure_boundaries=data.measure_boundaries,
         )
         return score
 

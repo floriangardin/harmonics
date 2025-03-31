@@ -127,6 +127,7 @@ class ScoreData(BaseModel):
     composer: str
     clefs: List[ClefItem]
     key_signatures: List[KeySignatureItem]
+    measure_boundaries: Dict[int, str]  # Measure number -> measure boundary
 
 
 @lru_cache(maxsize=10)
@@ -142,6 +143,7 @@ def get_data(self) -> ScoreData:
     instruments = []
     clefs = []
     key_signatures = []
+    measure_boundaries = {}  # Measure number -> measure boundary
     title = ""
     composer = ""
     groups = {}
@@ -252,6 +254,9 @@ def get_data(self) -> ScoreData:
                     key_signature=line.key_signature,
                 )
             )
+        elif isinstance(line, models.Melody):
+            if line.measure_boundary is not None:
+                measure_boundaries[line.measure_number] = line.measure_boundary
     # Fill the durations (using delta between next time)
     if len(chords) > 0:
         for i in range(len(chords) - 1):
@@ -270,6 +275,7 @@ def get_data(self) -> ScoreData:
         composer=composer,
         clefs=clefs,
         key_signatures=key_signatures,
+        measure_boundaries=measure_boundaries,
     )
 
 
@@ -403,7 +409,7 @@ class ScoreDocument(BaseModel):
                             + 1
                         )
                     results.extend(bar_notes)
-
+        results = sorted(results, key=lambda r: (r.measure_number, r.beat))
         return results
 
     @property

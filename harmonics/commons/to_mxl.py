@@ -64,6 +64,7 @@ def to_mxl(filepath, score):
     _apply_time_signatures(m21_score, score, all_measures, first_instrument_measures)
     _apply_clefs(m21_score, score)
     _apply_key_signatures(m21_score, score)
+    _add_phrase_boundaries(m21_score, score.measure_boundaries)
     # Write to file
     _correct_xml_and_compress(m21_score, filepath)
 
@@ -163,6 +164,12 @@ def _apply_techniques(note, m21_note, measure, part_state, ts):
                         measure.insert(_get_offset(note.beat, ts), technique_obj)
                     elif technique_type == "expressions":
                         m21_note.expressions.append(technique_obj)
+                else:
+                    # Create comment with the technique name
+                    text = m21.expressions.TextExpression(technique)
+                    text.positionVertical = 20
+                    text.style.fontStyle = "italic"
+                    measure.insert(_get_offset(note.beat, ts), text)
 
     # Only add to slur_notes if we're in a slur and haven't already added this note
     # (we already add the note when the slur starts or ends)
@@ -393,9 +400,16 @@ def _add_note_to_measure(
 
 def _create_new_note(note, duration):
     """Create a new music21 note or chord object."""
+    def replace_flats_to_minus(pitch):
+        if isinstance(pitch, list):
+            return [replace_flats_to_minus(n) for n in pitch]
+        if "b" in pitch:
+            return pitch.replace("b", "-")
+        return pitch
+
     if isinstance(note.pitch, list):
         # Create chord
-        m21_note = m21.chord.Chord(note.pitch)
+        m21_note = m21.chord.Chord(replace_flats_to_minus(note.pitch))
         m21_note.quarterLength = duration
     else:
         # Create single note
@@ -410,6 +424,98 @@ def _add_text_comment(measure, text, offset):
     text_expression.positionVertical = 20  # Position above the staff
     text_expression.style.fontStyle = "italic"  # Make it italic
     measure.insert(offset, text_expression)
+
+
+def _add_phrase_boundaries(m21_score, measure_boundaries):
+    """
+    Add phrase boundaries (like repeat signs) to the score.
+
+    Args:
+        m21_score: The music21 score object
+        measure_boundaries: Dictionary mapping measure numbers to boundary types (:||=repeat, coda=coda, etc.)
+    """
+    if not measure_boundaries:
+        return
+
+    # Process each boundary marker
+    for measure_num, boundary_type in measure_boundaries.items():
+        # Find all measures with this number across all parts
+        for part in m21_score.parts:
+            measures = part.getElementsByClass("Measure")
+            measure = None
+
+            # Find the specific measure in this part
+            for m in measures:
+                if m.number == measure_num:
+                    measure = m
+                    break
+
+            if measure is None:
+                continue
+
+            # Handle different boundary types
+            if boundary_type in ["repeat_start", "|:", "start_repeat"]:
+                # Add repeat barline at the start of the measure
+                repeat_obj = m21.bar.Repeat(direction="start")
+                measure.leftBarline = repeat_obj
+
+            elif boundary_type in ["repeat_end", ":|", "end_repeat"]:
+                # Add repeat barline at the end of the measure
+                repeat_obj = m21.bar.Repeat(direction="end")
+                measure.rightBarline = repeat_obj
+
+            elif boundary_type in ["repeat_both", ":|:", ":||:"]:
+                # Add repeat barlines at both ends
+                measure.leftBarline = m21.bar.Repeat(direction="start")
+                measure.rightBarline = m21.bar.Repeat(direction="end")
+
+            elif boundary_type.startswith("repeat_end_times="):
+                # Extract repeat count
+                try:
+                    times = int(boundary_type.split("=")[1])
+                    repeat_obj = m21.bar.Repeat(direction="end")
+                    repeat_obj.times = times
+                    measure.rightBarline = repeat_obj
+
+                    # Add text expression to indicate the repeat count
+                    text_expr = repeat_obj.getTextExpression()
+                    measure.append(text_expr)
+                except (ValueError, IndexError):
+                    # If parsing fails, just add a normal end repeat
+                    measure.rightBarline = m21.bar.Repeat(direction="end")
+
+            elif boundary_type == "final":
+                # Add final barline
+                measure.rightBarline = m21.bar.Barline("final")
+
+            elif boundary_type == "double":
+                # Add double barline
+                measure.rightBarline = m21.bar.Barline("double")
+
+            elif boundary_type == "dashed":
+                # Add dashed barline
+                measure.rightBarline = m21.bar.Barline("dashed")
+
+            elif boundary_type in ["coda", "segno"]:
+                # Add coda or segno as text expressions
+                expr = m21.expressions.TextExpression(boundary_type)
+                expr.style.fontWeight = "bold"
+                expr.style.fontSize = 14
+                measure.insert(0, expr)
+
+            elif boundary_type == "fine":
+                # Add 'Fine' text
+                expr = m21.expressions.TextExpression("Fine")
+                expr.style.fontStyle = "italic"
+                expr.style.fontWeight = "bold"
+                measure.insert(0, expr)
+
+            elif boundary_type.startswith("dc") or boundary_type.startswith("ds"):
+                # Handle da capo and dal segno markings
+                expr = m21.expressions.TextExpression(boundary_type.upper())
+                expr.style.fontStyle = "italic"
+                expr.style.fontWeight = "bold"
+                measure.insert(0, expr)
 
 
 def _init_m21_score(score):

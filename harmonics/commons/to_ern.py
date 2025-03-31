@@ -366,7 +366,7 @@ def _generate_harmony_line(measure_number, chords):
     """Generate harmony line for a measure."""
     lines = []
 
-    harmony_line = f"m{measure_number}"
+    harmony_line = f"h{measure_number}"
 
     # Sort chords by beat
     sorted_chords = sorted(chords, key=lambda c: c.beat)

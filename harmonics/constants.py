@@ -311,7 +311,9 @@ INSTRUMENTS_DICT["choir_tenor"] = (52, 0)
 INSTRUMENTS_DICT["choir_bass"] = (53, 0)
 INSTRUMENTS_DICT["choir_soprano"] = (52, 0)
 INSTRUMENTS_DICT["choir_alto"] = (53, 0)
-
+INSTRUMENTS_DICT["pipe_organ"] = (19, 0)
+INSTRUMENTS_DICT["organ"] = (19, 0)
+INSTRUMENTS_DICT["church_organ"] = (19, 0)
 
 REVERSE_INSTRUMENT_DICT = {val: key for key, val in INSTRUMENTS_DICT.items()}
 

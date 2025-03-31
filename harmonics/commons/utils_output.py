@@ -49,7 +49,7 @@ def _add_sound_pizzicato(root):
         if (
             words_elem is not None
             and words_elem.text is not None
-            and "pizz." in words_elem.text.strip()
+            and "pizz" in words_elem.text.strip()
         ):
             # Check if the direction already has a sound element
             sound_elem = direction.find("sound")

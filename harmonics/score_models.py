@@ -115,3 +115,4 @@ class Score(BaseModel):
     title: str
     composer: str
     staff_groups: Dict[str, List[str]] = {}  # Map group name to list of track names
+    measure_boundaries: Dict[int, str] = {}  # Measure number -> measure boundary

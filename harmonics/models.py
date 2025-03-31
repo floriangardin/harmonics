@@ -73,6 +73,7 @@ class Melody(Line):
     notes: List[MelodyNote]
     track_name: str = "T1"
     voice_name: str = "v1"
+    measure_boundary: Optional[str] = None
 
 
 # ==================================

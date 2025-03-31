@@ -1,9 +1,9 @@
 from harmonics import HarmonicsParser
 
 text = r"""Time Signature: 4/4
-Note: test
-m1 b1 c: #vi6[add9][add##11]/V/##ii b3 Ger65/i
-m2 b1 C: I/II b3 It6 b4 Ger b4.5 VII
+// test
+h1 b1 c: #vi6[add9][add##11]/V/##ii b3 Ger65/i
+h2 b1 C: I/II b3 It6 b4 Ger b4.5 VII
 """
 
 
@@ -16,18 +16,18 @@ def test_no_beat_one():
     parser = HarmonicsParser()
     text = r"""
     Time Signature: 4/4
-    Note: test
-    m1 b1 c: I
+    // test
+    h1 b1 c: I
     """
     tree = parser.parse(text)
 
 
 text_with_events = r"""
 Time Signature: 4/4
-Note: test
+// test
 e1 b1 tempo(110)
-m1 b1 c: I
-m2 b1 c: V
+h1 b1 c: I
+h2 b1 c: V
 """
 
 
@@ -39,9 +39,9 @@ def test_events():
 
 text_with_instruments = r"""
 Time Signature: 4/4
-Note: test
+// test
 Instrument: T1=piano, T2=pizzicato
-m1 T1 b1 1234
+m1 T1 b1 E4
 """
 
 
@@ -53,10 +53,10 @@ def test_instruments():
 
 text_with_continuation = r"""
 Time Signature: 4/4
-Note: test
-m1 b1 c: I
+// test
+h1 b1 c: I
 m1 b1 C5
-m2 b1 c: V
+h2 b1 c: V
 m2 b1 L
 """
 
@@ -69,7 +69,7 @@ def test_continuation():
 
 text_with_techniques = r"""
 Time Signature: 4/4
-Note: test
+// test
 tech [T1] (m1 b1 - m4 b3) : legato
 tech [T1] (m1 b1 - m40 b3) : accent
 m1 T1 b1 C5

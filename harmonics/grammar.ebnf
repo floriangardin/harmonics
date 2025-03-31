@@ -58,7 +58,7 @@ TEXT_COMMENT: "\"" /[^"]+/ "\""
 
 // ======== NON-TERMINAL RULES ========
 
-document: (line NEWLINE)*
+document: (line NEWLINE?)*
 line: composer_line
              | title_line
              | time_signature_line
@@ -66,7 +66,7 @@ line: composer_line
              | instrument_line
              | clef_line
              | groups_line
-             | measure_line
+             | harmony_line
              | COMMENT
              | melody_line
              | event_line
@@ -94,15 +94,21 @@ technique_list: TECHNIQUE_NAME ("," TECHNIQUE_NAME)*
 event_line: "e" MEASURE_NUMBER event_content+
 event_content: BEAT_INDICATOR EVENT_FUNCTION_NAME "(" EVENT_ARGUMENT ")"
 
-measure_line: MEASURE_INDICATOR measure_line_content
-measure_line_content: (beat_chord | key_change)+ PHRASE_BOUNDARY?
+harmony_line: "h" MEASURE_NUMBER harmony_line_content
+harmony_line_content: (beat_chord | key_change)+ PHRASE_BOUNDARY?
 beat_chord: BEAT_INDICATOR key? chord
 key_change: key
 key: KEY
 
 note: NOTELETTER ACCIDENTAL?
 
-COMMENT: ("Note:" | "//" ) REST_LINE
+COMMENT: "//" REST_LINE NEWLINE
+
+melody_line: MEASURE_INDICATOR (TRACK_NAME ("." VOICE_NAME)? )? melody_line_content
+melody_line_content: beat_note+
+beat_note: BEAT_INDICATOR TEXT_COMMENT? (absolute_note+ | SILENCE | CONTINUATION) note_techniques?
+note_techniques: "[" TECHNIQUE_NAME ("," TECHNIQUE_NAME)* "]"
+absolute_note: END_PLAYING_STYLE? NOTELETTER_CAPITALIZED ACCIDENTAL? ABSOLUTE_OCTAVE PLAYING_STYLE*
 
 chord: chord_component ( "/" tonality_component )*
 chord_component: standard_chord chord_alteration*
@@ -114,14 +120,6 @@ chord_alteration: "[" alteration_content "]"
 omit_alteration: "no"
 add_alteration: "add"
 alteration_content: (omit_alteration | add_alteration)? ACCIDENTAL? DIGITS
-
-voice_list: (ALTERATION? VOICE OCTAVE?)+
-
-melody_line: MEASURE_INDICATOR (TRACK_NAME ("." VOICE_NAME)? )? melody_line_content
-melody_line_content: beat_note+
-beat_note: BEAT_INDICATOR TEXT_COMMENT? (absolute_note+ | SILENCE | CONTINUATION | voice_list) note_techniques?
-note_techniques: "[" TECHNIQUE_NAME ("," TECHNIQUE_NAME)* "]"
-absolute_note: END_PLAYING_STYLE? NOTELETTER_CAPITALIZED ACCIDENTAL? ABSOLUTE_OCTAVE PLAYING_STYLE*
 
 time_signature: numerator "/" denominator
 numerator: DIGIT+
