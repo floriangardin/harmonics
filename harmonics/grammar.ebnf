@@ -8,7 +8,7 @@ COMPLEX_BEAT: DIGIT+  "+" DIGIT+ "/" DIGIT+
 GM_INSTRUMENT_NAME: /[a-zA-Z_1-9]+/
 GROUP_NAME: /[a-zA-Z_][a-zA-Z0-9_]+/
 TEMPO_NUMBER: DIGIT+
-TECHNIQUE_NAME: STOP_TECHNIQUE? /[a-zA-Z_][a-zA-Z0-9_]*/
+TECHNIQUE_NAME: STOP_TECHNIQUE? (PLAYING_STYLE | /[a-zA-Z_][a-zA-Z0-9_]*/)
 STOP_TECHNIQUE: "!" 
 EVENT_FUNCTION_NAME: "tempo" | "velocity" | "start_crescendo" | "end_crescendo" | "start_diminuendo" | "end_diminuendo" | "start_accelerando" | "end_accelerando" | "start_ritardando" | "end_ritardando"
 EVENT_ARGUMENT: TEMPO_NUMBER | VELOCITY_VALUE

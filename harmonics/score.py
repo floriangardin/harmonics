@@ -142,6 +142,7 @@ def get_data(self) -> ScoreData:
     tempos = []
     instruments = []
     clefs = []
+    all_tracks = []
     key_signatures = []
     measure_boundaries = {}  # Measure number -> measure boundary
     title = ""
@@ -255,6 +256,8 @@ def get_data(self) -> ScoreData:
                 )
             )
         elif isinstance(line, models.Melody):
+            if line.track_name not in all_tracks:
+                all_tracks.append(line.track_name)
             if line.measure_boundary is not None:
                 measure_boundaries[line.measure_number] = line.measure_boundary
     # Fill the durations (using delta between next time)
@@ -266,6 +269,17 @@ def get_data(self) -> ScoreData:
         )
 
     self.get_progression(chords)
+    instrument_tracks = [i.track_name for i in instruments]
+    missing_tracks = set(all_tracks) - set(instrument_tracks)
+    for track_name in missing_tracks:
+        instruments.append(
+            InstrumentItem(
+                time=0,
+                track_name=track_name,
+                track_index=len(instruments),
+                gm_number=0,
+                name="piano",
+        ))
     return ScoreData(
         chords=chords,
         time_signatures=time_signatures,

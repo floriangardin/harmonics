@@ -62,6 +62,7 @@ REST_LINE: /.+/
 - You are strongly encouraged to use secondary tonalities (eg: `V/vi` or `viio7/iv`) to create harmonic interest and avoid the most common harmonic patterns.
 - When you want to modulate in a foreign key, for preparation of the modulation you can write directly the key name for the modulation (eg: `V/G`)
 - Beats are always relative to the denominator of the time signature (4/4 -> 1 beat = 1 quarter note, 6/8 -> 1 beat = 1 eighth note). Use .33 and .66 for triplets, .25 and .5, .75 and .125 for quavers and semiquavers.
+- Tempo is always in QPM (quarter note per minute), NOT in BPM (beats per minute).
 
 ## Guidelines
 

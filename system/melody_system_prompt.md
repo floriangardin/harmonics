@@ -62,6 +62,7 @@ denominator: DIGIT+
 - Notes are always absolute and not relative to the current key.
 - You can use double sharp and double flat accidentals (eg: `C##` or `Bbb`) if needed in the current key.
 - You can use the `R` to write a rest and `L` to write a continuation of the current note (A tie).
+- Tempo is always in QPM (quarter note per minute), NOT in BPM (beats per minute).
 
 ## Guidelines
 
@@ -70,7 +71,9 @@ denominator: DIGIT+
 - Give space to the melody to breathe, using rests and continuations.
 - Respect the tempo and time signature you are working with. 
 - Use technics to structure the melodic phrase : question, answer, variation, development, resolution, cadences, modulating march, etc.
-- Usually go from a simple line to a more complex one. 
+- Usually go from a simple melodic line to a more complex one.
+- Break scales and arpeggios to create interest and avoid monotony.
+
 
 ## Example
 

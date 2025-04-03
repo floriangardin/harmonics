@@ -605,9 +605,12 @@ def transform_beat_note(node: Tree, notes: List[MelodyNote]) -> BeatItem:
 
 def transform_note_techniques(node: Tree) -> List[Technique]:
     techniques = []
+    from harmonics.constants import TECHNIQUE_DICT
     for child in node.children:
         if isinstance(child, Token) and child.type == "TECHNIQUE_NAME":
-            techniques.append(child.value)
+            val = TECHNIQUE_DICT.get(transform_token(child), [child.value])[0]
+            val = val.replace("start_", "").replace("end_", "!")
+            techniques.append(val)
     return techniques
 
 
