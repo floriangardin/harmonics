@@ -63,6 +63,19 @@ class HarmonicsParser:
         end_time = time.time()
         print(f"Document parsed and transformed in {end_time - start_time} seconds")
         return document
+    
+    def syntax_error_report(self, input_string):
+        clean_input = self.prepare_input(input_string)
+        clean_lines = clean_input.split("\n")
+        errors = []
+        for line_number, line in enumerate(clean_lines):
+            try:
+                tree = self.parser.parse(line)
+            except Exception as e:
+                errors.append(f"- Error in line '{line}': {str(e).replace('at line 1,', f'at line {line_number},')}")
+        if len(errors) == 0:
+            return None
+        return "\n".join(errors)
 
     def parse_to_score(self, input_string):
         if input_string.endswith(".mxl") or input_string.endswith(".musicxml"):

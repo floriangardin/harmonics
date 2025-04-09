@@ -145,10 +145,14 @@ class ClefType(BaseModel):
     octave_change: Optional[int] = None  # +1, -1, etc. for octave displacement
 
 
-class Clef(Line):
+class Clef(BaseModel):
     track_name: str
     clef_type: ClefType
     measure_number: Optional[int] = None
+
+class ClefLine(Line):
+    measure_number: Optional[int] = None
+    clefs: List[Clef]
 
 
 class ClefChange(Line):

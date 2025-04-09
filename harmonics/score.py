@@ -225,22 +225,23 @@ def get_data(self) -> ScoreData:
                     tempo=line.tempo,
                 )
             )
-        elif isinstance(line, models.Clef):
+        elif isinstance(line, models.ClefLine):
             # Initial clef specifications at the beginning of the score
-            clefs.append(
-                ClefItem(
-                    time=bar_start_time,
-                    track_name=line.track_name,
-                    clef_name=line.clef_type.name,
-                    octave_change=line.clef_type.octave_change,
-                    measure_number=(
-                        line.measure_number
-                        if line.measure_number is not None
-                        else current_bar_index
-                    ),
-                    beat=1.0,  # Default to first beat of the measure
+            for clef in line.clefs:
+                clefs.append(
+                    ClefItem(
+                        time=bar_start_time,
+                        track_name=clef.track_name,
+                        clef_name=clef.clef_type.name,
+                        octave_change=clef.clef_type.octave_change,
+                        measure_number=(
+                            clef.measure_number
+                            if clef.measure_number is not None
+                            else current_bar_index
+                        ),
+                        beat=1,  # Default to first beat of the measure
+                    )
                 )
-            )
         elif isinstance(line, models.KeySignature):
             # Add key signature to the list
             key_signatures.append(

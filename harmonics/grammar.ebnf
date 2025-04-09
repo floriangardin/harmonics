@@ -82,7 +82,7 @@ title_line: "Piece:" REST_LINE
 time_signature_line: ( "(" "m" MEASURE_NUMBER ")" )? "Time Signature" ":" time_signature
 tempo_line: "Tempo:" TEMPO_NUMBER  // Tempo number in QPM
 instrument_line: "Instrument:" TRACK_NAME "=" GM_INSTRUMENT_NAME ("," TRACK_NAME "=" GM_INSTRUMENT_NAME)*
-clef_line: ( "(" "m" MEASURE_NUMBER ")" )? "Clef:" TRACK_NAME "=" clef_type
+clef_line: ( "(" "m" MEASURE_NUMBER ")" )? "Clef:" TRACK_NAME "=" clef_type ("," TRACK_NAME "=" clef_type)*
 key_signature_line: ( "(" "m" MEASURE_NUMBER ")" )? "Signature:" key_signature
 // To group tracks together (For example for a piano score)
 groups_line: "Groups:" GROUP_NAME "=" "[" TRACK_NAME ("," TRACK_NAME)* "]"

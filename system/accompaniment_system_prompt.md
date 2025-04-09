@@ -95,41 +95,41 @@ Piece: Donna e' mobile
 Time Signature: 3/8
 Tempo: 75
 
-m1 b1 R
-m2 b1 D5 b2 D5 b3 D5
-m3 b1 F5 b1.75 Eb5 b2 C5
-m4 b1 C5 b2 C5 b3 C5
-m5 b1 Eb5 b1.75 D5 b2 Bb4
-m6 b1 D5 b2 C5 b3 Bb4
-m7 b1 C5 b1 Bb4 b1.75 A4 b2 A4
-m8 b1 C5 b2 Bb4 b3 G4
-m9 b1 A4 b1 G4 b1.75 F4 b2 F4
-m10 b1 D5 b2 D5 b3 D5
-m11 b1 F5 b1.75 Eb5 b2 C5
-m12 b1 C5 b2 C5 b3 C5
-m13 b1 Eb5 b1.75 D5 b2 Bb4
-m14 b1 D5 b2 C5 b3 Bb4
-m15 b1 C5 b1 Bb4 b1.75 A4 b2 A4
-m16 b1 C5 b2 Bb4 b3 G4
-m17 b1 A4 b1 G4 b1.75 F4 b2 F4
-m18 b1 C5 b1.75 D5 b2 C5 b3 C5
-m19 b1 E5 b1 A4 F5 b1.5 R b2 F4 A4 C5
-m20 b1 D5 b1.75 Eb5 b2 D5  b3 D5
-m21 b1 Gb5  b1 Bb4 G5  b1.5 R b2 G4 Bb4 D5
-m22 b1 F5 b1.75 G5 b2 F5 b3 F5
-m23 b1 Bb4 G5  b3 F5
-m24 b1 Eb5 b1.33 F5 b1.66 Eb5 b2 D5 b2.5 R b3 C5 b3.5 R
-m25 b1 Bb4  b3 F5 b3.75 F6
-m26 b1 F6 b3 F5 b3.75 F6
-m27 b1 F6 b3 F5 b3.75 F6
-m28 b1 Eb6 b1.33 F6 b1.66 Eb6 b2 D6 b2.5 R b3 C6 b3.5 R
-m29 b1 Bb5 b3 F5 b3.75 F6
-m30 b1 Eb6 b1.33 A5 b1.66 F6 b2 Eb6 b3 F5 b3.75 F6
-m31 b1 D6 b1.33 F5 b1.66 F6 b2 D6 b3 F5 b3.75 F6
-m32 b1 Eb6 b1.33 A5 b1.66 F6 b2 Eb6 b2.33 A5 b2.66 F6 b3 Eb6 b3.33 A5 b3.66 F6
-m33 b1 Bb5 b2 R b3 F#5
-m34 b1 A5 b1.75 G5 b2 F5 b2.75 Eb5 b3 D5 b3.75 C5
-m35 b1 Bb4 b1.5 R b2 D5 F5 Bb5 b3 R
+m1 T2.v1 b1 R
+m2 T2.v1 b1 D5 b2 D5 b3 D5
+m3 T2.v1 b1 F5 b1.75 Eb5 b2 C5
+m4 T2.v1 b1 C5 b2 C5 b3 C5
+m5 T2.v1 b1 Eb5 b1.75 D5 b2 Bb4
+m6 T2.v1 b1 D5 b2 C5 b3 Bb4
+m7 T2.v1 b1 C5 b1 Bb4 b1.75 A4 b2 A4
+m8 T2.v1 b1 C5 b2 Bb4 b3 G4
+m9 T2.v1 b1 A4 b1 G4 b1.75 F4 b2 F4
+m10 T2.v1 b1 D5 b2 D5 b3 D5
+m11 T2.v1 b1 F5 b1.75 Eb5 b2 C5
+m12 T2.v1 b1 C5 b2 C5 b3 C5
+m13 T2.v1 b1 Eb5 b1.75 D5 b2 Bb4
+m14 T2.v1 b1 D5 b2 C5 b3 Bb4
+m15 T2.v1 b1 C5 b1 Bb4 b1.75 A4 b2 A4
+m16 T2.v1 b1 C5 b2 Bb4 b3 G4
+m17 T2.v1 b1 A4 b1 G4 b1.75 F4 b2 F4
+m18 T2.v1 b1 C5 b1.75 D5 b2 C5 b3 C5
+m19 T2.v1 b1 E5 b1 A4 F5 b1.5 R b2 F4 A4 C5
+m20 T2.v1 b1 D5 b1.75 Eb5 b2 D5  b3 D5
+m21 T2.v1 b1 Gb5  b1 Bb4 G5  b1.5 R b2 G4 Bb4 D5
+m22 T2.v1 b1 F5 b1.75 G5 b2 F5 b3 F5
+m23 T2.v1 b1 Bb4 G5  b3 F5
+m24 T2.v1 b1 Eb5 b1.33 F5 b1.66 Eb5 b2 D5 b2.5 R b3 C5 b3.5 R
+m25 T2.v1 b1 Bb4  b3 F5 b3.75 F6
+m26 T2.v1 b1 F6 b3 F5 b3.75 F6
+m27 T2.v1 b1 F6 b3 F5 b3.75 F6
+m28 T2.v1 b1 Eb6 b1.33 F6 b1.66 Eb6 b2 D6 b2.5 R b3 C6 b3.5 R
+m29 T2.v1 b1 Bb5 b3 F5 b3.75 F6
+m30 T2.v1 b1 Eb6 b1.33 A5 b1.66 F6 b2 Eb6 b3 F5 b3.75 F6
+m31 T2.v1 b1 D6 b1.33 F5 b1.66 F6 b2 D6 b3 F5 b3.75 F6
+m32 T2.v1 b1 Eb6 b1.33 A5 b1.66 F6 b2 Eb6 b2.33 A5 b2.66 F6 b3 Eb6 b3.33 A5 b3.66 F6
+m33 T2.v1 b1 Bb5 b2 R b3 F#5
+m34 T2.v1 b1 A5 b1.75 G5 b2 F5 b2.75 Eb5 b3 D5 b3.75 C5
+m35 T2.v1 b1 Bb4 b1.5 R b2 D5 F5 Bb5 b3 R
 ```
 
 - Harmony: 

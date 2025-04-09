@@ -41,6 +41,7 @@ from harmonics.models import (
     ClefType,
     Clef,
     ClefChange,
+    ClefLine,
     KeySignature,
     TextComment,
     StaffGroup,
@@ -945,13 +946,13 @@ def parse_key_signature(key_signature: str) -> tuple[Optional[str], Optional[str
     return mode, tonality
 
 
-def transform_clef_line(node: Tree) -> Clef:
-    # clef_line: ( "(" WS*  "m" MEASURE_NUMBER WS* ")" WS*)? "Clef:" WS+ TRACK_NAME WS* "=" WS* clef_type NEWLINE
+def transform_clef_line(node: Tree) -> ClefLine:
+    # clef_line: ( "(" "m" MEASURE_NUMBER ")" )? "Clef:" TRACK_NAME "=" clef_type ("," TRACK_NAME "=" clef_type)*
     measure_number = None
-    voice_name = ""
     clef_name = ""
     octave_change = None
-
+    track_name = ""
+    clefs = []
     for child in node.children:
         if isinstance(child, Token):
             if child.type == "MEASURE_NUMBER":
@@ -962,12 +963,14 @@ def transform_clef_line(node: Tree) -> Clef:
             clef_type = transform_clef_type(child)
             clef_name = clef_type.name
             octave_change = clef_type.octave_change
+            clef = Clef(
+                track_name=track_name,
+                clef_type=ClefType(name=clef_name, octave_change=octave_change),
+                measure_number=measure_number,
+            )
+            clefs.append(clef)
 
-    return Clef(
-        track_name=track_name,
-        clef_type=ClefType(name=clef_name, octave_change=octave_change),
-        measure_number=measure_number,
-    )
+    return ClefLine(measure_number=measure_number, clefs=clefs)
 
 
 def transform_clef_type(node: Tree) -> ClefType:
