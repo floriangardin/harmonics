@@ -8,6 +8,7 @@ COMPLEX_BEAT: DIGIT+  "+" DIGIT+ "/" DIGIT+
 GM_INSTRUMENT_NAME: /[a-zA-Z_1-9]+/
 GROUP_NAME: /[a-zA-Z_][a-zA-Z0-9_]+/
 TEMPO_NUMBER: DIGIT+
+// Technique names include for example : ped=(re)starting pedal on this note , !ped=stopping pedal on this note, any velocity, any playing style
 TECHNIQUE_NAME: STOP_TECHNIQUE? (PLAYING_STYLE | /[a-zA-Z_][a-zA-Z0-9_]*/)
 STOP_TECHNIQUE: "!" 
 EVENT_FUNCTION_NAME: "tempo" | "velocity" | "start_crescendo" | "end_crescendo" | "start_diminuendo" | "end_diminuendo" | "start_accelerando" | "end_accelerando" | "start_ritardando" | "end_ritardando"
@@ -18,26 +19,20 @@ CHORD_QUALITY: "°" | "ø" | "%" | "+" | "o"
 VOICE: /[1-4]/
 OCTAVE: "o" SIGNED_INT 
 ALTERATION: ("+" | "-")+
-SILENCE: (END_PEDAL)? ("R" | "r") (START_PEDAL)?
-CONTINUATION: (END_PEDAL)? ("L" | "l") (START_PEDAL)?
+SILENCE: ("R" | "r")
+CONTINUATION: ("L" | "l")
 NOTELETTER_CAPITALIZED: /[A-G]/
 ABSOLUTE_OCTAVE: DIGIT+
-PLAYING_STYLE: STACCATISSIMO | STACCATO | MARCATO | ACCENT | TENUTO | START_TIE | TREMOLO | TURN | INVERTED_TURN | MORDENT | INVERTED_MORDENT | START_PEDAL
+PLAYING_STYLE: STACCATISSIMO | STACCATO | MARCATO | ACCENT | TENUTO | START_TIE | TREMOLO | TURN | MORDENT
 STACCATO: "."
 STACCATISSIMO: "!"
 TENUTO: "-"
 MARCATO: "^"
 ACCENT: ">"
 START_TIE: "_"
-END_PLAYING_STYLE: END_TIE | END_PEDAL
-END_TIE: "_"
-START_PEDAL: "*"
-END_PEDAL: "*"
 TREMOLO: "tr"
 TURN: "~"
-INVERTED_TURN: "i~"
 MORDENT: "/~"
-INVERTED_MORDENT: "i/~"
 MEASURE_INDICATOR: "m" MEASURE_NUMBER
 MEASURE_NUMBER: DIGIT+ (LETTER+ | "var" DIGIT+)? 
 BEAT_INDICATOR: "b" BEAT_NUMBER
@@ -60,7 +55,6 @@ CLEF_OCTAVE_CHANGE: ("+" | "-") DIGIT+
 TEXT_COMMENT: "\"" /[^"]+/ "\""
 
 // ======== NON-TERMINAL RULES ========
-
 document: (line NEWLINE?)*
 line: composer_line
              | title_line
@@ -109,9 +103,9 @@ COMMENT: "//" REST_LINE NEWLINE
 
 melody_line: MEASURE_INDICATOR (TRACK_NAME ("." VOICE_NAME)? )? melody_line_content
 melody_line_content: beat_note+
-beat_note: BEAT_INDICATOR TEXT_COMMENT? (absolute_note+ | SILENCE | CONTINUATION) note_techniques?
+beat_note: BEAT_INDICATOR TEXT_COMMENT? ((absolute_note note_techniques?)+ | SILENCE | CONTINUATION) note_techniques?
 note_techniques: "[" TECHNIQUE_NAME ("," TECHNIQUE_NAME)* "]"
-absolute_note: END_PLAYING_STYLE? NOTELETTER_CAPITALIZED ACCIDENTAL? ABSOLUTE_OCTAVE PLAYING_STYLE*
+absolute_note: NOTELETTER_CAPITALIZED ACCIDENTAL? ABSOLUTE_OCTAVE PLAYING_STYLE*
 
 chord: chord_component ( "/" tonality_component )*
 chord_component: standard_chord chord_alteration*
